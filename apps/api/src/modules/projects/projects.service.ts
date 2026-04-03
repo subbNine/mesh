@@ -31,7 +31,7 @@ export class ProjectsService {
    * Internal common method evaluating structural bounds natively matching PRD.
    * Admin roles are required for destructive behaviors.
    */
-  private async checkAccess(projectId: string, userId: string): Promise<{ project: Project, role: string }> {
+  async checkAccess(projectId: string, userId: string): Promise<{ project: Project, role: string }> {
     const project = await this.projectRepo.findOne({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
 

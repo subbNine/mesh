@@ -18,13 +18,13 @@ export class Task {
   title: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @Column({ type: 'enum', enum: ['todo', 'inprogress', 'review', 'done'], default: 'todo' })
   status: string;
 
   @Column({ nullable: true })
-  assigneeId: string;
+  assigneeId: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'assigneeId' })

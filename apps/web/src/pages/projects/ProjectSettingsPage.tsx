@@ -180,18 +180,26 @@ export default function ProjectSettingsPage() {
             </div>
           </div>
         ) : (
-          <div 
-            className={`group inline-block ${isProjAdmin ? 'cursor-pointer hover:bg-card/50 p-2 -m-2 rounded-xl border border-transparent hover:border-border transition-colors' : ''}`}
-            onClick={() => isProjAdmin && setIsEditingContent(true)}
-            title={isProjAdmin ? "Click to edit" : undefined}
-          >
-            <h1 className="text-3xl font-bold text-foreground inline-flex items-center gap-2">
-              {currentProject.name}
-              {isProjAdmin && (
-                <svg className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-              )}
-            </h1>
-            <p className="text-muted-foreground mt-1 max-w-2xl">{currentProject.description || 'No description provided.'}</p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground inline-flex items-center gap-2">
+                {currentProject.name}
+              </h1>
+              <p className="text-muted-foreground mt-1 max-w-2xl">{currentProject.description || 'No description provided.'}</p>
+            </div>
+            {isProjAdmin && (
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                onClick={() => setIsEditingContent(true)}
+                title="Edit Project"
+                className="px-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </Button>
+            )}
           </div>
         )}
       </header>

@@ -1,4 +1,126 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Task } from './entities/tasks.entity';
+import { ProjectsService } from '../projects/projects.service';
+import { CanvasService } from '../canvas/canvas.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import { ProjectMemberRole } from '@mesh/shared';
 
 @Injectable()
-export class TasksService {}
+export class TasksService {
+  constructor(
+    @InjectRepository(Task)
+    private readonly taskRepo: Repository<Task>,
+    private readonly projectsService: ProjectsService,
+    @Inject(forwardRef(() => CanvasService))
+    private readonly canvasService: CanvasService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
+
+  async create(projectId: string, userId: string, dto: CreateTaskDto): Promise<Task> {
+    await this.projectsService.checkAccess(projectId, userId);
+
+    const task = this.taskRepo.create({
+      ...dto,
+      projectId,
+      createdBy: userId,
+    });
+    const saved = await this.taskRepo.save(task);
+
+    // Bootstrap local dependent properties (e.g., canvas instances mapping securely to the nested task bindings)
+    await this.canvasService.createEmpty(saved.id);
+
+    return this.taskRepo.findOne({
+      where: { id: saved.id },
+      relations: ['assignee', 'creator'],
+    }) as Promise<Task>;
+  }
+
+  async findAll(projectId: string, userId: string, filters?: { status?: string; assigneeId?: string }): Promise<Task[]> {
+    await this.projectsService.checkAccess(projectId, userId);
+
+    const query = this.taskRepo.createQueryBuilder('task')
+      .leftJoinAndSelect('task.assignee', 'assignee')
+      .leftJoinAndSelect('task.creator', 'creator')
+      .where('task.projectId = :projectId', { projectId });
+
+    if (filters?.status) {
+      query.andWhere('task.status = :status', { status: filters.status });
+    }
+    if (filters?.assigneeId) {
+      if (filters.assigneeId === 'unassigned') {
+        query.andWhere('task.assigneeId IS NULL');
+      } else {
+        query.andWhere('task.assigneeId = :assigneeId', { assigneeId: filters.assigneeId });
+      }
+    }
+
+    query.orderBy('task.createdAt', 'DESC');
+    return query.getMany();
+  }
+
+  async findOne(taskId: string, userId: string): Promise<Task> {
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId },
+      relations: ['assignee', 'creator'],
+    });
+
+    if (!task) throw new NotFoundException('Task bound to parameters not located');
+
+    // Assure hierarchical verification implicitly scaling generic methods mapping access globally
+    await this.projectsService.checkAccess(task.projectId, userId);
+    return task;
+  }
+
+  async update(taskId: string, userId: string, dto: UpdateTaskDto): Promise<Task> {
+    const task = await this.findOne(taskId, userId);
+    
+    const wasAssignedTo = task.assigneeId;
+    const isChangingAssignee = dto.assigneeId !== undefined && dto.assigneeId !== wasAssignedTo;
+
+    if (dto.title !== undefined) task.title = dto.title;
+    if (dto.description !== undefined) task.description = dto.description;
+    if (dto.status !== undefined) task.status = dto.status;
+    if (dto.assigneeId !== undefined) {
+      task.assigneeId = dto.assigneeId === '' ? null : dto.assigneeId;
+    }
+
+    const saved = await this.taskRepo.save(task);
+
+    // Propagate implicit generic notifications matching schema structures natively!
+    if (isChangingAssignee && saved.assigneeId) {
+      await this.notificationsService.createTaskAssignedNotification(saved.id, saved.assigneeId)
+        .catch(e => console.error('Silent failure triggering assignment generic map correctly mapping boundary: ', e));
+    }
+
+    return this.taskRepo.findOne({
+      where: { id: saved.id },
+      relations: ['assignee', 'creator'],
+    }) as Promise<Task>;
+  }
+
+  async updateSnapshot(taskId: string, snapshotUrl: string): Promise<void> {
+    // Internal abstract map execution silently validating structural inputs.
+    const task = await this.taskRepo.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Requested native context task mapped undefined locally.');
+    
+    task.snapshotUrl = snapshotUrl;
+    await this.taskRepo.save(task);
+  }
+
+  async delete(taskId: string, userId: string): Promise<void> {
+    const task = await this.taskRepo.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Target task not accessible');
+
+    const { role } = await this.projectsService.checkAccess(task.projectId, userId);
+    if (role !== ProjectMemberRole.Admin) {
+      throw new ForbiddenException('Task deletion specifically relies on elevated administrative structural privileges securely.');
+    }
+
+    // Cascade bound inherently executes deletion routines mapping internal documents cleanly natively globally
+    await this.taskRepo.remove(task);
+  }
+}

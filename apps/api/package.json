@@ -24,6 +24,7 @@
     "migration:run": "npm run typeorm -- migration:run -d ./data-source.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1024.0",
     "@mesh/shared": "*",
     "@nestjs/common": "^11.1.18",
     "@nestjs/config": "^4.0.3",
@@ -41,7 +42,8 @@
     "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.28"
+    "typeorm": "^0.3.28",
+    "yjs": "^13.6.30"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
