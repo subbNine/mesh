@@ -110,7 +110,14 @@ export class ProjectsService {
       projects.map(async (project) => {
         const taskCount = await this.taskRepo.count({ where: { projectId: project.id } });
         const memberCount = await this.projectMemberRepo.count({ where: { projectId: project.id } });
-        return { ...project, taskCount, memberCount };
+        
+        const previewMembers = await this.projectMemberRepo.find({
+          where: { projectId: project.id },
+          relations: ['user'],
+          take: 5
+        });
+
+        return { ...project, taskCount, memberCount, previewMembers };
       })
     );
   }

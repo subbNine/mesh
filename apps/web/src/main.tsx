@@ -18,6 +18,7 @@ import LandingPage from './pages/LandingPage';
 
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { WorkspaceRoute } from './components/layout/WorkspaceRoute';
+import ProjectRoute from './components/layout/ProjectRoute';
 import { AppShell } from './components/layout/AppShell';
 import { useAuthStore } from './store/auth.store';
 
@@ -62,11 +63,18 @@ function AppRoot() {
             </ProtectedRoute>
           }
         >
+          {/* Workspace level root route, redirecting to projects */}
+          <Route index element={<ProjectsPage />} />
+          
           <Route path="projects" element={<ProjectsPage />} />
-          <Route path="projects/:id" element={<ProjectDetailPage />} />
-          <Route path="projects/:id/settings" element={<ProjectSettingsPage />} />
-          <Route path="canvas" element={<TaskCanvasPage />} />
           <Route path="settings" element={<WorkspaceSettingsPage />} />
+          
+          {/* Project Bounds */}
+          <Route path="p/:projectId" element={<ProjectRoute />}>
+            <Route index element={<ProjectDetailPage />} />
+            <Route path="settings" element={<ProjectSettingsPage />} />
+            <Route path="canvas" element={<TaskCanvasPage />} />
+          </Route>
         </Route>
 
         <Route path="/forbidden" element={<ForbiddenPage />} />
