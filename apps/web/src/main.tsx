@@ -1,6 +1,6 @@
 import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
 
 import LoginPage from './pages/auth/LoginPage';
@@ -14,8 +14,11 @@ import WorkspaceSettingsPage from './pages/settings/WorkspaceSettingsPage';
 import ProjectSettingsPage from './pages/settings/ProjectSettingsPage';
 import ForbiddenPage from './pages/errors/ForbiddenPage';
 import NotFoundPage from './pages/errors/NotFoundPage';
+import LandingPage from './pages/LandingPage';
 
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { WorkspaceRoute } from './components/layout/WorkspaceRoute';
+import { AppShell } from './components/layout/AppShell';
 import { useAuthStore } from './store/auth.store';
 
 function AppRoot() {
@@ -37,22 +40,35 @@ function AppRoot() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/workspaces" replace />} />
-        
+        <Route path="/" element={<LandingPage />} />
+
+
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        
+
         {/* Protected Routes */}
         <Route path="/workspaces" element={<ProtectedRoute><WorkspaceSelectorPage /></ProtectedRoute>} />
-        <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-        <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
-        <Route path="/canvas" element={<ProtectedRoute><TaskCanvasPage /></ProtectedRoute>} />
-        
-        {/* Protected Settings Routes */}
+        {/* Protected Settings Routes - System */}
         <Route path="/settings/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/settings/workspace" element={<ProtectedRoute><WorkspaceSettingsPage /></ProtectedRoute>} />
-        <Route path="/settings/project" element={<ProtectedRoute><ProjectSettingsPage /></ProtectedRoute>} />
         
+        {/* Workspace AppShell Hierarchy */}
+        <Route 
+          path="/w/:workspaceId" 
+          element={
+            <ProtectedRoute>
+              <WorkspaceRoute>
+                <AppShell />
+              </WorkspaceRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:id" element={<ProjectDetailPage />} />
+          <Route path="projects/:id/settings" element={<ProjectSettingsPage />} />
+          <Route path="canvas" element={<TaskCanvasPage />} />
+          <Route path="settings" element={<WorkspaceSettingsPage />} />
+        </Route>
+
         <Route path="/forbidden" element={<ForbiddenPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

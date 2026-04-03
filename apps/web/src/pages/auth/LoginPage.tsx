@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -8,6 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   
   const login = useAuthStore((state) => state.login);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,33 +26,60 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-zinc-900 text-white">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm p-6 bg-zinc-800 rounded shadow-md">
-        <h1 className="text-2xl font-bold mb-4">Login</h1>
-        {error && <div className="p-2 bg-red-900/50 text-red-200 border border-red-500 rounded">{error}</div>}
-        <input 
-          type="email" 
-          value={email} 
-          onChange={e => setEmail(e.target.value)} 
-          placeholder="Email" 
-          className="p-2 rounded bg-zinc-700 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          required 
-        />
-        <input 
-          type="password" 
-          value={password} 
-          onChange={e => setPassword(e.target.value)} 
-          placeholder="Password" 
-          className="p-2 rounded bg-zinc-700 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          required 
-        />
-        <button type="submit" className="p-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded">
-          Sign In
-        </button>
-        <p className="text-sm mt-4 text-center">
-          Don't have an account? <span className="text-blue-400 cursor-pointer hover:underline" onClick={() => navigate('/register')}>Sign Up</span>
-        </p>
-      </form>
+    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 flex-col lg:flex-row">
+      
+      {/* Brand Side (Visible on lg screens) */}
+      <div className="hidden lg:flex w-1/2 flex-col justify-center px-12 bg-card border-r border-border min-h-screen">
+        <h1 className="text-4xl font-bold text-foreground mb-4">Welcome back to Mesh.</h1>
+        <p className="text-lg text-muted-foreground">Log in to your account and continue plotting your next big project.</p>
+      </div>
+
+      {/* Login Form Side */}
+      <div className="flex-1 flex w-full items-center justify-center relative">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle className="text-2xl">Sign In</CardTitle>
+            <CardDescription>Enter your email below to log into your account</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && <div className="p-3 mb-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-md text-sm font-medium">{error}</div>}
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input 
+                id="email"
+                type="email" 
+                label="Email Address"
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                placeholder="you@example.com" 
+                required 
+              />
+              <div className="space-y-1">
+                <Input 
+                  id="password"
+                  type="password" 
+                  label="Password"
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  required 
+                />
+                <div className="flex justify-end">
+                  <a href="#" className="text-xs text-primary hover:underline font-medium">Forgot password?</a>
+                </div>
+              </div>
+              <Button type="submit" fullWidth loading={isLoading} className="mt-4">
+                Sign In
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t border-border pt-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              Don't have an account? <button type="button" className="text-primary font-medium hover:underline" onClick={() => navigate('/register')}>Sign Up</button>
+            </p>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

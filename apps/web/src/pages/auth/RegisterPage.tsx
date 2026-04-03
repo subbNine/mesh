@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState('');
@@ -11,6 +14,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   
   const register = useAuthStore((state) => state.register);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,61 +29,89 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-zinc-900 text-white">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm p-6 bg-zinc-800 rounded shadow-md">
-        <h1 className="text-2xl font-bold mb-4">Register</h1>
-        {error && <div className="p-2 bg-red-900/50 text-red-200 border border-red-500 rounded">{error}</div>}
-        
-        <div className="flex gap-2">
-          <input 
-            type="text" 
-            value={firstName} 
-            onChange={e => setFirstName(e.target.value)} 
-            placeholder="First Name" 
-            className="p-2 w-full rounded bg-zinc-700 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-            required 
-          />
-          <input 
-            type="text" 
-            value={lastName} 
-            onChange={e => setLastName(e.target.value)} 
-            placeholder="Last Name" 
-            className="p-2 w-full rounded bg-zinc-700 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-            required 
-          />
-        </div>
-        <input 
-          type="text" 
-          value={userName} 
-          onChange={e => setUserName(e.target.value)} 
-          placeholder="Username" 
-          className="p-2 rounded bg-zinc-700 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          required 
-        />
-        <input 
-          type="email" 
-          value={email} 
-          onChange={e => setEmail(e.target.value)} 
-          placeholder="Email address" 
-          className="p-2 rounded bg-zinc-700 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          required 
-        />
-        <input 
-          type="password" 
-          value={password} 
-          onChange={e => setPassword(e.target.value)} 
-          placeholder="Password" 
-          className="p-2 rounded bg-zinc-700 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          required 
-          minLength={8}
-        />
-        <button type="submit" className="p-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded">
-          Create Account
-        </button>
-        <p className="text-sm mt-4 text-center">
-          Already have an account? <span className="text-blue-400 cursor-pointer hover:underline" onClick={() => navigate('/login')}>Sign In</span>
-        </p>
-      </form>
+    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 flex-col lg:flex-row">
+      
+      {/* Brand Side (Visible on lg screens) */}
+      <div className="hidden lg:flex w-1/2 flex-col justify-center px-12 bg-card border-r border-border min-h-screen">
+        <h1 className="text-4xl font-bold text-foreground mb-4">Join Mesh today.</h1>
+        <p className="text-lg text-muted-foreground">Create workspaces, orchestrate your team, and ship faster together.</p>
+      </div>
+
+      {/* Register Form Side */}
+      <div className="flex-1 flex w-full items-center justify-center relative">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl">Create an account</CardTitle>
+            <CardDescription>Enter your details below to get started</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && <div className="p-3 mb-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-md text-sm font-medium">{error}</div>}
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input 
+                  id="firstName"
+                  type="text" 
+                  label="First Name"
+                  value={firstName} 
+                  onChange={e => setFirstName(e.target.value)} 
+                  placeholder="Jane" 
+                  required 
+                />
+                <Input 
+                  id="lastName"
+                  type="text" 
+                  label="Last Name"
+                  value={lastName} 
+                  onChange={e => setLastName(e.target.value)} 
+                  placeholder="Doe" 
+                  required 
+                />
+              </div>
+              
+              <Input 
+                id="username"
+                type="text" 
+                label="Username"
+                value={userName} 
+                onChange={e => setUserName(e.target.value)} 
+                placeholder="janedoe" 
+                required 
+              />
+              
+              <Input 
+                id="email"
+                type="email" 
+                label="Email Address"
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                placeholder="you@example.com" 
+                required 
+              />
+              
+              <Input 
+                id="password"
+                type="password" 
+                label="Password"
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                placeholder="••••••••" 
+                required 
+                minLength={8}
+              />
+              
+              <Button type="submit" fullWidth loading={isLoading} className="mt-6">
+                Create Account
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t border-border pt-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              Already have an account? <button type="button" className="text-primary font-medium hover:underline" onClick={() => navigate('/login')}>Sign in</button>
+            </p>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }
