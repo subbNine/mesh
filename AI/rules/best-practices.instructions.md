@@ -23,4 +23,4 @@ paths: ["src/**/*.ts"]
 - The docs folder also contains a system architectural diagram
 
 # Code implementation
-- Don't write a single line of code without clarity, ask me questions if you're not sure what part to take. No unnecesarry assumptions
+- Don't write a single line of code without clarity, ask me questions if you're not sure what path to take. No unnecesarry assumptions
