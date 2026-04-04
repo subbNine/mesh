@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import * as Y from 'yjs';
-import { MousePointer2, Type, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut } from 'lucide-react';
+import { MousePointer2, Type, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, Pencil } from 'lucide-react';
 import type { IUser } from '@mesh/shared';
 
 interface CanvasToolbarProps {
@@ -89,6 +89,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
   const tools = [
     { id: 'select', icon: MousePointer2, label: 'Select (V)' },
+    { id: 'pencil', icon: Pencil,         label: 'Draw (P)' },
     { id: 'text',   icon: Type,          label: 'Text (T)' },
     { id: 'image',  icon: ImageIcon,     label: 'Image (I)' },
     { id: 'comment',icon: MessageSquare, label: 'Comment (C)' },

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import * as Y from 'yjs';
-import { Stage, Layer, Text, Image as KonvaImage, Transformer, Group, Circle, Rect } from 'react-konva';
+import { Stage, Layer, Text, Image as KonvaImage, Transformer, Group, Circle, Rect, Line } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Awareness } from 'y-protocols/awareness';
 import { RichTextOverlay } from './RichTextOverlay';
@@ -67,19 +67,19 @@ let _canvasUndoManager: Y.UndoManager | null = null;
 export const getCanvasUndoManager = () => _canvasUndoManager;
 
 // Helper to create a dot grid pattern
-const createGridPattern = (color: string) => {
+const createGridPattern = (_color: string) => {
   const canvas = globalThis.document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+  // const ctx = canvas.getContext('2d');
   const size = 20; // grid spacing
   canvas.width = size;
   canvas.height = size;
 
-  if (ctx) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(1, 1, 0.8, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // if (ctx) {
+  // ctx.fillStyle = color;
+  // ctx.beginPath();
+  // ctx.arc(1, 1, 0.8, 0, Math.PI * 2);
+  // ctx.fill();
+  // }
   return canvas;
 };
 
@@ -111,12 +111,13 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     x: 0,
     y: 0,
   });
+  const [drawingPoints, setDrawingPoints] = useState<number[] | null>(null);
 
   const storeZoom = useCanvasStore((state: any) => state.zoom);
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
 
   // Memoize grid pattern to prevent re-creation on every render
-  const gridPattern = useMemo(() => createGridPattern('#757575'), []);
+  const gridPattern = useMemo(() => createGridPattern('#828282'), []);
 
   useEffect(() => {
     if (Math.abs(storeZoom - stageProps.scale) > 0.001) {
@@ -281,6 +282,108 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     setStoreZoom(clampedScale);
   };
 
+  const finalizeDrawing = async (points: number[]) => {
+    if (points.length < 4) return;
+
+    // Find if we're drawing over an existing image
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    // Find the element at the starting point to see if it's an image
+    const startX = points[0];
+    const startY = points[1];
+    
+    // Check elements in reverse z-order to find the top one
+    const targetEl = [...elements].reverse().find(el => 
+      el.type === 'image' && 
+      startX >= el.x && startX <= el.x + el.width &&
+      startY >= el.y && startY <= el.y + el.height
+    );
+
+    if (targetEl) {
+      // Merge with existing image
+      const img = new globalThis.Image();
+      img.crossOrigin = 'Anonymous';
+      img.src = targetEl.content!;
+      await new Promise(resolve => img.onload = resolve);
+
+      const offscreenCanvas = globalThis.document.createElement('canvas');
+      offscreenCanvas.width = targetEl.width;
+      offscreenCanvas.height = targetEl.height;
+      const ctx = offscreenCanvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, targetEl.width, targetEl.height);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(points[0] - targetEl.x, points[1] - targetEl.y);
+        for (let i = 2; i < points.length; i += 2) {
+          ctx.lineTo(points[i] - targetEl.x, points[i+1] - targetEl.y);
+        }
+        ctx.stroke();
+
+        const dataUrl = offscreenCanvas.toDataURL();
+        ydoc.transact(() => {
+          const yElements = ydoc.getArray<Y.Map<any>>('elements');
+          const map = yElements.toArray().find((m) => m.get('id') === targetEl.id);
+          if (map) {
+            map.set('content', dataUrl);
+          }
+        });
+      }
+    } else {
+      // Create new image from drawing
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < points.length; i += 2) {
+        minX = Math.min(minX, points[i]);
+        minY = Math.min(minY, points[i+1]);
+        maxX = Math.max(maxX, points[i]);
+        maxY = Math.max(maxY, points[i+1]);
+      }
+
+      const padding = 5;
+      const width = (maxX - minX) + padding * 2;
+      const height = (maxY - minY) + padding * 2;
+
+      const offscreenCanvas = globalThis.document.createElement('canvas');
+      offscreenCanvas.width = width;
+      offscreenCanvas.height = height;
+      const ctx = offscreenCanvas.getContext('2d');
+      if (ctx) {
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(points[0] - minX + padding, points[1] - minY + padding);
+        for (let i = 2; i < points.length; i += 2) {
+          ctx.lineTo(points[i] - minX + padding, points[i+1] - minY + padding);
+        }
+        ctx.stroke();
+
+        const dataUrl = offscreenCanvas.toDataURL();
+        ydoc.transact(() => {
+          const elementsArray = ydoc.getArray<Y.Map<any>>('elements');
+          const element = new Y.Map();
+          element.set('id', crypto.randomUUID());
+          element.set('type', 'image');
+          element.set('content', dataUrl);
+          element.set('x', minX - padding);
+          element.set('y', minY - padding);
+          element.set('width', width);
+          element.set('height', height);
+          element.set('zIndex', elementsArray.length);
+          element.set('createdBy', currentUser.id);
+          element.set('createdAt', new Date().toISOString());
+          elementsArray.push([element]);
+        });
+      }
+    }
+    triggerSnapshot();
+  };
+
   const snapshotTimeoutRef = useRef<any>(null);
   const triggerSnapshot = useCallback(() => {
     if (snapshotTimeoutRef.current) clearTimeout(snapshotTimeoutRef.current);
@@ -332,6 +435,8 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
         });
       }
       if (onToolChange) onToolChange('select');
+    } else if (activeTool === 'pencil') {
+      setDrawingPoints([pos.x, pos.y]);
     }
   };
 
@@ -341,15 +446,20 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     const pos = stage.getRelativePointerPosition();
     if (pos) {
       awareness.setLocalStateField('cursor', { x: pos.x, y: pos.y });
-    }
-    if (activeTool === 'text') {
-      textTool.handleMouseMove(e, stageRef.current);
+      if (activeTool === 'text') {
+        textTool.handleMouseMove(e, stageRef.current);
+      } else if (activeTool === 'pencil' && drawingPoints) {
+        setDrawingPoints([...drawingPoints, pos.x, pos.y]);
+      }
     }
   };
 
   const handlePointerUp = (e: KonvaEventObject<MouseEvent>) => {
     if (activeTool === 'text') {
       textTool.handleMouseUp(e, stageRef.current);
+    } else if (activeTool === 'pencil' && drawingPoints) {
+      finalizeDrawing(drawingPoints);
+      setDrawingPoints(null);
     }
   };
 
@@ -475,11 +585,12 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
       style={{
-        backgroundColor: '#F9FAFB',
-        backgroundImage: 'radial-gradient(#E5E7EB 1px, transparent 1px)',
+        // backgroundColor: '#f5f5f5',
+        backgroundImage: 'radial-gradient(#828282 1px, transparent 1px)',
         backgroundSize: '14px 14px',
         backgroundPosition: `${stageProps.x}px ${stageProps.y}px`
-      }}>
+      }}
+    >
 
       <Stage
         width={globalThis.innerWidth}
@@ -508,7 +619,6 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
         y={stageProps.y}
         draggable={activeTool === 'select'}
         ref={stageRef}
-        style={{ background: '#f5f5f5' }} // Match design background
       >
         {/* Grid Layer */}
         <Layer listening={false}>
@@ -518,7 +628,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             width={globalThis.innerWidth / stageProps.scale}
             height={globalThis.innerHeight / stageProps.scale}
             fillPatternImage={gridPattern as any}
-            fillPatternScale={{ x: 1 / stageProps.scale, y: 1 / stageProps.scale }}
+            // fillPatternScale={{ x: 1 / stageProps.scale, y: 1 / stageProps.scale }}
             fillPatternOffset={{ x: 0, y: 0 }}
           />
         </Layer>
@@ -653,6 +763,17 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
               stroke="#0ca3ba"
               strokeWidth={1.5}
               dash={[4, 4]}
+            />
+          )}
+
+          {drawingPoints && (
+            <Line
+              points={drawingPoints}
+              stroke="#000000"
+              strokeWidth={2}
+              tension={0.5}
+              lineCap="round"
+              lineJoin="round"
             />
           )}
 
