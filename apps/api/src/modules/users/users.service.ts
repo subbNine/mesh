@@ -16,4 +16,8 @@ export class UsersService {
       where: { userName: In(userNames) },
     });
   }
+
+  async findById(id: string): Promise<User | null> {
+    return this.userRepo.findOne({ where: { id } });
+  }
 }

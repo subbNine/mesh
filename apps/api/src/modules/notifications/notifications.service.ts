@@ -1,44 +1,52 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Notification } from './entities/notifications.entity';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { NotificationType } from '@mesh/shared';
+import { NotificationPayload } from './channels/channel.interface';
 
 @Injectable()
 export class NotificationsService {
   constructor(
-    @InjectRepository(Notification)
-    private readonly notificationRepo: Repository<Notification>,
-  ) {}
+    @InjectQueue('notifications') private readonly notificationsQueue: Queue<NotificationPayload>,
+  ) { }
 
-  async createTaskAssignedNotification(taskId: string, assigneeId: string): Promise<Notification> {
-    const notification = this.notificationRepo.create({
+  async dispatchNotification(payload: NotificationPayload) {
+    await this.notificationsQueue.add(payload.type, payload, {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 1000 * 60, // 1 minute
+      },
+    });
+  }
+
+  async createTaskAssignedNotification(taskId: string, assigneeId: string): Promise<void> {
+    await this.dispatchNotification({
       recipientId: assigneeId,
       type: NotificationType.Assigned,
       resourceId: taskId,
       resourceType: 'task',
+      channels: ['in-app', 'email'], // Defaults to both
     });
-    return this.notificationRepo.save(notification);
   }
 
-  async createMentionNotification(taskId: string, mentionedUserId: string): Promise<Notification> {
-    const notification = this.notificationRepo.create({
+  async createMentionNotification(taskId: string, mentionedUserId: string): Promise<void> {
+    await this.dispatchNotification({
       recipientId: mentionedUserId,
       type: NotificationType.Mentioned,
       resourceId: taskId,
       resourceType: 'comment',
+      channels: ['in-app', 'email'],
     });
-    return this.notificationRepo.save(notification);
   }
 
-  async createCommentNotification(taskId: string, assigneeId: string): Promise<Notification> {
-    const notification = this.notificationRepo.create({
+  async createCommentNotification(taskId: string, assigneeId: string): Promise<void> {
+    await this.dispatchNotification({
       recipientId: assigneeId,
       type: NotificationType.Commented, // assuming 'Commented' exists on NotificationType
       resourceId: taskId,
       resourceType: 'task', // or 'comment'
+      channels: ['in-app'], // Maybe comment doesn't need email by default
     });
-    return this.notificationRepo.save(notification);
   }
 }
-
