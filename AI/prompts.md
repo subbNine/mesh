@@ -1,4 +1,4 @@
-# Canvas PM — Vibe-Coding Prompts
+# Mesh — Vibe-Coding Prompts
 
 > These prompts are written to be fed sequentially to an AI coding agent (Claude Code, Cursor, etc).
 > Each prompt is self-contained. Feed them in order — later prompts depend on earlier ones.
@@ -1570,7 +1570,7 @@ Check and fix:
 --- README.md ---
 Create README.md at the monorepo root:
 
-# Canvas PM
+# Mesh
 
 Canvas-first project management tool. Each task is a freeform, collaborative canvas.
 

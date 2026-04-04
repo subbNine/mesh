@@ -1,3 +1,4 @@
+import Konva from 'konva';
 import React, { useEffect, useState, useRef, useCallback, useMemo, useImperativeHandle, forwardRef } from 'react';
 import * as Y from 'yjs';
 import { Stage, Layer, Text, Image as KonvaImage, Transformer, Group, Circle, Rect, Line, Path } from 'react-konva';
@@ -30,6 +31,11 @@ interface CanvasElement {
   points?: number[];
   stroke?: string;
   strokeWidth?: number;
+  parentId?: string;
+  relX?: number;
+  relY?: number;
+  relW?: number;
+  relH?: number;
 }
 
 interface CanvasComment {
@@ -388,31 +394,111 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     else if (activeTool === 'pencil' && drawingPoints) setDrawingPoints([...drawingPoints, pos!.x, pos!.y]);
   };
 
-  const handlePointerUp = (e: KonvaEventObject<MouseEvent>) => {
+  const handlePointerUp = async (e: KonvaEventObject<MouseEvent>) => {
     if (activeTool === 'text') {
       textTool.handleMouseUp(e, stageRef.current);
-    } else if (activeTool === 'pencil' && drawingPoints && drawingPoints.length > 2) {
+    } else if (activeTool === 'pencil' && drawingPoints && drawingPoints.length > 4) {
+      const points = [...drawingPoints];
+      setDrawingPoints(null);
+
+      // 1. Calculate bounding box
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < points.length; i += 2) {
+        minX = Math.min(minX, points[i]);
+        minY = Math.min(minY, points[i+1]);
+        maxX = Math.max(maxX, points[i]);
+        maxY = Math.max(maxY, points[i+1]);
+      }
+
+      const padding = 10;
+      const w = maxX - minX + padding * 2;
+      const h = maxY - minY + padding * 2;
       const id = crypto.randomUUID();
-      const newPoints = [...drawingPoints];
+
+      // 2. Generate PNG Data URL
+      const tempLine = new Konva.Line({
+        points: points.map((p, i) => i % 2 === 0 ? p - minX + padding : p - minY + padding),
+        stroke: '#000',
+        strokeWidth: 2,
+        tension: 0.5,
+        lineCap: 'round',
+        lineJoin: 'round',
+      });
       
+      const dataUrl = tempLine.toDataURL({
+        width: w,
+        height: h,
+        pixelRatio: 2,
+      });
+
+      // 3. Find parent image if drawing overlaps one
+      const centerX = minX + w / 2;
+      const centerY = minY + h / 2;
+      const parent = [...elements].reverse().find(el => 
+        el.type === 'image' &&
+        centerX >= el.x && centerX <= el.x + (el.width || 0) &&
+        centerY >= el.y && centerY <= el.y + (el.height || 0)
+      );
+
+      const relX = parent ? (minX - parent.x) / (parent.width || 1) : undefined;
+      const relY = parent ? (minY - parent.y) / (parent.height || 1) : undefined;
+      const relW = parent ? w / (parent.width || 1) : undefined;
+      const relH = parent ? h / (parent.height || 1) : undefined;
+
+      // 4. Add phantom element to Yjs immediately
       ydoc.transact(() => {
         const arr = ydoc.getArray<Y.Map<any>>('elements');
         const element = new Y.Map();
         element.set('id', id);
-        element.set('type', 'pencil');
-        element.set('points', newPoints);
-        element.set('x', 0); // Lines use absolute points in this implementation
-        element.set('y', 0);
-        element.set('stroke', '#000');
-        element.set('strokeWidth', 2);
+        element.set('type', 'image');
+        element.set('content', dataUrl);
+        element.set('x', minX - padding);
+        element.set('y', minY - padding);
+        element.set('width', w);
+        element.set('height', h);
+        element.set('opacity', 0.5);
         element.set('zIndex', arr.length);
         element.set('createdBy', currentUser.id);
         element.set('createdAt', new Date().toISOString());
+        if (parent) {
+          element.set('parentId', parent.id);
+          element.set('relX', relX);
+          element.set('relY', relY);
+          element.set('relW', relW);
+          element.set('relH', relH);
+        }
         arr.push([element]);
       });
-      
-      setDrawingPoints(null);
-      triggerSnapshot();
+
+      try {
+        // 4. Upload to server
+        const blob = await (await fetch(dataUrl)).blob();
+        const formData = new FormData();
+        formData.append('file', blob, 'drawing.png');
+        formData.append('taskId', taskId);
+
+        const response = await api.post('/files', formData);
+        const { url } = response.data;
+
+        // 5. Update phantom with final URL
+        ydoc.transact(() => {
+          const arr = ydoc.getArray<Y.Map<any>>('elements');
+          const map = arr.toArray().find(m => m.get('id') === id);
+          if (map) {
+            map.set('content', url);
+            map.set('opacity', 1.0);
+          }
+        });
+        triggerSnapshot();
+      } catch (err) {
+        console.error('Failed to commit drawing as image', err);
+        // Clean up on failure
+        ydoc.transact(() => {
+          const arr = ydoc.getArray<Y.Map<any>>('elements');
+          const index = arr.toArray().findIndex(m => m.get('id') === id);
+          if (index > -1) arr.delete(index, 1);
+        });
+      }
     } else {
       setDrawingPoints(null);
     }
@@ -452,7 +538,18 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     ydoc.transact(() => {
       const arr = ydoc.getArray<Y.Map<any>>('elements');
       const map = arr.toArray().find(m => m.get('id') === id);
-      if (map) { map.set('x', x); map.set('y', y); }
+      if (map) {
+        if (map.get('parentId')) {
+          const parent = elements.find(p => p.id === map.get('parentId'));
+          if (parent) {
+            map.set('relX', (x - parent.x) / (parent.width || 1));
+            map.set('relY', (y - parent.y) / (parent.height || 1));
+          }
+        } else {
+          map.set('x', x); 
+          map.set('y', y);
+        }
+      }
     });
     triggerSnapshot();
   };
@@ -501,9 +598,36 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
           e.preventDefault();
           ydoc.transact(() => {
             const arr = ydoc.getArray<Y.Map<any>>('elements');
-            const index = arr.toArray().findIndex(m => m.get('id') === selectedId);
-            if (index > -1) {
-              arr.delete(index, 1);
+            const targetIndex = arr.toArray().findIndex(m => m.get('id') === selectedId);
+            if (targetIndex > -1) {
+              const target = arr.get(targetIndex);
+              // Unbind children before deleting the parent
+              if (target.get('type') === 'image') {
+                const parentX = target.get('x');
+                const parentY = target.get('y');
+                const parentW = target.get('width') || 1;
+                const parentH = target.get('height') || 1;
+                
+                arr.toArray().forEach((m) => {
+                  if (m.get('parentId') === selectedId) {
+                    const absX = parentX + (m.get('relX') || 0) * parentW;
+                    const absY = parentY + (m.get('relY') || 0) * parentH;
+                    const absW = (m.get('relW') || 1) * parentW;
+                    const absH = (m.get('relH') || 1) * parentH;
+                    
+                    m.set('x', absX);
+                    m.set('y', absY);
+                    m.set('width', absW);
+                    m.set('height', absH);
+                    m.set('parentId', undefined);
+                    m.set('relX', undefined);
+                    m.set('relY', undefined);
+                    m.set('relW', undefined);
+                    m.set('relH', undefined);
+                  }
+                });
+              }
+              arr.delete(targetIndex, 1);
               setSelectedId(null);
             }
           });
@@ -568,14 +692,26 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
         }}
       >
         <Layer ref={layerRef}>
-          {elements.map(el => (
-            <CanvasElementView
-              key={el.id} el={el}
-              isSelected={selectedId === el.id} isEditing={editingId === el.id}
-              activeTool={activeTool} handleDragMove={() => {}} handleDragEnd={handleDragEnd}
-              onSelect={setSelectedId} onEdit={setEditingId}
-            />
-          ))}
+          {elements.map(el => {
+            let renderedEl = { ...el };
+            if (el.parentId) {
+              const parent = elements.find(p => p.id === el.parentId);
+              if (parent) {
+                renderedEl.x = parent.x + (el.relX || 0) * (parent.width || 0);
+                renderedEl.y = parent.y + (el.relY || 0) * (parent.height || 0);
+                renderedEl.width = (el.relW || 1) * (parent.width || 1);
+                renderedEl.height = (el.relH || 1) * (parent.height || 1);
+              }
+            }
+            return (
+              <CanvasElementView
+                key={el.id} el={renderedEl}
+                isSelected={selectedId === el.id} isEditing={editingId === el.id}
+                activeTool={activeTool} handleDragMove={() => {}} handleDragEnd={handleDragEnd}
+                onSelect={setSelectedId} onEdit={setEditingId}
+              />
+            );
+          })}
           {selectedId && <Transformer ref={trRef} onTransform={handleTransform} onTransformEnd={handleTransformEnd} />}
 
           {previewRect && (
