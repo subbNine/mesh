@@ -5,11 +5,13 @@ import { CanvasService } from './canvas.service';
 import { CanvasController } from './canvas.controller';
 import { CanvasDocument } from './entities/canvas_documents.entity';
 import { TasksModule } from '../tasks/tasks.module';
+import { FilesModule } from '../files/files.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([CanvasDocument]),
     forwardRef(() => TasksModule),
+    FilesModule,
   ],
   controllers: [CanvasController],
   providers: [CanvasService],

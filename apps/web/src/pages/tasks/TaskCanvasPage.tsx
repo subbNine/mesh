@@ -14,6 +14,26 @@ import { CanvasToolbar } from '../../components/canvas/CanvasToolbar';
 import { CanvasStage, getCanvasUndoManager } from '../../components/canvas/CanvasStage';
 import { CommentPane } from '../../components/comments/CommentPane';
 
+const saveCanvasState = async (doc: Y.Doc, taskId: string) => {
+  try {
+    const stateUpdate = Y.encodeStateAsUpdate(doc);
+    const authToken = localStorage.getItem('token');
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    
+    // Use native fetch to avoid Axios serialization issues with binary data
+    await fetch(`${baseUrl}/canvas/${taskId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+      },
+      body: new Uint8Array(stateUpdate),
+    });
+  } catch (error) {
+    console.error('[Canvas] Failed to save debounced state:', error);
+  }
+};
+
 export default function TaskCanvasPage() {
   const { taskId } = useParams<{ taskId: string }>();
   const [task, setTask] = useState<ITask | null>(null);
@@ -55,11 +75,13 @@ export default function TaskCanvasPage() {
         doc.transact(() => {
           const commentsArr = doc.getArray<Y.Map<any>>('comments');
           if (commentsArr.length === 0) {
-            data.forEach((c: any) => {
+            for (const c of data) {
               const cm = new Y.Map();
-              Object.entries(c).forEach(([k, v]) => cm.set(k, v));
+              for (const [k, v] of Object.entries(c)) {
+                cm.set(k, v);
+              }
               commentsArr.push([cm]);
-            });
+            }
           }
         });
       }
@@ -72,6 +94,14 @@ export default function TaskCanvasPage() {
     if (!taskId || !currentUser) return;
 
     let wsProvider: WebsocketProvider;
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    const handleDocUpdate = (doc: Y.Doc) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        saveCanvasState(doc, taskId);
+      }, 1500);
+    };
 
     const init = async () => {
       try {
@@ -89,6 +119,8 @@ export default function TaskCanvasPage() {
 
         aw.on('change', () => handleAwarenessChange(aw));
 
+        doc.on('update', () => handleDocUpdate(doc));
+
         const res = await api.get(`/tasks/${taskId}`);
         setTask(res.data);
 
@@ -104,6 +136,7 @@ export default function TaskCanvasPage() {
     init();
 
     return () => {
+      clearTimeout(debounceTimer);
       if (wsProvider) disconnectFromCanvas(wsProvider);
     };
   }, [taskId, currentUser, handleAwarenessChange, loadCommentsFromBackend]);

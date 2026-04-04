@@ -1,35 +1,20 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as Y from 'yjs';
 import { CanvasDocument } from './entities/canvas_documents.entity';
 import { TasksService } from '../tasks/tasks.service';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class CanvasService {
-  private s3Client: S3Client;
-  private bucketName: string;
-  private r2Endpoint: string;
-
   constructor(
     @InjectRepository(CanvasDocument)
-    private canvasRepo: Repository<CanvasDocument>,
+    private readonly canvasRepo: Repository<CanvasDocument>,
     @Inject(forwardRef(() => TasksService))
-    private tasksService: any,
-  ) {
-    this.r2Endpoint = process.env.R2_ENDPOINT || '';
-    this.bucketName = process.env.R2_BUCKET || '';
-    
-    this.s3Client = new S3Client({
-      region: 'auto',
-      endpoint: this.r2Endpoint,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-      },
-    });
-  }
+    private readonly tasksService: any,
+    private readonly filesService: FilesService,
+  ) { }
 
   async getDoc(taskId: string): Promise<Buffer | null> {
     const doc = await this.canvasRepo.findOne({ where: { taskId } });
@@ -41,10 +26,26 @@ export class CanvasService {
 
     if (docEntity) {
       const ydoc = new Y.Doc();
-      Y.applyUpdate(ydoc, new Uint8Array(docEntity.doc));
-      Y.applyUpdate(ydoc, new Uint8Array(update));
+      try {
+        if (docEntity.doc && docEntity.doc.length > 0) {
+          Y.applyUpdate(ydoc, new Uint8Array(docEntity.doc));
+        }
+      } catch (err: any) {
+        console.error(`[saveDoc] Failed to apply existing doc for ${taskId}. Length:`, docEntity.doc?.length, err.message);
+        // Continue, ydoc is empty but we can apply the update
+      }
+
+      try {
+        if (update && update.length > 0) {
+          Y.applyUpdate(ydoc, new Uint8Array(update));
+        }
+      } catch (err: any) {
+        console.error(`[saveDoc] Failed to apply update for ${taskId}. Length:`, update?.length, err.message);
+        throw err;
+      }
+
       const updatedState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
-      
+
       docEntity.doc = updatedState;
       await this.canvasRepo.save(docEntity);
     } else {
@@ -59,7 +60,7 @@ export class CanvasService {
   async createEmpty(taskId: string): Promise<CanvasDocument> {
     const ydoc = new Y.Doc();
     const emptyState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
-    
+
     const doc = this.canvasRepo.create({
       taskId,
       doc: emptyState,
@@ -67,21 +68,10 @@ export class CanvasService {
     return this.canvasRepo.save(doc);
   }
 
-  async generateAndSaveSnapshot(taskId: string, dataUrl: string): Promise<string> {
-    const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
+  async generateAndSaveSnapshot(taskId: string, buffer: Buffer): Promise<string> {
     const key = `snapshots/${taskId}/${Date.now()}.png`;
 
-    const command = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: key,
-      Body: buffer,
-      ContentType: 'image/png',
-    });
-
-    await this.s3Client.send(command);
-
-    const publicUrl = `${this.r2Endpoint}/${this.bucketName}/${key}`;
+    const publicUrl = await this.filesService.uploadFile(key, buffer, 'image/png');
 
     await this.tasksService.updateSnapshot(taskId, publicUrl);
 

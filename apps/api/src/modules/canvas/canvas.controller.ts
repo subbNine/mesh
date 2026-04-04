@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Param, Body, Req, Res, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Req, Res, UseGuards, HttpException, HttpStatus, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
 import { CanvasService } from './canvas.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -6,7 +7,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 @Controller('canvas')
 @UseGuards(JwtAuthGuard)
 export class CanvasController {
-  constructor(private readonly canvasService: CanvasService) {}
+  constructor(private readonly canvasService: CanvasService) { }
 
   @Get(':taskId')
   async getDoc(@Param('taskId') taskId: string, @Res() res: Response) {
@@ -28,14 +29,15 @@ export class CanvasController {
   }
 
   @Post(':taskId/snapshot')
+  @UseInterceptors(FileInterceptor('file'))
   async generateAndSaveSnapshot(
     @Param('taskId') taskId: string,
-    @Body('dataUrl') dataUrl: string,
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!dataUrl) {
-      throw new HttpException('dataUrl is required', HttpStatus.BAD_REQUEST);
+    if (!file?.buffer) {
+      throw new HttpException('file is required', HttpStatus.BAD_REQUEST);
     }
-    const url = await this.canvasService.generateAndSaveSnapshot(taskId, dataUrl);
+    const url = await this.canvasService.generateAndSaveSnapshot(taskId, file.buffer);
     return { success: true, url };
   }
 }
