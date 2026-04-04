@@ -73,7 +73,7 @@ const createGridPattern = (color: string) => {
   const size = 20; // grid spacing
   canvas.width = size;
   canvas.height = size;
-  
+
   if (ctx) {
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -103,7 +103,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   const [cursors, setCursors] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [draftCommentPos, setDraftCommentPos] = useState<{ screenX: number, screenY: number, canvasX: number, canvasY: number } | null>(null);
 
   const [stageProps, setStageProps] = useState({
@@ -116,7 +116,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
 
   // Memoize grid pattern to prevent re-creation on every render
-  const gridPattern = useMemo(() => createGridPattern('#d1d5db'), []);
+  const gridPattern = useMemo(() => createGridPattern('#757575'), []);
 
   useEffect(() => {
     if (Math.abs(storeZoom - stageProps.scale) > 0.001) {
@@ -252,7 +252,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   const handleWheel = (e: KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     if (!stageRef.current) return;
-    
+
     // Zoom logic around cursor
     const stage = stageRef.current;
     const scaleBy = 1.05;
@@ -276,7 +276,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       x: pointer.x - mousePointTo.x * clampedScale,
       y: pointer.y - mousePointTo.y * clampedScale,
     });
-    
+
     // synchronously notify Zustand store without triggering the zoom sync effect loop
     setStoreZoom(clampedScale);
   };
@@ -357,7 +357,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     const id = e.target.id();
     const x = e.target.x();
     const y = e.target.y();
-    setElements(prev => prev.map(el => 
+    setElements(prev => prev.map(el =>
       el.id === id ? { ...el, x, y } : el
     ));
   };
@@ -382,7 +382,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     if (!selectedId || !trRef.current) return;
     const node = layerRef.current.findOne(`#${selectedId}`);
     if (!node) return;
-    
+
     node.setAttrs({
       width: Math.max(5, node.width() * node.scaleX()),
       height: Math.max(5, node.height() * node.scaleY()),
@@ -390,9 +390,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       scaleY: 1,
     });
 
-    setElements(prev => prev.map(el => 
-      el.id === selectedId 
-        ? { ...el, x: node.x(), y: node.y(), width: node.width(), height: node.height(), rotation: node.rotation() } 
+    setElements(prev => prev.map(el =>
+      el.id === selectedId
+        ? { ...el, x: node.x(), y: node.y(), width: node.width(), height: node.height(), rotation: node.rotation() }
         : el
     ));
   };
@@ -413,7 +413,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
         map.set('rotation', node.rotation());
       }
     });
-    
+
     trRef.current.nodes([node]);
     trRef.current.getLayer().batchDraw();
     triggerSnapshot();
@@ -431,7 +431,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       img.onload = () => {
         let width = img.width;
         let height = img.height;
-        
+
         // Scale down if it's too large, preserving aspect ratio
         const MAX_DIM = 800;
         if (width > MAX_DIM || height > MAX_DIM) {
@@ -443,7 +443,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
         // Map drop coordinate to canvas coordinate
         const stage = stageRef.current;
         if (!stage) return;
-        
+
         const pointer = stage.getPointerPosition() || { x: e.clientX, y: e.clientY };
         const canvasX = (pointer.x - stageProps.x) / stageProps.scale;
         const canvasY = (pointer.y - stageProps.y) / stageProps.scale;
@@ -472,15 +472,15 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   return (
     <div className={`w-full h-full relative overflow-hidden ${activeTool === 'text' ? 'cursor-crosshair' : activeTool === 'comment' ? 'cursor-cell' : ''}`}
-         onDragOver={(e) => e.preventDefault()}
-         onDrop={handleDrop}
-         style={{ 
-           backgroundColor: 'var(--primary-50)',
-           backgroundImage: 'radial-gradient(var(--primary-100) 1px, transparent 1px)',
-           backgroundSize: '14px 14px', 
-           backgroundPosition: `${stageProps.x}px ${stageProps.y}px` 
-         }}>
-      
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+      style={{
+        backgroundColor: '#F9FAFB',
+        backgroundImage: 'radial-gradient(#E5E7EB 1px, transparent 1px)',
+        backgroundSize: '14px 14px',
+        backgroundPosition: `${stageProps.x}px ${stageProps.y}px`
+      }}>
+
       <Stage
         width={globalThis.innerWidth}
         height={globalThis.innerHeight}
@@ -508,7 +508,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
         y={stageProps.y}
         draggable={activeTool === 'select'}
         ref={stageRef}
-        style={{ background: '#f8f9fa' }} // Match design background
+        style={{ background: '#f5f5f5' }} // Match design background
       >
         {/* Grid Layer */}
         <Layer listening={false}>
@@ -522,7 +522,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             fillPatternOffset={{ x: 0, y: 0 }}
           />
         </Layer>
-        
+
         <Layer ref={layerRef}>
           {elements.map((el) => {
             if (el.type === 'text') {
@@ -574,7 +574,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             const isResolved = !!comment.resolvedAt;
             const isActive = activeCommentId === comment.id;
             const opacity = isResolved ? 0.6 : 1;
-            
+
             return (
               <Group
                 key={comment.id}
@@ -591,25 +591,25 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                 scaleY={isActive ? 1.15 : 1}
               >
                 {isActive && (
-                  <Circle 
-                    radius={20} 
-                    stroke={comment.color} 
+                  <Circle
+                    radius={20}
+                    stroke={comment.color}
                     strokeWidth={2}
                     opacity={0.4}
                   />
                 )}
-                <Circle 
-                  radius={16} 
-                  fill={isResolved ? '#9ca3af' : comment.color} 
-                  shadowColor="#000" 
-                  shadowBlur={isActive ? 12 : 4} 
-                  shadowOpacity={0.2} 
-                  shadowOffsetY={2} 
+                <Circle
+                  radius={16}
+                  fill={isResolved ? '#9ca3af' : comment.color}
+                  shadowColor="#000"
+                  shadowBlur={isActive ? 12 : 4}
+                  shadowOpacity={0.2}
+                  shadowOffsetY={2}
                 />
                 <Text text={comment.initials} x={-8} y={-6} fill="#fff" fontSize={14} fontStyle="bold" />
                 {(!isResolved && comment.replyCount > 0) && (
                   <Group x={10} y={-10}>
-                    <Circle radius={8} fill="#ef4444" 
+                    <Circle radius={8} fill="#ef4444"
                       shadowColor="#000" shadowBlur={2} shadowOpacity={0.2} shadowOffsetY={1} />
                     <Text text={comment.replyCount.toString()} x={-4} y={-4.5} fill="#fff" fontSize={10} fontStyle="bold" />
                   </Group>
@@ -690,7 +690,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                 canvasX: draftCommentPos.canvasX,
                 canvasY: draftCommentPos.canvasY,
               });
-              
+
               ydoc.transact(() => {
                 const yComments = ydoc.getArray<Y.Map<any>>('comments');
                 const commentMap = new Y.Map();
@@ -705,15 +705,15 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                 commentMap.set('resolvedAt', null);
                 yComments.push([commentMap]);
               });
-              
+
               const store = useCanvasStore.getState?.() as any;
               if (store) {
-                 store.setActiveComment?.(res.data.id);
-                 if (!store.isCommentPaneOpen) {
-                   store.toggleCommentPane?.();
-                 }
+                store.setActiveComment?.(res.data.id);
+                if (!store.isCommentPaneOpen) {
+                  store.toggleCommentPane?.();
+                }
               }
-            } catch(e) { console.error('Failed to create comment', e); }
+            } catch (e) { console.error('Failed to create comment', e); }
             setDraftCommentPos(null);
           }}
         />

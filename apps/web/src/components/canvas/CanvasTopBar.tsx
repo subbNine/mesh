@@ -94,50 +94,72 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
           </button>
         )}
 
-        {/* Status pill */}
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0"
+        {/* Status pill (Interactive Toggle) */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const statuses = ['todo', 'inprogress', 'review', 'done'];
+            const currentIndex = statuses.indexOf(statusKey);
+            const nextStatus = statuses[(currentIndex + 1) % statuses.length];
+            onTaskUpdate({ status: nextStatus as any });
+            api.patch(`/tasks/${task.id}`, { status: nextStatus }).catch(console.error);
+          }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow-md cursor-pointer border border-black/5"
           style={{
             backgroundColor: STATUS_BG[statusKey] ?? '#f4f4f5',
             color: STATUS_TEXT[statusKey] ?? '#52525b',
           }}
+          title="Click to toggle status"
         >
           <div
             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: STATUS_COLORS[statusKey] ?? '#a1a1aa' }}
           />
           {getStatusLabel(task.status ?? 'todo')}
-        </div>
+        </button>
       </div>
 
       {/* Right: presence + actions */}
-      <div className="flex items-center gap-4 flex-shrink-0">
-        {/* Overlapping presence avatars */}
-        {awarenessUsers.length > 0 && (
-          <div className="flex items-center -space-x-1.5">
-            {visibleAvatars.map((user, idx) => (
-              <div
-                key={user.clientId}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white relative group flex-shrink-0 cursor-default"
-                style={{
-                  backgroundColor: USER_PALETTE[idx % USER_PALETTE.length],
-                  zIndex: visibleAvatars.length - idx,
-                }}
-                title={user.name}
-              >
-                {user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                <div className="absolute top-9 left-1/2 -translate-x-1/2 hidden group-hover:block px-2 py-1 bg-zinc-800 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
-                  {user.name}
+      <div className="flex items-center gap-6 flex-shrink-0">
+        {/* Presence Indicator */}
+        <div className="flex items-center gap-3">
+          {awarenessUsers.length > 0 && (
+            <div className="flex items-center -space-x-2">
+              {visibleAvatars.map((user, idx) => (
+                <div
+                  key={user.clientId}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white border-2 border-white relative group flex-shrink-0 cursor-pointer transition-transform hover:scale-110 hover:z-50"
+                  style={{
+                    backgroundColor: USER_PALETTE[idx % USER_PALETTE.length],
+                    zIndex: visibleAvatars.length - idx,
+                  }}
+                >
+                  {user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                  
+                  {/* Premium Tooltip */}
+                  <div className="absolute top-10 left-1/2 -translate-x-1/2 hidden group-hover:block px-2.5 py-1.5 bg-zinc-900 text-white text-[10px] font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap z-[100] pointer-events-none transition-all">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      {user.name}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {extraAvatars > 0 && (
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold bg-zinc-100 text-zinc-600 border-2 border-white">
-                +{extraAvatars}
-              </div>
-            )}
+              ))}
+              {extraAvatars > 0 && (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold bg-zinc-100 text-zinc-500 border-2 border-white z-0">
+                  +{extraAvatars}
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex items-center gap-2 px-2 py-1 bg-emerald-50 rounded-md border border-emerald-100/50">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-tight">
+              {awarenessUsers.length} {awarenessUsers.length === 1 ? 'Viewer' : 'Viewers'}
+            </span>
           </div>
-        )}
+        </div>
 
         {/* Divider */}
         <div className="w-px h-4 bg-zinc-200" />

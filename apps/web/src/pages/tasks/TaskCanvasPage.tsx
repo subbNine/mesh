@@ -45,7 +45,7 @@ export default function TaskCanvasPage() {
         clientId,
         ...state.user
       }));
-    setAwarenessUsers(activeUsers.filter(u => u.clientId !== aw.clientID));
+    setAwarenessUsers(activeUsers);
   }, [setAwarenessUsers]);
 
   const loadCommentsFromBackend = useCallback(async (doc: Y.Doc) => {
@@ -173,7 +173,7 @@ export default function TaskCanvasPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden" style={{ background: '#f8f9fa' }}>
+    <div className="h-full w-full flex flex-col overflow-hidden" style={{ background: '#f5f5f5' }}>
       <CanvasTopBar
         task={task}
         awarenessUsers={awarenessUsers}
