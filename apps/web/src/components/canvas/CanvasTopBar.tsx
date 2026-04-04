@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
-import { ArrowLeft, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { useProjectStore } from '../../store/project.store';
+import { ArrowLeft, MessageSquare, MoreHorizontal, ChevronDown, Check, UserPlus } from 'lucide-react';
 import { NotificationBell } from '../ui/NotificationBell';
+import { useAuthStore } from '../../store/auth.store';
+import { getUserColor } from '../../lib/user-color';
 
 type CanvasTopBarProps = Readonly<{
   task: ITask;
@@ -38,17 +41,31 @@ function getStatusLabel(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-import { useAuthStore } from '../../store/auth.store';
-import { getUserColor } from '../../lib/user-color';
-
 export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBarProps) {
   const navigate = useNavigate();
   const currentUser = useAuthStore(state => state.user);
+  const members = useProjectStore(state => state.members);
+  
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(task.title);
+  
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
+  
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+  const assigneeMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleCommentPane = useCanvasStore(state => state.toggleCommentPane);
   const isCommentPaneOpen = useCanvasStore(state => state.isCommentPaneOpen);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) setIsStatusOpen(false);
+      if (assigneeMenuRef.current && !assigneeMenuRef.current.contains(e.target as Node)) setIsAssigneeOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleTitleBlur = () => {
     setIsEditingTitle(false);
@@ -58,14 +75,30 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
     }
   };
 
+  const handleStatusChange = (newStatus: string) => {
+    setIsStatusOpen(false);
+    if (newStatus === task.status) return;
+    onTaskUpdate({ status: newStatus as any });
+    api.patch(`/tasks/${task.id}`, { status: newStatus }).catch(console.error);
+  };
+
+  const handleAssigneeChange = (userId: string | null) => {
+    setIsAssigneeOpen(false);
+    if (userId === task.assigneeId) return;
+    onTaskUpdate({ assigneeId: userId } as any);
+    api.patch(`/tasks/${task.id}`, { assigneeId: userId }).catch(console.error);
+  };
+
   const visibleAvatars = awarenessUsers.slice(0, 5);
   const extraAvatars = awarenessUsers.length > 5 ? awarenessUsers.length - 5 : 0;
   const statusKey = task.status?.toLowerCase() ?? 'todo';
+  
+  const currentAssignee = members.find(m => m.userId === task.assigneeId)?.user;
 
   return (
-    <div className="h-[52px] border-b border-zinc-200/80 bg-white/98 backdrop-blur-sm px-5 flex items-center justify-between z-20 relative flex-shrink-0 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+    <div className="h-[52px] border-b border-zinc-200/80 bg-white/98 backdrop-blur-sm px-5 flex items-center justify-between z-30 relative flex-shrink-0 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
 
-      {/* Left: back + title + status */}
+      {/* Left: back + title + selectors */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
           onClick={() => navigate(-1)}
@@ -89,7 +122,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
           />
         ) : (
           <button
-            className="font-semibold text-[15px] text-zinc-900 truncate cursor-text hover:text-zinc-700 transition-colors max-w-[280px]"
+            className="font-semibold text-[15px] text-zinc-900 truncate cursor-text hover:text-zinc-700 transition-colors max-w-[240px]"
             onClick={() => setIsEditingTitle(true)}
             title="Click to edit title"
           >
@@ -97,34 +130,114 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
           </button>
         )}
 
-        {/* Status pill (Interactive Toggle) */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            const statuses = ['todo', 'inprogress', 'review', 'done'];
-            const currentIndex = statuses.indexOf(statusKey);
-            const nextStatus = statuses[(currentIndex + 1) % statuses.length];
-            onTaskUpdate({ status: nextStatus as any });
-            api.patch(`/tasks/${task.id}`, { status: nextStatus }).catch(console.error);
-          }}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow-md cursor-pointer border border-black/5"
-          style={{
-            backgroundColor: STATUS_BG[statusKey] ?? '#f4f4f5',
-            color: STATUS_TEXT[statusKey] ?? '#52525b',
-          }}
-          title="Click to toggle status"
-        >
-          <div
-            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: STATUS_COLORS[statusKey] ?? '#a1a1aa' }}
-          />
-          {getStatusLabel(task.status ?? 'todo')}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Status Dropdown */}
+          <div className="relative" ref={statusMenuRef}>
+            <button
+              onClick={() => setIsStatusOpen(!isStatusOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all hover:bg-zinc-50 border border-zinc-200/60 shadow-sm"
+              style={{
+                backgroundColor: STATUS_BG[statusKey] ?? '#f4f4f5',
+                color: STATUS_TEXT[statusKey] ?? '#52525b',
+              }}
+            >
+              <div
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: STATUS_COLORS[statusKey] ?? '#a1a1aa' }}
+              />
+              {getStatusLabel(task.status ?? 'todo')}
+              <ChevronDown className="w-3 h-3 opacity-60" />
+            </button>
+
+            {isStatusOpen && (
+              <div className="absolute top-8 left-0 w-40 bg-white rounded-xl shadow-2xl border border-zinc-200/80 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                {['todo', 'inprogress', 'review', 'done'].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleStatusChange(s)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium hover:bg-zinc-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
+                      <span className={task.status === s ? 'text-zinc-900 font-bold' : 'text-zinc-600'}>
+                        {getStatusLabel(s)}
+                      </span>
+                    </div>
+                    {task.status === s && <Check className="w-3 h-3 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Assignee Selector */}
+          <div className="relative" ref={assigneeMenuRef}>
+            <button
+              onClick={() => setIsAssigneeOpen(!isAssigneeOpen)}
+              className="flex items-center gap-2 px-2 py-0.5 rounded-full hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-200 group"
+            >
+              <div className="flex items-center -space-x-1">
+                {currentAssignee ? (
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white border border-white"
+                    style={{ backgroundColor: getUserColor(currentAssignee.id) }}
+                  >
+                    {currentAssignee.firstName[0]}{currentAssignee.lastName[0]}
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400">
+                    <UserPlus className="w-3 h-3" />
+                  </div>
+                )}
+              </div>
+              <span className="text-[11px] font-medium text-zinc-500 group-hover:text-zinc-900 transition-colors">
+                {currentAssignee ? `${currentAssignee.firstName} ${currentAssignee.lastName}` : 'Unassigned'}
+              </span>
+            </button>
+
+            {isAssigneeOpen && (
+              <div className="absolute top-8 left-0 w-56 bg-white rounded-xl shadow-2xl border border-zinc-200/80 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-2.5 py-1.5 mb-1 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Assign to</div>
+                <button
+                  onClick={() => handleAssigneeChange(null)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium hover:bg-zinc-50 transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400">
+                      <UserPlus className="w-3 h-3" />
+                    </div>
+                    <span className={!task.assigneeId ? 'text-zinc-900 font-bold' : 'text-zinc-600'}>Unassigned</span>
+                  </div>
+                  {!task.assigneeId && <Check className="w-3 h-3 text-primary" />}
+                </button>
+                {members.map((m) => (
+                  <button
+                    key={m.userId}
+                    onClick={() => handleAssigneeChange(m.userId)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium hover:bg-zinc-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                        style={{ backgroundColor: getUserColor(m.userId) }}
+                      >
+                        {m.user.firstName[0]}{m.user.lastName[0]}
+                      </div>
+                      <span className={task.assigneeId === m.userId ? 'text-zinc-900 font-bold' : 'text-zinc-600'}>
+                        {m.user.firstName} {m.user.lastName}
+                      </span>
+                    </div>
+                    {task.assigneeId === m.userId && <Check className="w-3 h-3 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Right: presence + actions */}
       <div className="flex items-center gap-6 flex-shrink-0">
-        {/* Presence Indicator */}
         <div className="flex items-center gap-3">
           {awarenessUsers.length > 0 && (
             <div className="flex items-center -space-x-2">
@@ -152,7 +265,6 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
                       <span>{user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}</span>
                     )}
                     
-                    {/* Premium Tooltip */}
                     <div className="absolute top-10 left-1/2 -translate-x-1/2 hidden group-hover:block px-2.5 py-1.5 bg-zinc-900 text-white text-[10px] font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap z-[100] pointer-events-none transition-all">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -178,7 +290,6 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
           </div>
         </div>
 
-        {/* Divider */}
         <div className="w-px h-4 bg-zinc-200" />
 
         <button
