@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { connectToCanvas, disconnectFromCanvas } from '../../lib/ws';
@@ -8,6 +8,7 @@ import type { ITask } from '@mesh/shared';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { Awareness } from 'y-protocols/awareness';
+import { getUserColor } from '../../lib/user-color';
 
 import { CanvasTopBar } from '../../components/canvas/CanvasTopBar';
 import { CanvasToolbar } from '../../components/canvas/CanvasToolbar';
@@ -60,10 +61,10 @@ export default function TaskCanvasPage() {
   const handleAwarenessChange = useCallback((aw: Awareness) => {
     const states = Array.from(aw.getStates().entries());
     const activeUsers = states
-      .filter(([, state]) => state.user)
+      .filter(([, state]) => state.userId)
       .map(([clientId, state]) => ({
         clientId,
-        ...state.user
+        ...state
       }));
     setAwarenessUsers(activeUsers);
   }, [setAwarenessUsers]);
@@ -95,6 +96,7 @@ export default function TaskCanvasPage() {
 
     let wsProvider: WebsocketProvider;
     let debounceTimer: ReturnType<typeof setTimeout>;
+    let currentAwareness: Awareness | null = null;
 
     const handleDocUpdate = (doc: Y.Doc) => {
       clearTimeout(debounceTimer);
@@ -109,12 +111,16 @@ export default function TaskCanvasPage() {
         const { ydoc: doc, provider: prov, awareness: aw } = connectToCanvas(taskId, token);
         
         wsProvider = prov;
+        currentAwareness = aw;
         setYdoc(doc);
         setAwareness(aw);
 
-        aw.setLocalStateField('user', {
+        aw.setLocalState({
+          userId: currentUser.id,
           name: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
-          color: '#3b82f6'
+          avatarUrl: currentUser.avatarUrl,
+          color: getUserColor(currentUser.id),
+          cursor: null
         });
 
         aw.on('change', () => handleAwarenessChange(aw));
@@ -138,6 +144,9 @@ export default function TaskCanvasPage() {
     return () => {
       clearTimeout(debounceTimer);
       if (wsProvider) disconnectFromCanvas(wsProvider);
+      if (currentAwareness) {
+        currentAwareness.setLocalState(null);
+      }
     };
   }, [taskId, currentUser, handleAwarenessChange, loadCommentsFromBackend]);
 
@@ -186,6 +195,8 @@ export default function TaskCanvasPage() {
   }, [setActiveTool]);
 
 
+  const canvasRef = useRef<any>(null);
+
   if (isLoading || !task || !ydoc || !awareness || !currentUser) {
     return (
       <div className="h-full w-full flex flex-col" style={{ background: '#eef0f3' }}>
@@ -217,6 +228,7 @@ export default function TaskCanvasPage() {
         {/* Main canvas area */}
         <div className="flex-1 relative overflow-hidden">
           <CanvasStage
+            ref={canvasRef}
             taskId={taskId!}
             ydoc={ydoc}
             awareness={awareness as any}
@@ -240,6 +252,7 @@ export default function TaskCanvasPage() {
             onZoomIn={() => setZoom(Math.min(zoom * 1.25, 3))}
             onZoomOut={() => setZoom(Math.max(zoom / 1.25, 0.2))}
             onZoomReset={() => setZoom(1)}
+            onFitToView={() => canvasRef.current?.fitToView()}
           />
         </div>
 

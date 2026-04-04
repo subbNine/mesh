@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Outlet, Link, useParams, useLocation } from 'react-router-dom';
 import { useProjectStore } from '../../store/project.store';
 import { useAuthStore } from '../../store/auth.store';
-import { Folder, Settings, LogOut, Pin, PinOff, ChevronRight, LayoutGrid, List } from 'lucide-react';
+import { Folder, Settings, LogOut, Pin, PinOff, ChevronRight, LayoutGrid, List, User } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
@@ -266,6 +266,13 @@ export function AppShell() {
 
         {/* Footer Fixed */}
         <div className="p-4 border-t border-border mt-auto space-y-1">
+          <Link
+            to="/settings/profile"
+            className="flex items-center px-3 py-2.5 rounded-lg transition-colors text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          >
+            <User className="w-4 h-4 mr-3" />
+            <span className="text-sm font-medium">Profile</span>
+          </Link>
           <Link
             to={`/w/${workspaceId}/settings`}
             className="flex items-center px-3 py-2.5 rounded-lg transition-colors text-muted-foreground hover:bg-muted/50 hover:text-foreground"

@@ -10,8 +10,10 @@ import { AzureStorageProvider } from './storage/azure.provider';
 import { CloudinaryStorageProvider } from './storage/cloudinary.provider';
 import { File } from './entities/files.entity';
 
+const STORAGE_PROVIDER_TOKEN = 'STORAGE_PROVIDER';
+
 const storageProviderFactory = {
-  provide: 'STORAGE_PROVIDER',
+  provide: STORAGE_PROVIDER_TOKEN,
   useFactory: (configService: ConfigService) => {
     const providerInfo = configService.get('STORAGE_PROVIDER', 's3');
     switch (providerInfo.toLowerCase()) {
@@ -37,6 +39,6 @@ const storageProviderFactory = {
   ],
   controllers: [FilesController],
   providers: [FilesService, storageProviderFactory],
-  exports: [FilesService],
+  exports: [FilesService, STORAGE_PROVIDER_TOKEN],
 })
-export class FilesModule {}
+export class FilesModule { }

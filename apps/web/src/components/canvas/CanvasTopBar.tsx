@@ -38,10 +38,12 @@ function getStatusLabel(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-const USER_PALETTE = ['#0ca3ba', '#a855f7', '#f59e0b', '#ec4899', '#22c55e', '#3b82f6'];
+import { useAuthStore } from '../../store/auth.store';
+import { getUserColor } from '../../lib/user-color';
 
 export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBarProps) {
   const navigate = useNavigate();
+  const currentUser = useAuthStore(state => state.user);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(task.title);
 
@@ -126,28 +128,42 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
         <div className="flex items-center gap-3">
           {awarenessUsers.length > 0 && (
             <div className="flex items-center -space-x-2">
-              {visibleAvatars.map((user, idx) => (
-                <div
-                  key={user.clientId}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white border-2 border-white relative group flex-shrink-0 cursor-pointer transition-transform hover:scale-110 hover:z-50"
-                  style={{
-                    backgroundColor: USER_PALETTE[idx % USER_PALETTE.length],
-                    zIndex: visibleAvatars.length - idx,
-                  }}
-                >
-                  {user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                  
-                  {/* Premium Tooltip */}
-                  <div className="absolute top-10 left-1/2 -translate-x-1/2 hidden group-hover:block px-2.5 py-1.5 bg-zinc-900 text-white text-[10px] font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap z-[100] pointer-events-none transition-all">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      {user.name}
+              {visibleAvatars.map((user, idx) => {
+                const isMe = user.userId === currentUser?.id;
+                const userColor = user.color || getUserColor(user.userId);
+                
+                return (
+                  <div
+                    key={user.clientId}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white border-2 border-white relative group flex-shrink-0 cursor-pointer transition-transform hover:scale-110 hover:z-50 overflow-visible"
+                    style={{
+                      backgroundColor: userColor,
+                      boxShadow: `0 0 0 2px ${userColor}`,
+                      zIndex: visibleAvatars.length - idx,
+                    }}
+                  >
+                    {user.avatarUrl ? (
+                      <img 
+                        src={user.avatarUrl} 
+                        alt={user.name} 
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <span>{user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}</span>
+                    )}
+                    
+                    {/* Premium Tooltip */}
+                    <div className="absolute top-10 left-1/2 -translate-x-1/2 hidden group-hover:block px-2.5 py-1.5 bg-zinc-900 text-white text-[10px] font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap z-[100] pointer-events-none transition-all">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        {user.name} {isMe && '(You)'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {extraAvatars > 0 && (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold bg-zinc-100 text-zinc-500 border-2 border-white z-0">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold bg-zinc-100 text-zinc-500 border-2 border-white z-0 relative">
                   +{extraAvatars}
                 </div>
               )}

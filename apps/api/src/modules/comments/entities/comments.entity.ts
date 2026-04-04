@@ -31,6 +31,15 @@ export class Comment {
   canvasY: number;
 
   @Column({ nullable: true })
+  elementId: string;
+
+  @Column({ type: 'float', nullable: true })
+  relX: number;
+
+  @Column({ type: 'float', nullable: true })
+  relY: number;
+
+  @Column({ nullable: true })
   resolvedAt: Date;
 
   @CreateDateColumn()

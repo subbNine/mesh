@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo, useImperativeHandle, forwardRef } from 'react';
 import * as Y from 'yjs';
-import { Stage, Layer, Text, Image as KonvaImage, Transformer, Group, Circle, Rect, Line } from 'react-konva';
+import { Stage, Layer, Text, Image as KonvaImage, Transformer, Group, Circle, Rect, Line, Path } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Awareness } from 'y-protocols/awareness';
 import { RichTextOverlay } from './RichTextOverlay';
@@ -84,7 +84,78 @@ const createGridPattern = (_color: string) => {
   return canvas;
 };
 
-export const CanvasStage: React.FC<CanvasStageProps> = ({
+const RemoteCursor: React.FC<{ state: any }> = ({ state }) => {
+  const [pos, setPos] = useState({ x: state.cursor?.x || 0, y: state.cursor?.y || 0 });
+  const requestRef = useRef<number>(null);
+
+  useEffect(() => {
+    const animate = () => {
+      if (!state.cursor) return;
+      
+      setPos(prev => {
+        const dx = state.cursor.x - prev.x;
+        const dy = state.cursor.y - prev.y;
+        
+        // If distance is very small, just snap
+        if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
+          return state.cursor;
+        }
+        
+        // Lerp factor (0.2 for smooth following)
+        return {
+          x: prev.x + dx * 0.2,
+          y: prev.y + dy * 0.2
+        };
+      });
+      requestRef.current = requestAnimationFrame(animate);
+    };
+
+    requestRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, [state.cursor]);
+
+  if (!state.cursor) return null;
+
+  const initials = state.name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '?';
+
+  return (
+    <Group x={pos.x} y={pos.y} listening={false}>
+      {/* Cursor Arrow */}
+      <Path
+        data="M0,0 L0,18 L5,13 L11,13 Z"
+        fill={state.color}
+        stroke="white"
+        strokeWidth={1.5}
+        shadowColor="rgba(0,0,0,0.2)"
+        shadowBlur={4}
+        shadowOffsetY={2}
+      />
+      {/* Name Label */}
+      <Group x={12} y={12}>
+        <Rect
+          width={state.name.length * 7 + 10}
+          height={20}
+          fill={state.color}
+          cornerRadius={4}
+          shadowColor="rgba(0,0,0,0.1)"
+          shadowBlur={2}
+        />
+        <Text
+          text={state.name}
+          fill="white"
+          fontSize={11}
+          fontStyle="bold"
+          padding={5}
+          y={-1}
+        />
+      </Group>
+    </Group>
+  );
+};
+
+export const CanvasStage = forwardRef<any, CanvasStageProps>(({
   taskId,
   ydoc,
   awareness,
@@ -94,18 +165,69 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   onToolChange,
   onPinClick,
   showComments = true,
-}) => {
+}, ref) => {
   const stageRef = useRef<any>(null);
+  
+  // Expose fitToView to parent
+  useImperativeHandle(ref, () => ({
+    fitToView: () => {
+      // Find bounding box of all elements
+      const yElements = ydoc.getArray<Y.Map<any>>('elements').toArray().map(m => m.toJSON() as CanvasElement);
+      if (yElements.length === 0) {
+        setStageProps({ scale: 1, x: 0, y: 0 });
+        setStoreZoom(1);
+        return;
+      }
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      yElements.forEach(el => {
+        minX = Math.min(minX, el.x);
+        minY = Math.min(minY, el.y);
+        maxX = Math.max(maxX, el.x + (el.width || 300));
+        maxY = Math.max(maxY, el.y + (el.height || 200));
+      });
+
+      const padding = 100;
+      const width = (maxX - minX) + padding * 2;
+      const height = (maxY - minY) + padding * 2;
+      
+      const stageWidth = globalThis.innerWidth;
+      const stageHeight = globalThis.innerHeight;
+
+      const scale = Math.min(
+        Math.max(Math.min(stageWidth / width, stageHeight / height), 0.2),
+        2
+      );
+
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      setStageProps({
+        scale,
+        x: stageWidth / 2 - centerX * scale,
+        y: stageHeight / 2 - centerY * scale,
+      });
+      setStoreZoom(scale);
+    }
+  }));
   const layerRef = useRef<any>(null);
   const trRef = useRef<any>(null);
 
   const [elements, setElements] = useState<CanvasElement[]>([]);
-  const [comments, setComments] = useState<CanvasComment[]>([]);
-  const [cursors, setCursors] = useState<any[]>([]);
+  const [comments, setComments] = useState<any[]>([]);
+  const [remoteUsers, setRemoteUsers] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [draftCommentPos, setDraftCommentPos] = useState<{ screenX: number, screenY: number, canvasX: number, canvasY: number } | null>(null);
+  const [draftCommentPos, setDraftCommentPos] = useState<{ 
+    screenX: number, 
+    screenY: number, 
+    canvasX: number, 
+    canvasY: number,
+    elementId?: string,
+    relX?: number,
+    relY?: number
+  } | null>(null);
 
   const [stageProps, setStageProps] = useState({
     scale: 1,
@@ -188,27 +310,16 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   useEffect(() => {
     const handleAwarenessUpdate = () => {
-      const states = Array.from(awareness.getStates().entries());
-      const newCursors: any[] = [];
-      states.forEach(([clientId, state]) => {
-        if (clientId !== awareness.clientID && state.user && state.cursor) {
-          newCursors.push({
-            clientId,
-            name: state.user.name,
-            color: state.user.color || '#3b82f6',
-            x: state.cursor.x,
-            y: state.cursor.y,
-          });
-        }
-      });
-      setCursors(newCursors);
+      const states = Array.from(awareness.getStates().values());
+      const filtered = states.filter(s => s.userId !== currentUser.id && s.cursor);
+      setRemoteUsers(filtered);
     };
 
     awareness.on('change', handleAwarenessUpdate);
     return () => {
       awareness.off('change', handleAwarenessUpdate);
     };
-  }, [awareness]);
+  }, [awareness, currentUser.id]);
 
   const handleMouseLeave = () => {
     awareness.setLocalStateField('cursor', null);
@@ -426,13 +537,22 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     } else if (activeTool === 'text') {
       textTool.handleMouseDown(e, stageRef.current);
     } else if (activeTool === 'comment') {
-      const pointerPos = stageRef.current.getPointerPosition();
-      if (pointerPos && pos) {
+      const stage = stageRef.current;
+      const pointerPos = stage.getPointerPosition();
+      const hit = stage.getIntersection(pointerPos);
+      
+      // Determine if hit is over one of our elements
+      const elementUnderCursor = hit && hit.attrs.id && elements.find(el => el.id === hit.attrs.id);
+
+      if (elementUnderCursor && pointerPos && pos) {
         setDraftCommentPos({
           screenX: pointerPos.x,
           screenY: pointerPos.y,
           canvasX: pos.x,
           canvasY: pos.y,
+          elementId: elementUnderCursor.id,
+          relX: pos.x - elementUnderCursor.x,
+          relY: pos.y - elementUnderCursor.y
         });
       }
       if (onToolChange) onToolChange('select');
@@ -441,12 +561,29 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     }
   };
 
+  const lastPointerMoveRef = useRef<number>(0);
   const handlePointerMove = (e: KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage();
     if (!stage) return;
     const pos = stage.getRelativePointerPosition();
+    
+    // Throttle awareness updates (50ms)
+    const now = Date.now();
+    if (now - lastPointerMoveRef.current > 50) {
+      if (pos) {
+        awareness.setLocalStateField('cursor', { x: pos.x, y: pos.y });
+      }
+      lastPointerMoveRef.current = now;
+    }
+
     if (pos) {
-      awareness.setLocalStateField('cursor', { x: pos.x, y: pos.y });
+      // Logic for changing cursor based on tool and element hit
+      if (activeTool === 'comment') {
+        const hit = stage.getIntersection(stage.getPointerPosition()!);
+        const isElement = hit && hit.attrs.id && elements.some(el => el.id === hit.attrs.id);
+        stage.container().style.cursor = isElement ? 'cell' : 'not-allowed';
+      }
+
       if (activeTool === 'text') {
         textTool.handleMouseMove(e, stageRef.current);
       } else if (activeTool === 'pencil' && drawingPoints) {
@@ -686,11 +823,25 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             const isActive = activeCommentId === comment.id;
             const opacity = isResolved ? 0.6 : 1;
 
+            let x = comment.canvasX;
+            let y = comment.canvasY;
+
+            // Anchor comment to element relative position if stored
+            if (comment.elementId) {
+              const parent = elements.find(el => el.id === comment.elementId);
+              if (parent) {
+                if (typeof comment.relX === 'number' && typeof comment.relY === 'number') {
+                  x = parent.x + comment.relX;
+                  y = parent.y + comment.relY;
+                }
+              }
+            }
+
             return (
               <Group
                 key={comment.id}
-                x={comment.canvasX}
-                y={comment.canvasY}
+                x={x}
+                y={y}
                 onClick={(e) => {
                   e.cancelBubble = true;
                   onPinClick(comment.id);
@@ -729,30 +880,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             );
           })}
 
-          {cursors.map((cursor) => {
-            const initials = cursor.name.split(' ').map((n: string) => n[0]).join('').substring(0, 1).toUpperCase();
-            return (
-              <Group key={cursor.clientId} x={cursor.x} y={cursor.y}>
-                <Circle
-                  radius={14}
-                  fill={cursor.color}
-                  shadowColor="rgba(0,0,0,0.15)"
-                  shadowBlur={6}
-                  shadowOffsetY={2}
-                />
-                <Text
-                  text={initials}
-                  x={-14}
-                  y={-5}
-                  width={28}
-                  align="center"
-                  fill="#fff"
-                  fontSize={11}
-                  fontStyle="bold"
-                />
-              </Group>
-            );
-          })}
+          {remoteUsers.map((userState, idx) => (
+            <RemoteCursor key={userState.userId || idx} state={userState} />
+          ))}
 
           {textTool.previewRect && (
             <Rect
@@ -811,6 +941,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                 body,
                 canvasX: draftCommentPos.canvasX,
                 canvasY: draftCommentPos.canvasY,
+                elementId: draftCommentPos.elementId,
+                relX: draftCommentPos.relX,
+                relY: draftCommentPos.relY,
               });
 
               ydoc.transact(() => {
@@ -819,6 +952,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                 commentMap.set('id', res.data.id);
                 commentMap.set('canvasX', res.data.canvasX);
                 commentMap.set('canvasY', res.data.canvasY);
+                commentMap.set('elementId', draftCommentPos.elementId);
+                commentMap.set('relX', draftCommentPos.relX);
+                commentMap.set('relY', draftCommentPos.relY);
                 commentMap.set('authorId', currentUser.id);
                 const initials = `${currentUser.firstName?.[0] || ''}${currentUser.lastName?.[0] || ''}`.toUpperCase().substring(0, 2);
                 commentMap.set('initials', initials);
@@ -835,11 +971,16 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                   store.toggleCommentPane?.();
                 }
               }
-            } catch (e) { console.error('Failed to create comment', e); }
+            } catch (e) {
+              console.error('Failed to create comment', e);
+            }
             setDraftCommentPos(null);
           }}
         />
       )}
     </div>
   );
-};
+});
+
+CanvasStage.displayName = 'CanvasStage';
+

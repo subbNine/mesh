@@ -42,6 +42,9 @@ export class CommentsService {
       body: dto.body,
       canvasX: dto.canvasX,
       canvasY: dto.canvasY,
+      elementId: dto.elementId,
+      relX: dto.relX,
+      relY: dto.relY,
     });
 
     const saved = await this.commentRepo.save(comment);

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsUUID, IsOptional } from 'class-validator';
 
 export class CreateCommentDto {
   @IsUUID()
@@ -14,4 +14,16 @@ export class CreateCommentDto {
 
   @IsNumber()
   canvasY: number;
+
+  @IsOptional()
+  @IsString()
+  elementId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  relX?: number;
+
+  @IsOptional()
+  @IsNumber()
+  relY?: number;
 }

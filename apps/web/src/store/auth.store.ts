@@ -10,12 +10,15 @@ interface AuthState {
   register: (payload: any) => Promise<void>;
   logout: () => void;
   loadFromStorage: () => Promise<void>;
+  updateUser: (user: IUser) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: localStorage.getItem('token'),
   isLoading: true,
+
+  updateUser: (user) => set({ user }),
 
   login: async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });

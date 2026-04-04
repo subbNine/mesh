@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import * as Y from 'yjs';
-import { MousePointer2, Type, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, Pencil } from 'lucide-react';
+import { MousePointer2, Type, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, Pencil, Maximize } from 'lucide-react';
 import type { IUser } from '@mesh/shared';
 import { api } from '../../lib/api';
 import { useToast } from '../../store/toast.store';
@@ -17,6 +17,7 @@ interface CanvasToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
+  onFitToView: () => void;
 }
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
@@ -31,6 +32,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   onZoomIn,
   onZoomOut,
   onZoomReset,
+  onFitToView,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -165,6 +167,14 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
           title="Zoom in"
         >
           <ZoomIn className="w-[16px] h-[16px]" strokeWidth={2} />
+        </button>
+
+        <button
+          onClick={onFitToView}
+          className="w-8 h-9 flex items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors"
+          title="Fit to view"
+        >
+          <Maximize className="w-[16px] h-[16px]" strokeWidth={2} />
         </button>
       </div>
 
