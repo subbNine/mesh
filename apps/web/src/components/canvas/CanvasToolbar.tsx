@@ -26,8 +26,6 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   currentUser,
   activeTool,
   onToolChange,
-  onToggleComments,
-  showComments = true,
   zoomLevel,
   onZoomIn,
   onZoomOut,

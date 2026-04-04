@@ -18,7 +18,7 @@ interface WorkspaceState {
   deleteWorkspace: (workspaceId: string) => Promise<void>;
 }
 
-export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
+export const useWorkspaceStore = create<WorkspaceState>((set, _get) => ({
   workspaces: [],
   currentWorkspace: null,
   members: [],

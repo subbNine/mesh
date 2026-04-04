@@ -33,7 +33,6 @@ export function RichTextOverlay({
   el,
   stageProps,
   isEditing,
-  onBeginEdit,
   onEndEdit,
   ydoc,
   isSelected,

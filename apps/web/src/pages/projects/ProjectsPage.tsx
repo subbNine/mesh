@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Avatar } from '../../components/ui/Avatar';
+
 
 export default function ProjectsPage() {
   const { workspaceId } = useParams();

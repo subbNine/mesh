@@ -54,7 +54,7 @@ export function useTextTool({ ydoc, userId, onBoxCreated, onToolExit }: UseTextT
   const [drawState, setDrawState] = useState<DrawState | null>(null);
 
   const handleMouseDown = useCallback(
-    (e: KonvaEventObject<MouseEvent>, stage: any) => {
+    (_e: KonvaEventObject<MouseEvent>, stage: any) => {
       const pos = stage.getRelativePointerPosition();
       if (!pos) return;
       setDrawState({ startX: pos.x, startY: pos.y, currentX: pos.x, currentY: pos.y });
@@ -63,7 +63,7 @@ export function useTextTool({ ydoc, userId, onBoxCreated, onToolExit }: UseTextT
   );
 
   const handleMouseMove = useCallback(
-    (e: KonvaEventObject<MouseEvent>, stage: any) => {
+    (_e: KonvaEventObject<MouseEvent>, stage: any) => {
       if (!drawState) return;
       const pos = stage.getRelativePointerPosition();
       if (!pos) return;
@@ -73,7 +73,7 @@ export function useTextTool({ ydoc, userId, onBoxCreated, onToolExit }: UseTextT
   );
 
   const handleMouseUp = useCallback(
-    (e: KonvaEventObject<MouseEvent>, stage: any) => {
+    (_e: KonvaEventObject<MouseEvent>, _stage: any) => {
       if (!drawState) return;
 
       const isDrag =

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '../../store/workspace.store';
 import { useAuthStore } from '../../store/auth.store';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -47,7 +47,7 @@ export default function WorkspaceSelectorPage() {
     navigate(`/w/${workspace.id}/projects`);
   };
 
-  const user = useAuthStore(state => state.user);
+
   const logout = useAuthStore(state => state.logout);
 
   return (
