@@ -2,7 +2,7 @@ import React from 'react';
 
 export function Card({ className = '', children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`bg-card text-foreground border border-border rounded-xl shadow-sm ${className}`} {...props}>
+    <div className={`bg-card text-foreground border border-zinc-200/80 rounded-2xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05),0_1px_4px_-1px_rgba(0,0,0,0.03)] hover:shadow-md transition-all duration-300 ${className}`} {...props}>
       {children}
     </div>
   );

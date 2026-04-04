@@ -20,4 +20,25 @@ export class NotificationsService {
     });
     return this.notificationRepo.save(notification);
   }
+
+  async createMentionNotification(taskId: string, mentionedUserId: string): Promise<Notification> {
+    const notification = this.notificationRepo.create({
+      recipientId: mentionedUserId,
+      type: NotificationType.Mentioned,
+      resourceId: taskId,
+      resourceType: 'comment',
+    });
+    return this.notificationRepo.save(notification);
+  }
+
+  async createCommentNotification(taskId: string, assigneeId: string): Promise<Notification> {
+    const notification = this.notificationRepo.create({
+      recipientId: assigneeId,
+      type: NotificationType.Commented, // assuming 'Commented' exists on NotificationType
+      resourceId: taskId,
+      resourceType: 'task', // or 'comment'
+    });
+    return this.notificationRepo.save(notification);
+  }
 }
+

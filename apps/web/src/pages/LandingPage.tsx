@@ -55,7 +55,7 @@ export default function LandingPage() {
       </section>
 
       {/* Feature Section Placeholder */}
-      <section id="features" className="container mx-auto space-y-6 bg-slate-50 dark:bg-slate-900/50 py-16 md:py-24 rounded-3xl mb-16 px-4 md:px-8 border border-border/50">
+      <section id="features" className="container mx-auto space-y-6 bg-slate-50 py-16 md:py-24 rounded-3xl mb-16 px-4 md:px-8 border border-border/50">
         <div className="mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center">
           <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Speed meets aesthetics</h2>
           <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7">

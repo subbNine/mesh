@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { TaskStatus } from '@mesh/shared';
 import { useTaskStore } from '../../store/task.store';
 import { TaskCard } from './TaskCard';
@@ -57,6 +57,7 @@ function SortableStatusItem({ id }: { id: string }) {
 
 export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
   const navigate = useNavigate();
+  const { workspaceId } = useParams();
   const { tasks, isLoading, rowOrder, rowLimit, fetchTasks, loadPreferences, setRowOrder } = useTaskStore();
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
@@ -70,11 +71,7 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
 
 
   const handleTaskClick = (taskId: string) => {
-    // Navigates to /tasks/:taskId/canvas
-    // Using simple route to root tasks or local /w/:workspaceId/p/:projectId/tasks/:taskId/canvas etc.
-    // For now, based on prompt: /tasks/:taskId/canvas.
-    // Usually it goes relative to project or absolute. Prompt specified "/tasks/:taskId/canvas".
-    navigate(`/tasks/${taskId}/canvas`);
+    navigate(`/w/${workspaceId}/p/${projectId}/tasks/${taskId}/canvas`);
   };
 
   const sensors = useSensors(

@@ -73,7 +73,7 @@ function AppRoot() {
           <Route path="p/:projectId" element={<ProjectRoute />}>
             <Route index element={<ProjectDetailPage />} />
             <Route path="settings" element={<ProjectSettingsPage />} />
-            <Route path="canvas" element={<TaskCanvasPage />} />
+            <Route path="tasks/:taskId/canvas" element={<TaskCanvasPage />} />
           </Route>
         </Route>
 

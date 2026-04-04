@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { type ITask } from '@mesh/shared';
 import { formatDistanceToNow } from 'date-fns';
+import { Pin, PinOff } from 'lucide-react';
 
 interface TaskCardProps {
   task: ITask;
@@ -9,10 +10,10 @@ interface TaskCardProps {
 }
 
 const statusColors: Record<string, string> = {
-  todo: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
-  inprogress: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
-  review: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800',
-  done: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
+  todo: 'bg-gray-100 text-gray-700 border-gray-200',
+  inprogress: 'bg-blue-50 text-blue-700 border-blue-200',
+  review: 'bg-amber-50 text-amber-700 border-amber-200',
+  done: 'bg-green-50 text-green-700 border-green-200',
 };
 
 const statusLabels: Record<string, string> = {
@@ -23,8 +24,26 @@ const statusLabels: Record<string, string> = {
 };
 
 export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
+  const [isPinned, setIsPinned] = useState(false);
+
+  useEffect(() => {
+    const check = (globalThis as any).__meshIsPinned;
+    if (check) setIsPinned(check(task.id));
+  }, [task.id]);
+
   const getInitials = (firstName?: string, lastName?: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
+  };
+
+  const handlePinToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPinned) {
+      (globalThis as any).__meshUnpinTask?.(task.id);
+      setIsPinned(false);
+    } else {
+      (globalThis as any).__meshPinTask?.(task.id);
+      setIsPinned(true);
+    }
   };
 
   return (
@@ -43,6 +62,19 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
         ) : (
           <div className="text-muted-foreground/50 text-sm font-medium">No Preview</div>
         )}
+        
+        {/* Pin button — visible on hover */}
+        <button
+          onClick={handlePinToggle}
+          className={`absolute top-2 right-2 p-1.5 rounded-lg backdrop-blur-sm transition-all ${
+            isPinned 
+              ? 'bg-primary/90 text-white shadow-sm opacity-100' 
+              : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60'
+          }`}
+          title={isPinned ? 'Unpin from sidebar' : 'Pin to sidebar'}
+        >
+          {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+        </button>
       </div>
 
       <div className="p-4 flex flex-col flex-1">
@@ -81,3 +113,4 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
     </div>
   );
 }
+

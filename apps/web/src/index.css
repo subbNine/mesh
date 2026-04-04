@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Dark mode is class-based only — we never add .dark to <html>,
+   so all dark: variants are effectively disabled for this light-mode app */
+@custom-variant dark (&:where(.dark, .dark *));
+
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -21,38 +26,47 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --animate-fade-in: fade-in 0.3s ease-out forwards;
 }
 
 :root {
-  --background: #f8f9fa;
-  --foreground: #0a0e27;
+  /* Ultra-modern clean slate backgrounds */
+  --background: #fbfbfc;
+  --foreground: #09090b;
   
-  --primary: #279FBD;
-  --primary-50: #e8f5fa;
-  --primary-100: #c9eaf5;
-  --primary-600: #1f7fa3;
-  --primary-700: #195f82;
+  /* Refined, glassy Brand Teal */
+  --primary: #0ca3ba;
+  --primary-50: #f0fbcc;
+  --primary-100: #d0f4fa;
+  --primary-600: #0a899c;
+  --primary-700: #086b7a;
   --primary-foreground: #ffffff;
   
-  --secondary: #266BD4;
-  --secondary-100: #d9ebff;
-  --secondary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-100: #e4e4e7;
+  --secondary-foreground: #18181b;
   
+  /* Card and Border surfaces completely smoothed out */
   --card: #ffffff;
-  --border: #e9ecef;
+  --border: #e4e4e7;
   
-  --destructive: #EA3E37;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   
-  --muted: #f0f2f5;
-  --muted-foreground: #6c757d;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
   
-  --radius: 8px;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   
-  font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   color: var(--foreground);
   background-color: var(--background);
   font-synthesis: none;
@@ -61,16 +75,55 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+}
+
 .dark {
-  --background: #0a0e27;
-  --foreground: #f8f9fa;
-  --card: #131829;
-  --border: #2d3142;
-  --muted: #212529;
-  --muted-foreground: #ced4da;
+  --background: #000000;
+  --foreground: #fafafa;
+  --card: #09090b;
+  --border: #27272a;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
 }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+
+
+.animate-fade-in {
+  animation: fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Autofill Override ──────────────────────────────────────────────────────
+   Browsers inject a blue/dark autofill background that overrides bg-white.
+   This forces autofilled inputs to keep our light background & text color.  */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 9999px #ffffff inset !important;
+  -webkit-text-fill-color: #09090b !important;
+  caret-color: #09090b;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ─── Refined Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
