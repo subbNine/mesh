@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { IStorageProvider } from './storage.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -33,5 +33,13 @@ export class S3StorageProvider implements IStorageProvider {
 
     await this.s3Client.send(command);
     return `${this.endpoint}/${this.bucketName}/${key}`;
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    });
+    await this.s3Client.send(command);
   }
 }

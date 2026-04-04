@@ -20,6 +20,7 @@ interface CanvasElement {
   height: number;
   rotation?: number;
   content?: string;
+  backgroundColor?: string;
   zIndex: number;
   createdBy: string;
   createdAt: string;

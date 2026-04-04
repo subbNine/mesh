@@ -11,6 +11,7 @@ interface RichTextOverlayProps {
     height: number;
     rotation?: number;
     content?: string;
+    backgroundColor?: string;
   };
   stageProps: { scale: number; x: number; y: number };
   isEditing: boolean;
@@ -195,6 +196,16 @@ export function RichTextOverlay({
     updateFormatState();
   };
 
+  const handleBackgroundColorChange = (color: string) => {
+    ydoc.transact(() => {
+      const elements = ydoc.getArray<Y.Map<any>>('elements');
+      const map = elements.toArray().find((m) => m.get('id') === el.id);
+      if (map) {
+        map.set('backgroundColor', color);
+      }
+    });
+  };
+
   const screenX = el.x * stageProps.scale + stageProps.x;
   const screenY = el.y * stageProps.scale + stageProps.y;
 
@@ -208,6 +219,7 @@ export function RichTextOverlay({
     transformOrigin: 'top left',
     width: el.width,
     height: el.height,
+    backgroundColor: el.backgroundColor || '#ffffff',
   };
 
   if (!isEditing) {
@@ -325,6 +337,24 @@ export function RichTextOverlay({
             >
               <Icon className="w-3.5 h-3.5" />
             </button>
+          );
+        })}
+
+        <div className="w-px h-4 bg-zinc-200 mx-1" />
+
+        {/* Background Color Palette */}
+        {(['#ffffff', '#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca', '#e9d5ff']).map((color) => {
+          const isActive = (el.backgroundColor || '#ffffff') === color;
+          return (
+            <button
+              key={color}
+              onMouseDown={(e) => { e.preventDefault(); handleBackgroundColorChange(color); }}
+              className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                isActive ? 'border-zinc-800 scale-110 shadow-sm' : 'border-zinc-200 hover:scale-110'
+              }`}
+              style={{ backgroundColor: color }}
+              title={`Background Color ${color}`}
+            />
           );
         })}
       </div>

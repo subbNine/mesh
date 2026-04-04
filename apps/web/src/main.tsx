@@ -22,6 +22,8 @@ import ProjectRoute from './components/layout/ProjectRoute';
 import { AppShell } from './components/layout/AppShell';
 import { useAuthStore } from './store/auth.store';
 
+import { Toaster } from './components/ui/Toast';
+
 function AppRoot() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
   const isLoading = useAuthStore((state) => state.isLoading);
@@ -39,48 +41,50 @@ function AppRoot() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
+    <>
+      <Toaster />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
 
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-
-        {/* Protected Routes */}
-        <Route path="/workspaces" element={<ProtectedRoute><WorkspaceSelectorPage /></ProtectedRoute>} />
-        {/* Protected Settings Routes - System */}
-        <Route path="/settings/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        
-        {/* Workspace AppShell Hierarchy */}
-        <Route 
-          path="/w/:workspaceId" 
-          element={
-            <ProtectedRoute>
-              <WorkspaceRoute>
-                <AppShell />
-              </WorkspaceRoute>
-            </ProtectedRoute>
-          }
-        >
-          {/* Workspace level root route, redirecting to projects */}
-          <Route index element={<ProjectsPage />} />
+          {/* Protected Routes */}
+          <Route path="/workspaces" element={<ProtectedRoute><WorkspaceSelectorPage /></ProtectedRoute>} />
+          {/* Protected Settings Routes - System */}
+          <Route path="/settings/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           
-          <Route path="projects" element={<ProjectsPage />} />
-          <Route path="settings" element={<WorkspaceSettingsPage />} />
-          
-          {/* Project Bounds */}
-          <Route path="p/:projectId" element={<ProjectRoute />}>
-            <Route index element={<ProjectDetailPage />} />
-            <Route path="settings" element={<ProjectSettingsPage />} />
-            <Route path="tasks/:taskId/canvas" element={<TaskCanvasPage />} />
+          {/* Workspace AppShell Hierarchy */}
+          <Route 
+            path="/w/:workspaceId" 
+            element={
+              <ProtectedRoute>
+                <WorkspaceRoute>
+                  <AppShell />
+                </WorkspaceRoute>
+              </ProtectedRoute>
+            }
+          >
+            {/* Workspace level root route, redirecting to projects */}
+            <Route index element={<ProjectsPage />} />
+            
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="settings" element={<WorkspaceSettingsPage />} />
+            
+            {/* Project Bounds */}
+            <Route path="p/:projectId" element={<ProjectRoute />}>
+              <Route index element={<ProjectDetailPage />} />
+              <Route path="settings" element={<ProjectSettingsPage />} />
+              <Route path="tasks/:taskId/canvas" element={<TaskCanvasPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="/forbidden" element={<ForbiddenPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="/forbidden" element={<ForbiddenPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

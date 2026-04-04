@@ -17,7 +17,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string }) {
+  async validate(payload: { sub: string; role?: string }) {
+    // 1. Check if this is a service-to-service token (e.g. from ws-server)
+    if (payload.role === 'service' && payload.sub === 'ws-server') {
+      return {
+        id: 'ws-server',
+        firstName: 'System',
+        lastName: 'Service',
+        userName: 'ws-server',
+        role: 'service',
+      };
+    }
+
+    // 2. Otherwise, treat as a normal user token
     const user = await this.authService.validateUser(payload.sub);
     if (!user) {
       throw new UnauthorizedException();

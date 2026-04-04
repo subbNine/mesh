@@ -101,6 +101,7 @@ export function useTextTool({ ydoc, userId, onBoxCreated, onToolExit }: UseTextT
         el.set('zIndex', yElements.length);
         el.set('createdBy', userId);
         el.set('createdAt', new Date().toISOString());
+        el.set('backgroundColor', '#ffffff');
         yElements.push([el]);
       });
 

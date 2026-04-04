@@ -4,12 +4,14 @@ import type { ITask } from '@mesh/shared';
 import { useParams } from 'react-router-dom';
 import { TaskThumbnailCard } from './TaskThumbnailCard';
 import { useProjectStore } from '../../store/project.store';
-import { Filter, User, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Filter, User, CheckCircle2, ChevronDown, Plus } from 'lucide-react';
+import { NewTaskModal } from './NewTaskModal';
 
 export function TaskThumbnailSidebar() {
   const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>();
   const [tasks, setTasks] = useState<ITask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -18,16 +20,20 @@ export function TaskThumbnailSidebar() {
   const members = useProjectStore(state => state.members);
   const fetchMembers = useProjectStore(state => state.fetchMembers);
 
+  const fetchTasks = () => {
+    if (projectId) {
+      setIsLoading(true);
+      api.get(`/projects/${projectId}/tasks`)
+        .then(res => setTasks(res.data))
+        .catch(err => console.error('Failed to fetch tasks for sidebar', err))
+        .finally(() => setIsLoading(false));
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
       fetchMembers(projectId);
-      setIsLoading(true);
-      api.get(`/projects/${projectId}/tasks`)
-        .then(res => {
-          setTasks(res.data);
-        })
-        .catch(err => console.error('Failed to fetch tasks for sidebar', err))
-        .finally(() => setIsLoading(false));
+      fetchTasks();
     }
   }, [projectId, fetchMembers]);
 
@@ -63,9 +69,18 @@ export function TaskThumbnailSidebar() {
       
       {/* Search/Filter Bar */}
       <div className="p-4 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 space-y-2.5">
-        <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">
-          <Filter className="w-3 h-3" />
-          Filter Rail
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
+            <Filter className="w-3 h-3" />
+            Filter Rail
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[10px] font-bold uppercase tracking-tight"
+          >
+            <Plus className="w-3 h-3" />
+            Add Task
+          </button>
         </div>
         
         <div className="grid grid-cols-2 gap-2">
@@ -129,6 +144,17 @@ export function TaskThumbnailSidebar() {
            {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} found
          </span>
       </div>
+
+      {isModalOpen && (
+        <NewTaskModal 
+          projectId={projectId!}
+          onClose={() => setIsModalOpen(false)}
+          onCreated={(task) => {
+            console.log('Task created from rail:', task);
+            fetchTasks(); // Refresh list
+          }}
+        />
+      )}
     </div>
   );
 }

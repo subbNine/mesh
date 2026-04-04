@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import * as http from 'node:http';
 import * as WebSocket from 'ws';
 import * as jwt from 'jsonwebtoken';

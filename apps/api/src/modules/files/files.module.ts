@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MulterModule } from '@nestjs/platform-express';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import * as multer from 'multer';
 import { FilesController } from './files.controller';
 import { FilesService } from './files.service';
 import { S3StorageProvider } from './storage/s3.provider';
 import { AzureStorageProvider } from './storage/azure.provider';
 import { CloudinaryStorageProvider } from './storage/cloudinary.provider';
+import { File } from './entities/files.entity';
 
 const storageProviderFactory = {
   provide: 'STORAGE_PROVIDER',
@@ -24,7 +28,13 @@ const storageProviderFactory = {
 };
 
 @Module({
-  imports: [ConfigModule],
+  imports: [
+    ConfigModule,
+    TypeOrmModule.forFeature([File]),
+    MulterModule.register({
+      storage: multer.memoryStorage(),
+    }),
+  ],
   controllers: [FilesController],
   providers: [FilesService, storageProviderFactory],
   exports: [FilesService],

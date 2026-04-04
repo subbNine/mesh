@@ -229,6 +229,7 @@ export default function TaskCanvasPage() {
           />
 
           <CanvasToolbar
+            taskId={taskId!}
             ydoc={ydoc}
             currentUser={currentUser}
             activeTool={activeTool}

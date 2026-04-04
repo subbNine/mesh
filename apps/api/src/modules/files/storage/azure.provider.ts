@@ -31,4 +31,10 @@ export class AzureStorageProvider implements IStorageProvider {
 
     return blockBlobClient.url;
   }
+
+  async deleteFile(key: string): Promise<void> {
+    const containerClient = this.blobServiceClient.getContainerClient(this.containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(key);
+    await blockBlobClient.deleteIfExists();
+  }
 }

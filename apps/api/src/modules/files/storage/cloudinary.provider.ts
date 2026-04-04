@@ -11,4 +11,8 @@ export class CloudinaryStorageProvider implements IStorageProvider {
     // e.g. using cloudinary.uploader.upload_stream
     throw new Error('Cloudinary Storage provider is not fully implemented yet');
   }
+
+  async deleteFile(key: string): Promise<void> {
+    throw new Error('Cloudinary Storage provider is not fully implemented yet');
+  }
 }

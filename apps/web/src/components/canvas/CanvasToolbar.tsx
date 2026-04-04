@@ -2,8 +2,11 @@ import { useRef } from 'react';
 import * as Y from 'yjs';
 import { MousePointer2, Type, Image as ImageIcon, MessageSquare, ZoomIn, ZoomOut, Pencil } from 'lucide-react';
 import type { IUser } from '@mesh/shared';
+import { api } from '../../lib/api';
+import { useToast } from '../../store/toast.store';
 
 interface CanvasToolbarProps {
+  taskId: string;
   ydoc: Y.Doc;
   currentUser: IUser;
   activeTool: string;
@@ -17,6 +20,7 @@ interface CanvasToolbarProps {
 }
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
+  taskId,
   ydoc,
   currentUser,
   activeTool,
@@ -30,6 +34,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { success, error } = useToast();
+
   const handleToolClick = (tool: string) => {
     onToolChange(tool);
     if (tool === 'image') {
@@ -41,48 +47,62 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     const file = e.target.files?.[0];
     if (!file) { onToolChange('select'); return; }
 
-    try {
-      const fileUrl = URL.createObjectURL(file);
-      
-      const img = new globalThis.Image();
-      img.src = fileUrl;
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-        
-        // Scale down if it's too large, preserving aspect ratio
-        const MAX_DIM = 800;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
+    const loadingId = crypto.randomUUID();
 
-        ydoc.transact(() => {
-          const elements = ydoc.getArray<Y.Map<any>>('elements');
-          const element = new Y.Map();
-          element.set('id', crypto.randomUUID());
-          element.set('type', 'image');
-          element.set('content', fileUrl);
-          element.set('x', globalThis.innerWidth / 2 - width / 2);
-          element.set('y', globalThis.innerHeight / 2 - height / 2);
-          element.set('width', width);
-          element.set('height', height);
-          element.set('zIndex', elements.length);
-          element.set('createdBy', currentUser.id);
-          element.set('createdAt', new Date().toISOString());
-          elements.push([element]);
-        });
-        onToolChange('select');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      };
+    try {
+      // 1. Show processing placeholder
+      const placeholderUrl = URL.createObjectURL(file);
+      ydoc.transact(() => {
+        const elements = ydoc.getArray<Y.Map<any>>('elements');
+        const element = new Y.Map();
+        element.set('id', loadingId);
+        element.set('type', 'image');
+        element.set('content', placeholderUrl);
+        element.set('x', globalThis.innerWidth / 2 - 150);
+        element.set('y', globalThis.innerHeight / 2 - 100);
+        element.set('width', 300);
+        element.set('height', 200);
+        element.set('zIndex', elements.length);
+        element.set('createdBy', currentUser.id);
+        element.set('createdAt', new Date().toISOString());
+        element.set('opacity', 0.5); // visually indicate loading state
+        elements.push([element]);
+      });
+      onToolChange('select');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+
+      // 2. Upload file
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('taskId', taskId);
+
+      const response = await api.post('/files', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const { url } = response.data;
+
+      // 3. Update placeholder with successful url
+      ydoc.transact(() => {
+        const elements = ydoc.getArray<Y.Map<any>>('elements');
+        const map = elements.toArray().find((m) => m.get('id') === loadingId);
+        if (map) {
+          map.set('content', url);
+          map.set('opacity', 1.0);
+        }
+      });
       
-      img.onerror = () => {
-        console.error('Failed to load image format');
-        onToolChange('select');
-      };
-    } catch (error) {
-      console.error('Failed to handle file upload', error);
+      success('Image uploaded successfully');
+
+    } catch (err: any) {
+      console.error('Failed to handle file upload', err);
+      // Remove placeholder on failure
+      ydoc.transact(() => {
+        const elements = ydoc.getArray<Y.Map<any>>('elements');
+        const index = elements.toArray().findIndex((m) => m.get('id') === loadingId);
+        if (index > -1) elements.delete(index, 1);
+      });
+      error('Image upload failed');
       onToolChange('select');
     }
   };
