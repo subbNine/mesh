@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import * as Y from 'yjs';
 import { Stage, Layer, Text, Image as KonvaImage, Transformer, Group, Circle, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -66,6 +66,23 @@ const URLImage = ({ src, ...props }: any) => {
 let _canvasUndoManager: Y.UndoManager | null = null;
 export const getCanvasUndoManager = () => _canvasUndoManager;
 
+// Helper to create a dot grid pattern
+const createGridPattern = (color: string) => {
+  const canvas = globalThis.document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const size = 20; // grid spacing
+  canvas.width = size;
+  canvas.height = size;
+  
+  if (ctx) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(1, 1, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvas;
+};
+
 export const CanvasStage: React.FC<CanvasStageProps> = ({
   taskId,
   ydoc,
@@ -97,6 +114,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   const storeZoom = useCanvasStore((state: any) => state.zoom);
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
+
+  // Memoize grid pattern to prevent re-creation on every render
+  const gridPattern = useMemo(() => createGridPattern('#d1d5db'), []);
 
   useEffect(() => {
     if (Math.abs(storeZoom - stageProps.scale) > 0.001) {
@@ -488,7 +508,21 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
         y={stageProps.y}
         draggable={activeTool === 'select'}
         ref={stageRef}
+        style={{ background: '#f8f9fa' }} // Match design background
       >
+        {/* Grid Layer */}
+        <Layer listening={false}>
+          <Rect
+            x={-stageProps.x / stageProps.scale}
+            y={-stageProps.y / stageProps.scale}
+            width={globalThis.innerWidth / stageProps.scale}
+            height={globalThis.innerHeight / stageProps.scale}
+            fillPatternImage={gridPattern as any}
+            fillPatternScale={{ x: 1 / stageProps.scale, y: 1 / stageProps.scale }}
+            fillPatternOffset={{ x: 0, y: 0 }}
+          />
+        </Layer>
+        
         <Layer ref={layerRef}>
           {elements.map((el) => {
             if (el.type === 'text') {

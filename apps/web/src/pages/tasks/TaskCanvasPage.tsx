@@ -173,7 +173,7 @@ export default function TaskCanvasPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden" style={{ background: '#eef0f3' }}>
+    <div className="h-full w-full flex flex-col overflow-hidden" style={{ background: '#f8f9fa' }}>
       <CanvasTopBar
         task={task}
         awarenessUsers={awarenessUsers}
