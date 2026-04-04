@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { type TaskStatus, type ITask } from '@mesh/shared';
 import { api } from '../lib/api';
+import { useToastStore } from './toast.store';
 
 interface TaskState {
   tasks: ITask[];
@@ -51,9 +52,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     try {
       await api.patch(`/tasks/${taskId}`, dto);
+      useToastStore.getState().addToast('success', 'Task updated');
     } catch (err) {
       console.error('Failed to update task:', err);
-      // Revert optimistic update
+      useToastStore.getState().addToast('error', 'Failed to update task');
       set({ tasks: previousTasks });
     }
   },
@@ -63,9 +65,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) }));
     try {
       await api.delete(`/tasks/${taskId}`);
+      useToastStore.getState().addToast('success', 'Task deleted');
     } catch (err) {
       console.error('Failed to delete task:', err);
-      // Revert
+      useToastStore.getState().addToast('error', 'Failed to delete task');
       set({ tasks: previousTasks });
     }
   },

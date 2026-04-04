@@ -12,7 +12,7 @@ import { getUserColor } from '../../lib/user-color';
 
 import { CanvasTopBar } from '../../components/canvas/CanvasTopBar';
 import { CanvasToolbar } from '../../components/canvas/CanvasToolbar';
-import { CanvasStage, getCanvasUndoManager } from '../../components/canvas/CanvasStage';
+import { CanvasStage } from '../../components/canvas/CanvasStage';
 import { CommentPane } from '../../components/comments/CommentPane';
 
 const saveCanvasState = async (doc: Y.Doc, taskId: string) => {
@@ -43,6 +43,7 @@ export default function TaskCanvasPage() {
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [awareness, setAwareness] = useState<Awareness | null>(null);
 
+  const [isSynced, setIsSynced] = useState(false);
   const [awarenessUsers, setAwarenessUsers] = useState<any[]>([]);
 
   const currentUser = useAuthStore(state => state.user);
@@ -53,10 +54,18 @@ export default function TaskCanvasPage() {
     zoom,
     setZoom,
     isCommentPaneOpen,
+    setCommentPaneOpen,
     toggleCommentPane,
     activeCommentId,
     setActiveComment
   } = useCanvasStore();
+
+  // Responsive: Hide comment pane by default on smaller screens (< 1400px)
+  useEffect(() => {
+    if (globalThis.innerWidth < 1400 && isCommentPaneOpen) {
+      setCommentPaneOpen(false);
+    }
+  }, []);
 
   const handleAwarenessChange = useCallback((aw: Awareness) => {
     const states = Array.from(aw.getStates().entries());
@@ -115,6 +124,10 @@ export default function TaskCanvasPage() {
         setYdoc(doc);
         setAwareness(aw);
 
+        prov.on('sync', (isSynced: boolean) => {
+          setIsSynced(isSynced);
+        });
+
         aw.setLocalState({
           userId: currentUser.id,
           name: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
@@ -150,49 +163,6 @@ export default function TaskCanvasPage() {
     };
   }, [taskId, currentUser, handleAwarenessChange, loadCommentsFromBackend]);
 
-  // Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input field/textarea
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-
-      switch (e.key.toLowerCase()) {
-        case 'v':
-          setActiveTool('select');
-          break;
-        case 't':
-          setActiveTool('text');
-          break;
-        case 'i':
-          setActiveTool('image');
-          break;
-        case 'c':
-          setActiveTool('comment');
-          break;
-        case 'z':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault(); // Stop native undo
-            const um = getCanvasUndoManager();
-            if (e.shiftKey) {
-              um?.redo();
-            } else {
-              um?.undo();
-            }
-          }
-          break;
-        case 'y':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const um = getCanvasUndoManager();
-            um?.redo();
-          }
-          break;
-      }
-    };
-
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveTool]);
 
 
   const canvasRef = useRef<any>(null);
@@ -200,15 +170,16 @@ export default function TaskCanvasPage() {
   if (isLoading || !task || !ydoc || !awareness || !currentUser) {
     return (
       <div className="h-full w-full flex flex-col" style={{ background: '#eef0f3' }}>
+        <div className="slim-progress-bar" />
         {/* Skeleton top bar */}
-        <div className="h-[52px] border-b border-zinc-200/80 bg-white px-5 flex items-center gap-3">
-          <div className="w-4 h-4 rounded bg-zinc-200 animate-pulse" />
-          <div className="h-4 w-48 rounded-md bg-zinc-200 animate-pulse" />
-          <div className="h-5 w-16 rounded-full bg-zinc-100 animate-pulse" />
+        <div className="h-[52px] border-b border-border bg-card px-5 flex items-center gap-3">
+          <div className="w-4 h-4 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-48 rounded-md bg-muted animate-pulse" />
+          <div className="h-5 w-16 rounded-full bg-muted animate-pulse" />
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3 text-zinc-400">
-            <div className="w-10 h-10 border-2 border-zinc-300 border-t-primary rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <div className="w-10 h-10 border-2 border-muted border-t-primary rounded-full animate-spin" />
             <span className="text-sm font-medium">Loading canvas…</span>
           </div>
         </div>
@@ -218,6 +189,7 @@ export default function TaskCanvasPage() {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden" style={{ background: '#f5f5f5' }}>
+      {!isSynced && <div className="slim-progress-bar" />}
       <CanvasTopBar
         task={task}
         awarenessUsers={awarenessUsers}
@@ -236,7 +208,7 @@ export default function TaskCanvasPage() {
             activeTool={activeTool}
             activeCommentId={activeCommentId}
             onToolChange={setActiveTool as any}
-            onPinClick={setActiveComment}
+            onPinClick={(id: string | null) => setActiveComment(id)}
             showComments={isCommentPaneOpen}
           />
 

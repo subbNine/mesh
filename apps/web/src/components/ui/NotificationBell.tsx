@@ -1,19 +1,34 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Bell, Check, UserPlus, MessageSquare, ClipboardList, AtSign, CheckCircle2 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notifications.store';
-import { formatDistanceToNow } from 'date-fns';
+import { formatRelativeTime } from '../../lib/date-utils';
 import { useNavigate } from 'react-router-dom';
 import type { INotification } from '@mesh/shared';
 
+const NotificationSkeleton = () => (
+  <div className="p-4 flex gap-3 animate-pulse border-b border-border/50 last:border-0">
+    <div className="w-8 h-8 rounded-lg bg-muted flex-shrink-0" />
+    <div className="flex-1 space-y-2">
+      <div className="h-3 w-3/4 bg-muted rounded" />
+      <div className="h-2 w-1/4 bg-muted rounded opacity-60" />
+    </div>
+  </div>
+);
+
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { notifications, unreadCount, fetchNotifications, fetchUnreadCount, markRead, markAllRead } = useNotificationStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchNotifications();
-    fetchUnreadCount();
+    const init = async () => {
+      setIsLoading(true);
+      await Promise.all([fetchNotifications(), fetchUnreadCount()]);
+      setIsLoading(false);
+    };
+    init();
   }, [fetchNotifications, fetchUnreadCount]);
 
   useEffect(() => {
@@ -31,14 +46,7 @@ export function NotificationBell() {
       await markRead(n.id);
     }
     setIsOpen(false);
-    
-    // Navigation logic based on resourceType
     if (n.resourceType === 'task' && n.resourceId) {
-      // Assuming resourceId is taskId, navigate to canvas or task detail.
-      // Need workspaceId and projectId potentially. 
-      // For now, let's navigate to task detail within its project if we have context.
-      // Since notifications don't have project context in this stub, we should maybe add it.
-      // Simplified: Navigate to projects list for now or generic task detail route.
       navigate(`/tasks/${n.resourceId}/canvas`);
     } else if (n.resourceType === 'project' && n.resourceId) {
       navigate(`/projects/${n.resourceId}`);
@@ -47,7 +55,6 @@ export function NotificationBell() {
 
   const renderNotificationMessage = (n: INotification) => {
     const actorName = n.actor ? `${n.actor.firstName} ${n.actor.lastName}` : 'Someone';
-    
     switch (n.type) {
       case 'assigned':
         return (
@@ -88,29 +95,33 @@ export function NotificationBell() {
     }
   };
 
+  const dropdownClasses = useMemo(() => {
+    return 'absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-border shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right';
+  }, []);
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-full hover:bg-muted transition-colors relative"
+        className={`p-2 rounded-full transition-all relative ${isOpen ? 'bg-zinc-100 text-zinc-900 shadow-inner' : 'hover:bg-muted text-muted-foreground'}`}
         title="Notifications"
       >
-        <Bell className="w-5 h-5 text-muted-foreground" />
+        <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-background">
+          <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-background animate-in zoom-in duration-300">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-          <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Notifications</h3>
+        <div className={dropdownClasses}>
+          <div className="p-4 border-b border-border flex items-center justify-between bg-zinc-50/50">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Notifications</h3>
             {unreadCount > 0 && (
               <button 
                 onClick={() => markAllRead()}
-                className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-tight flex items-center gap-1"
+                className="text-[10px] font-bold text-primary hover:text-primary-hover transition-colors uppercase tracking-tight flex items-center gap-1"
               >
                 <Check className="w-3 h-3" />
                 Mark all read
@@ -118,36 +129,49 @@ export function NotificationBell() {
             )}
           </div>
 
-          <div className="max-h-[350px] overflow-y-auto overflow-x-hidden">
-            {notifications.length === 0 ? (
-              <div className="p-10 text-center flex flex-col items-center gap-2">
-                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-muted-foreground opacity-30" />
+          <div className="max-h-[350px] overflow-y-auto overflow-x-hidden scrollbar-hide">
+            {isLoading ? (
+              <>
+                <NotificationSkeleton />
+                <NotificationSkeleton />
+                <NotificationSkeleton />
+                <NotificationSkeleton />
+                <NotificationSkeleton />
+              </>
+            ) : notifications.length === 0 ? (
+              <div className="p-10 text-center flex flex-col items-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-zinc-50 flex items-center justify-center shadow-inner">
+                  <CheckCircle2 className="w-7 h-7 text-zinc-200" />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground">You're all caught up!</p>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-zinc-900">You're all caught up!</p>
+                  <p className="text-[12px] text-zinc-400">No new notifications at the moment.</p>
+                </div>
               </div>
             ) : (
               notifications.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`w-full p-4 flex gap-3 text-left hover:bg-muted/50 transition-colors relative border-b border-border/50 last:border-0 ${
-                    !n.readAt ? 'bg-primary/5' : ''
+                  className={`w-full p-4 flex gap-3 text-left hover:bg-zinc-50 transition-all relative border-b border-border/50 last:border-0 group ${
+                    n.readAt ? '' : 'bg-primary/[0.02]'
                   }`}
                 >
                   <div className="flex-shrink-0 mt-1">
-                    <div className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center shadow-sm">
+                    <div className="w-9 h-9 rounded-xl bg-white border border-border flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                       {getIcon(n.type)}
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    {renderNotificationMessage(n)}
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                    <div className="text-zinc-700">
+                      {renderNotificationMessage(n)}
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-1 font-medium italic">
+                      {formatRelativeTime(n.createdAt)}
                     </p>
                   </div>
-                  {!n.readAt && (
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                  {n.readAt === null && (
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0 shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" />
                   )}
                 </button>
               ))
@@ -155,12 +179,12 @@ export function NotificationBell() {
           </div>
 
           {notifications.length > 0 && (
-            <div className="p-3 border-t border-border bg-muted/10 text-center">
+            <div className="p-3 border-t border-border bg-zinc-50/30 text-center">
               <button 
                 onClick={() => setIsOpen(false)}
-                className="text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+                className="text-[11px] font-bold text-zinc-400 hover:text-zinc-600 transition-colors uppercase tracking-widest"
               >
-                Close panel
+                Dismiss
               </button>
             </div>
           )}
@@ -169,3 +193,4 @@ export function NotificationBell() {
     </div>
   );
 }
+

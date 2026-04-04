@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../../store/project.store';
 import { Button } from '../../components/ui/Button';
@@ -34,6 +34,10 @@ export default function ProjectDetailPage() {
     return () => globalThis.removeEventListener('task-tab-change', handleTabChange);
   }, []);
 
+  const taskFilters = useMemo(() => ({
+    assigneeId: filterAssignee || undefined
+  }), [filterAssignee]);
+
   if (!currentProject) return null;
 
   return (
@@ -65,7 +69,6 @@ export default function ProjectDetailPage() {
             >
               <option value="">All Assignees</option>
               <option value="me">Assigned to Me</option>
-              {/* Additional dynamic assignees can go here */}
             </select>
             
             <select 
@@ -73,7 +76,7 @@ export default function ProjectDetailPage() {
               value={filterStatus}
               onChange={(e) => {
                 setFilterStatus(e.target.value);
-                setActiveTab('all'); // Clear explicit tab if manually selecting abstract dropdown, or map them together
+                setActiveTab('all'); 
               }}
             >
               <option value="">Status Filter (All)</option>
@@ -124,7 +127,7 @@ export default function ProjectDetailPage() {
           <TaskGrid 
             projectId={projectId!}
             activeTab={activeTab as any}
-            filters={{ assigneeId: filterAssignee || undefined }} 
+            filters={taskFilters} 
           />
         </div>
       </main>
@@ -135,7 +138,6 @@ export default function ProjectDetailPage() {
           onClose={() => setIsTaskModalOpen(false)}
           onCreated={(task) => {
             console.log('Task created globally:', task);
-            // In the future: trigger refetch of tasks or optimistically update state
           }}
         />
       )}

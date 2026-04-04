@@ -50,30 +50,51 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     if (!file) { onToolChange('select'); return; }
 
     const loadingId = crypto.randomUUID();
+    const placeholderUrl = URL.createObjectURL(file);
 
     try {
-      // 1. Show processing placeholder
-      const placeholderUrl = URL.createObjectURL(file);
+      // 1. Calculate aspect ratio
+      const img = new globalThis.Image();
+      const dimensions = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+        img.onerror = reject;
+        img.src = placeholderUrl;
+      });
+
+      const MAX_SIZE = 400;
+      let { w, h } = dimensions;
+      if (w > MAX_SIZE || h > MAX_SIZE) {
+        const ratio = w / h;
+        if (w > h) {
+          w = MAX_SIZE;
+          h = MAX_SIZE / ratio;
+        } else {
+          h = MAX_SIZE;
+          w = MAX_SIZE * ratio;
+        }
+      }
+
+      // 2. Show processing placeholder with correct aspect ratio
       ydoc.transact(() => {
         const elements = ydoc.getArray<Y.Map<any>>('elements');
         const element = new Y.Map();
         element.set('id', loadingId);
         element.set('type', 'image');
         element.set('content', placeholderUrl);
-        element.set('x', globalThis.innerWidth / 2 - 150);
-        element.set('y', globalThis.innerHeight / 2 - 100);
-        element.set('width', 300);
-        element.set('height', 200);
+        element.set('x', globalThis.innerWidth / 2 - w / 2);
+        element.set('y', globalThis.innerHeight / 2 - h / 2);
+        element.set('width', w);
+        element.set('height', h);
         element.set('zIndex', elements.length);
         element.set('createdBy', currentUser.id);
         element.set('createdAt', new Date().toISOString());
-        element.set('opacity', 0.5); // visually indicate loading state
+        element.set('opacity', 0.5); 
         elements.push([element]);
       });
       onToolChange('select');
       if (fileInputRef.current) fileInputRef.current.value = '';
 
-      // 2. Upload file
+      // 3. Upload file
       const formData = new FormData();
       formData.append('file', file);
       formData.append('taskId', taskId);
@@ -84,7 +105,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
       const { url } = response.data;
 
-      // 3. Update placeholder with successful url
+      // 4. Update placeholder with successful url
       ydoc.transact(() => {
         const elements = ydoc.getArray<Y.Map<any>>('elements');
         const map = elements.toArray().find((m) => m.get('id') === loadingId);
@@ -106,6 +127,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
       });
       error('Image upload failed');
       onToolChange('select');
+    } finally {
+       URL.revokeObjectURL(placeholderUrl);
     }
   };
 

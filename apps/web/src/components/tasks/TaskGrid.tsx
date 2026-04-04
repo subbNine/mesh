@@ -69,7 +69,6 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
     fetchTasks(projectId, filters);
   }, [projectId, filters, fetchTasks]);
 
-
   const handleTaskClick = (taskId: string) => {
     navigate(`/w/${workspaceId}/p/${projectId}/tasks/${taskId}/canvas`);
   };
@@ -90,7 +89,7 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {Array.from({ length: 8 }).map((_, i) => (
           <TaskCardSkeleton key={`skeleton-${i}`} className="w-full" />
         ))}
@@ -114,7 +113,7 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
 
         {rowOrder.map(status => {
           const statusTasks = tasks.filter(t => t.status === status);
-          if (statusTasks.length === 0) return null; // Skip empty rows or show empty state? Let's show it so they can see order.
+          if (statusTasks.length === 0) return null;
           
           const displayedTasks = statusTasks.slice(0, rowLimit);
 
@@ -131,14 +130,6 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
                   <button 
                     className="text-sm font-medium text-primary hover:text-primary/70 flex items-center gap-1 transition-colors"
                     onClick={() => {
-                      // We don't have direct access to set activeTab from here smoothly without prop/URL change.
-                      // Since activeTab comes from ProjectDetailPage, a real app would probably map this by pushing URL ?tab=status
-                      // Wait, prompt says: "Show more ->"  switches the active tab to that status.
-                      // I need to either invoke a callback or manually dispatch. 
-                      // Wait, we can't change ProjectDetailPage state natively without an event... Wait, the URL doesn't have ?tab right now, it relies on local state `activeTab`.
-                      // Oh, we could dispatch a custom event, or since they clicked "Show more", maybe use navigate(`?status=${status}`) and the page will pick it up? 
-                      // The prompt doesn't specify a callback prop for `onTabChange`. I will just fire a custom window event for simplicity, OR rely on a query param change, OR in this example, it's a known placeholder logic.
-                      
                       const url = new URL(globalThis.location.href);
                       url.searchParams.set('status', status);
                       globalThis.history.pushState({}, '', url);
@@ -168,7 +159,7 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
         {/* Modal for reordering */}
         {isReorderModalOpen && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-card w-full max-w-sm rounded-xl border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-card w-full max-w-sm rounded-xl border border-border shadow-2xl overflow-hidden animate-modal-in">
               <div className="p-4 border-b border-border flex justify-between items-center bg-muted/20">
                 <h3 className="font-semibold text-foreground">Rearrange Sections</h3>
                 <button onClick={() => setIsReorderModalOpen(false)} className="text-muted-foreground hover:text-foreground">
@@ -212,7 +203,7 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 pb-10">
       {gridTasks.map(task => (
         <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} className="w-full" />
       ))}

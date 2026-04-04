@@ -1,104 +1,58 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useParams, useNavigate } from 'react-router-dom';
-import { useProjectStore } from '../../store/project.store';
+import { useParams, Outlet } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { useToast } from '../../store/toast.store';
+import { useProjectStore } from '../../store/project.store';
+import ForbiddenPage from '../../pages/errors/ForbiddenPage';
+import NotFoundPage from '../../pages/errors/NotFoundPage';
 
 export default function ProjectRoute() {
-  const { workspaceId, projectId } = useParams();
-  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+  const { error: showError } = useToast();
+  const { setCurrentProject, fetchMembers } = useProjectStore();
   
-  const setCurrentProject = useProjectStore(state => state.setCurrentProject);
-  const currentProject = useProjectStore(state => state.currentProject);
-  
-  const [loading, setLoading] = useState(true);
+  const [project, setProject] = useState<any | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!projectId) return;
-    
-    let isMounted = true;
-    
-    const loadProject = async () => {
+    async function fetchProject() {
+      if (!projectId) return;
+      setIsLoading(true);
+      setErrorStatus(null);
+
       try {
-        setLoading(true);
-        setErrorStatus(null);
-        
         const { data } = await api.get(`/projects/${projectId}`);
+        setProject(data);
         
-        if (isMounted) {
-          setCurrentProject(data);
-        }
+        // Stabilize global store
+        setCurrentProject(data);
+        await fetchMembers(projectId);
       } catch (err: any) {
-        if (isMounted) {
-          const status = err.response?.status;
-          setErrorStatus(status || 500);
+        setErrorStatus(err.response?.status || 500);
+        if (err.response?.status !== 403 && err.response?.status !== 404) {
+          showError('Failed to load project');
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setIsLoading(false);
       }
-    };
-    
-    loadProject();
-    
-    return () => {
-      isMounted = false;
-      setCurrentProject(null);
-    };
-  }, [projectId, setCurrentProject]);
+    }
 
-  if (loading) {
+    fetchProject();
+  }, [projectId, showError, setCurrentProject, fetchMembers]);
+
+  if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="flex flex-col items-center justify-center h-[400px] w-full gap-4">
+        <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <p className="text-zinc-400 text-sm font-medium animate-pulse">Loading project...</p>
       </div>
     );
   }
 
-  if (errorStatus === 403) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-8 text-center animate-in fade-in zoom-in duration-300">
-        <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-4">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Access Denied</h2>
-        <p className="text-muted-foreground mb-6 max-w-md">You do not have permission to access this project. You may have been explicitly excluded or lack necessary workspace roles.</p>
-        <button 
-          onClick={() => navigate(`/w/${workspaceId}/projects`)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-        >
-          Return to Projects
-        </button>
-      </div>
-    );
-  }
+  if (errorStatus === 403) return <ForbiddenPage />;
+  if (errorStatus === 404) return <NotFoundPage />;
+  if (errorStatus) return <div className="p-8 text-center text-zinc-500">Could not load project. Please try again.</div>;
 
-  if (errorStatus === 404 || !currentProject) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-8 text-center animate-in fade-in zoom-in duration-300">
-        <div className="w-16 h-16 bg-muted text-muted-foreground rounded-full flex items-center justify-center mb-4">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Project Not Found</h2>
-        <p className="text-muted-foreground mb-6 max-w-md">The project you are looking for does not exist or has been deleted.</p>
-        <button 
-          onClick={() => navigate(`/w/${workspaceId}/projects`)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-        >
-          View All Projects
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-full bg-background animate-in fade-in duration-300">
-      <Outlet />
-    </div>
-  );
+  return <Outlet context={{ project }} />;
 }
