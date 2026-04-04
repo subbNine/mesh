@@ -10,4 +10,7 @@ export default defineConfig({
       '@mesh/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
     },
   },
+  preview: {
+    allowedHosts: true,
+  },
 })
