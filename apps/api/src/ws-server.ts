@@ -69,71 +69,80 @@ yUtils.setPersistence({
   },
 });
 
-// ─── HTTP server (health check endpoint) ─────────────────────────────────────
-const server = http.createServer((_req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Yjs WebSocket Sync Server\n');
-});
-
 // ─── WebSocket server ─────────────────────────────────────────────────────────
-const wss = new WebSocket.Server({ noServer: true });
+export function attachWebsockets(server: http.Server) {
+  const wss = new WebSocket.Server({ noServer: true });
 
-wss.on('connection', (
-  conn: WebSocket.WebSocket,
-  req: http.IncomingMessage,
-  { docName }: { docName: string },
-) => {
-  yUtils.setupWSConnection(conn, req, { docName, gc: true });
-  console.log(`[WS] Connected to room "${docName}" (peers: ${wss.clients.size})`);
-});
+  wss.on('connection', (
+    conn: WebSocket.WebSocket,
+    req: http.IncomingMessage,
+    { docName }: { docName: string },
+  ) => {
+    yUtils.setupWSConnection(conn, req, { docName, gc: true });
+    console.log(`[WS] Connected to room "${docName}" (peers: ${wss.clients.size})`);
+  });
 
-// ─── HTTP → WebSocket upgrade with JWT auth ───────────────────────────────────
-server.on('upgrade', (request: http.IncomingMessage, socket: any, head: Buffer) => {
-  try {
-    const url = new URL(request.url ?? '', `http://${request.headers.host}`);
-
-    // y-websocket client appends /{roomname} to the base URL
-    // e.g. ws://localhost:1234/{taskId}?token=...
-    // pathname = "/{taskId}" — strip the leading slash
-    const docName = url.pathname.replace(/^\/+/, '').split('/')[0];
-
-    if (!docName) {
-      console.warn('[WS] Upgrade rejected: no room name in path');
-      socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    // JWT is passed as ?token= by the frontend WebsocketProvider params
-    const token = url.searchParams.get('token');
-    if (!token) {
-      console.warn(`[WS] Upgrade rejected for "${docName}": no token`);
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    let decoded: any;
+  // ─── HTTP → WebSocket upgrade with JWT auth ───────────────────────────────────
+  server.on('upgrade', (request: http.IncomingMessage, socket: any, head: Buffer) => {
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch {
-      console.warn(`[WS] Upgrade rejected for "${docName}": invalid token`);
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      const url = new URL(request.url ?? '', `http://${request.headers.host}`);
+
+      // If it isn't targeting canvas websockets let NestJS or other upgrades handle it natively
+      if (!url.pathname.startsWith('/canvas')) return;
+
+      // URL pathname: /canvas/{taskId} -> extract taskId
+      const docName = url.pathname.replace(/^\/canvas\//, '').split('/')[0];
+
+      if (!docName || docName === '') {
+        console.warn('[WS] Upgrade rejected: no room name in path');
+        socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      // JWT is passed as ?token= by the frontend WebsocketProvider params
+      const token = url.searchParams.get('token');
+      if (!token) {
+        console.warn(`[WS] Upgrade rejected for "${docName}": no token`);
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      let decoded: any;
+      try {
+        decoded = jwt.verify(token, JWT_SECRET);
+      } catch {
+        console.warn(`[WS] Upgrade rejected for "${docName}": invalid token`);
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        (ws as any).userId = decoded?.sub ?? decoded?.id;
+        wss.emit('connection', ws, request, { docName });
+      });
+    } catch (err) {
+      console.error('[WS] Upgrade error:', err);
       socket.destroy();
-      return;
     }
+  });
 
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      (ws as any).userId = decoded?.sub ?? decoded?.id;
-      wss.emit('connection', ws, request, { docName });
-    });
-  } catch (err) {
-    console.error('[WS] Upgrade error:', err);
-    socket.destroy();
-  }
-});
+  console.log('[WS] Attached Native WS Sync Interceptors securely strictly successfully mapped.');
+}
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-server.listen(WS_PORT, () => {
-  console.log(`[WS] Sync server listening on port ${WS_PORT}`);
-});
+// ─── Start Standalone Execute ──────────────────────────────────────────────────
+if (require.main === module) {
+  // ─── HTTP server (health check endpoint) ─────────────────────────────────────
+  const standaloneServer = http.createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Yjs WebSocket Sync Server\n');
+  });
+
+  attachWebsockets(standaloneServer);
+
+  standaloneServer.listen(WS_PORT, () => {
+    console.log(`[WS] Standalone Sync server listening on port ${WS_PORT}`);
+  });
+}

@@ -22,6 +22,12 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter(), new DatabaseExceptionFilter());
 
   const port = process.env.PORT ?? 3000;
+  
+  // Intercept the underlying Node HTTP Server explicitly providing Native WS hooks securely!
+  const server = app.getHttpServer();
+  const { attachWebsockets } = require('./ws-server');
+  attachWebsockets(server);
+
   await app.listen(port);
   console.log(`API running on port ${port}`);
 }
