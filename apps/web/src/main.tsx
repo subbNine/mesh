@@ -24,13 +24,25 @@ import { useAuthStore } from './store/auth.store';
 
 import { Toaster } from './components/ui/Toast';
 
+import { connectNotifications, disconnectNotifications } from './lib/notifications-socket';
+
 function AppRoot() {
   const loadFromStorage = useAuthStore((state) => state.loadFromStorage);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const token = useAuthStore((state) => state.token);
 
   useEffect(() => {
     loadFromStorage();
   }, [loadFromStorage]);
+
+  useEffect(() => {
+    if (token) {
+      connectNotifications(token);
+    } else {
+      disconnectNotifications();
+    }
+    return () => disconnectNotifications();
+  }, [token]);
 
   if (isLoading) {
     return (

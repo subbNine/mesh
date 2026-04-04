@@ -4,6 +4,7 @@ import { useProjectStore } from '../../store/project.store';
 import { Button } from '../../components/ui/Button';
 import { TaskGrid } from '../../components/tasks/TaskGrid';
 import { NewTaskModal } from '../../components/tasks/NewTaskModal';
+import { NotificationBell } from '../../components/ui/NotificationBell';
 
 export default function ProjectDetailPage() {
   const { workspaceId, projectId } = useParams();
@@ -88,6 +89,9 @@ export default function ProjectDetailPage() {
               </svg>
               New Task
             </Button>
+            
+            <div className="w-px h-6 bg-border" />
+            <NotificationBell />
           </div>
         </div>
       </header>

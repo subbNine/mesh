@@ -13,6 +13,13 @@ export class Notification {
   @JoinColumn({ name: 'recipientId' })
   recipient: User;
 
+  @Column({ nullable: true })
+  actorId: string;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'actorId' })
+  actor: User;
+
   @Column({ type: 'enum', enum: ['assigned', 'mentioned', 'commented', 'added_to_project'] })
   type: string;
 

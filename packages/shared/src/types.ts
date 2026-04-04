@@ -86,6 +86,8 @@ export interface ICommentReply {
 export interface INotification {
   id: string;
   recipientId: string;
+  actorId: string | null;
+  actor: IUser | null;
   type: NotificationType;
   resourceId: string | null;
   resourceType: 'task' | 'project' | null;

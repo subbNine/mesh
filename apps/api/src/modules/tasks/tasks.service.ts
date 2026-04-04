@@ -92,7 +92,7 @@ export class TasksService {
 
     // Propagate implicit generic notifications matching schema structures natively!
     if (isChangingAssignee && saved.assigneeId) {
-      await this.notificationsService.createTaskAssignedNotification(saved.id, saved.assigneeId)
+      await this.notificationsService.createTaskAssignedNotification(saved.id, saved.assigneeId, userId)
         .catch(e => console.error('Silent failure triggering assignment generic map correctly mapping boundary: ', e));
     }
 

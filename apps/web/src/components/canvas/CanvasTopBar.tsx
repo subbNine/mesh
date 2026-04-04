@@ -4,6 +4,7 @@ import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
 import { ArrowLeft, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { NotificationBell } from '../ui/NotificationBell';
 
 type CanvasTopBarProps = Readonly<{
   task: ITask;
@@ -175,6 +176,8 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
         >
           <MessageSquare className="w-4 h-4" />
         </button>
+
+        <NotificationBell />
 
         <button className="text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 p-1.5 rounded-lg transition-colors">
           <MoreHorizontal className="w-4 h-4" />

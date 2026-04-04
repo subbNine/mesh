@@ -39,7 +39,7 @@ import { UsersModule } from './modules/users/users.module';
         return {
           connection: {
             host: url.hostname,
-            port: parseInt(url.port || '6379', 10),
+            port: Number.parseInt(url.port || '6379', 10),
             username: url.username || undefined,
             password: url.password || undefined,
           },
@@ -60,4 +60,4 @@ import { UsersModule } from './modules/users/users.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

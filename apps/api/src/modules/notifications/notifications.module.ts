@@ -9,6 +9,8 @@ import { InAppChannel } from './channels/in-app.channel';
 import { EmailChannel } from './channels/email.channel';
 import { PushChannel } from './channels/push.channel';
 import { UsersModule } from '../users/users.module';
+import { AuthModule } from '../auth/auth.module';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Module({
   imports: [
@@ -17,15 +19,18 @@ import { UsersModule } from '../users/users.module';
       name: 'notifications',
     }),
     UsersModule,
+    AuthModule,
   ],
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
     NotificationsProcessor,
+    NotificationsGateway,
     InAppChannel,
     EmailChannel,
     PushChannel,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, NotificationsGateway],
 })
 export class NotificationsModule {}
+

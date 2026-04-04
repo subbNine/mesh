@@ -2,6 +2,7 @@ export type ChannelType = 'in-app' | 'email' | 'push';
 
 export interface NotificationPayload {
   recipientId: string;
+  actorId?: string;
   type: string; // e.g. 'assigned', 'mentioned'
   resourceId?: string; // e.g. taskId
   resourceType?: string; // e.g. 'task'

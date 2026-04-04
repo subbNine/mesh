@@ -22,13 +22,13 @@ export class CommentsService {
     private readonly usersService: UsersService,
   ) { }
 
-  private async parseAndNotifyMentions(taskId: string, body: string) {
+  private async parseAndNotifyMentions(taskId: string, body: string, actorId: string) {
     const mentions = Array.from(body.matchAll(/@(\w+)/g)).map(m => m[1]);
     if (mentions.length > 0) {
       const uniqueNames = [...new Set(mentions)];
       const users = await this.usersService.findUsersByNames(uniqueNames);
       for (const user of users) {
-        await this.notificationsService.createMentionNotification(taskId, user.id).catch(console.error);
+        await this.notificationsService.createMentionNotification(taskId, user.id, actorId).catch(console.error);
       }
     }
   }
@@ -47,11 +47,11 @@ export class CommentsService {
     const saved = await this.commentRepo.save(comment);
 
     // Mentions
-    await this.parseAndNotifyMentions(dto.taskId, dto.body);
+    await this.parseAndNotifyMentions(dto.taskId, dto.body, userId);
 
     // Task assignee notification
     if (task.assigneeId && task.assigneeId !== userId) {
-      await this.notificationsService.createCommentNotification(dto.taskId, task.assigneeId).catch(console.error);
+      await this.notificationsService.createCommentNotification(dto.taskId, task.assigneeId, userId).catch(console.error);
     }
 
     const fetched = await this.commentRepo.findOne({
@@ -101,11 +101,11 @@ export class CommentsService {
     const saved = await this.replyRepo.save(reply);
 
     // Mentions
-    await this.parseAndNotifyMentions(comment.taskId, dto.body);
+    await this.parseAndNotifyMentions(comment.taskId, dto.body, userId);
 
     // Notify original author
     if (comment.authorId !== userId) {
-      await this.notificationsService.createMentionNotification(comment.taskId, comment.authorId).catch(console.error);
+      await this.notificationsService.createMentionNotification(comment.taskId, comment.authorId, userId).catch(console.error);
     }
 
     return this.replyRepo.findOne({
