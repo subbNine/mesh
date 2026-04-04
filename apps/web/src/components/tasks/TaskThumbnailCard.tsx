@@ -45,7 +45,11 @@ export function TaskThumbnailCard({ task, index, isActive }: TaskThumbnailCardPr
         <div className={`aspect-video w-full rounded-md overflow-hidden relative border ${
           isActive ? 'border-primary/30 shadow-inner' : 'border-border/50'
         } bg-slate-50 flex items-center justify-center`}>
-           <div className={`w-8 h-8 rounded-full opacity-10 ${statusColor(task.status)}`} />
+           {task.snapshotUrl ? (
+             <img src={task.snapshotUrl} alt={`${task.title} thumbnail`} className="w-full h-full object-cover" />
+           ) : (
+             <div className={`w-8 h-8 rounded-full opacity-10 ${statusColor(task.status)}`} />
+           )}
            {isActive && (
              <div className="absolute top-1 right-1">
                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
