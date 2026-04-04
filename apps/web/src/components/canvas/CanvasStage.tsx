@@ -169,15 +169,15 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       setComments(parsed);
     };
 
-    yElements.observe(updateElements);
-    yComments.observe(updateComments);
+    yElements.observeDeep(updateElements);
+    yComments.observeDeep(updateComments);
 
     updateElements();
     updateComments();
 
     return () => {
-      yElements.unobserve(updateElements);
-      yComments.unobserve(updateComments);
+      yElements.unobserveDeep(updateElements);
+      yComments.unobserveDeep(updateComments);
       if (_canvasUndoManager) {
         _canvasUndoManager.destroy();
         _canvasUndoManager = null;
