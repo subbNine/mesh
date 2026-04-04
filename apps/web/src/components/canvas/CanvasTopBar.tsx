@@ -45,13 +45,13 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
   const navigate = useNavigate();
   const currentUser = useAuthStore(state => state.user);
   const members = useProjectStore(state => state.members);
-  
+
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(task.title);
-  
+
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
-  
+
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const assigneeMenuRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +92,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
   const visibleAvatars = awarenessUsers.slice(0, 5);
   const extraAvatars = awarenessUsers.length > 5 ? awarenessUsers.length - 5 : 0;
   const statusKey = task.status?.toLowerCase() ?? 'todo';
-  
+
   const currentAssignee = members.find(m => m.userId === task.assigneeId)?.user;
 
   return (
@@ -178,7 +178,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
             >
               <div className="flex items-center -space-x-1">
                 {currentAssignee ? (
-                  <div 
+                  <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white border border-white"
                     style={{ backgroundColor: getUserColor(currentAssignee.id) }}
                   >
@@ -206,7 +206,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
                     <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400">
                       <UserPlus className="w-3 h-3" />
                     </div>
-                    <span className={!task.assigneeId ? 'text-zinc-900 font-bold' : 'text-zinc-600'}>Unassigned</span>
+                    <span className={task.assigneeId ? 'text-zinc-600' : 'text-zinc-900 font-bold'}>Unassigned</span>
                   </div>
                   {!task.assigneeId && <Check className="w-3 h-3 text-primary" />}
                 </button>
@@ -217,7 +217,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium hover:bg-zinc-50 transition-colors group"
                   >
                     <div className="flex items-center gap-2">
-                      <div 
+                      <div
                         className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
                         style={{ backgroundColor: getUserColor(m.userId) }}
                       >
@@ -244,7 +244,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
               {visibleAvatars.map((user, idx) => {
                 const isMe = user.userId === currentUser?.id;
                 const userColor = user.color || getUserColor(user.userId);
-                
+
                 return (
                   <div
                     key={user.clientId}
@@ -256,15 +256,15 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
                     }}
                   >
                     {user.avatarUrl ? (
-                      <img 
-                        src={user.avatarUrl} 
-                        alt={user.name} 
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.name}
                         className="w-full h-full rounded-full object-cover"
                       />
                     ) : (
                       <span>{user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}</span>
                     )}
-                    
+
                     <div className="absolute top-10 left-1/2 -translate-x-1/2 hidden group-hover:block px-2.5 py-1.5 bg-zinc-900 text-white text-[10px] font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap z-[100] pointer-events-none transition-all">
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -281,7 +281,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
               )}
             </div>
           )}
-          
+
           <div className="flex items-center gap-2 px-2 py-1 bg-emerald-50 rounded-md border border-emerald-100/50">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-tight">
@@ -294,11 +294,10 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
 
         <button
           onClick={toggleCommentPane}
-          className={`p-1.5 rounded-lg transition-colors ${
-            isCommentPaneOpen
+          className={`p-1.5 rounded-lg transition-colors ${isCommentPaneOpen
               ? 'bg-primary/10 text-primary'
               : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'
-          }`}
+            }`}
           title="Toggle comments"
         >
           <MessageSquare className="w-4 h-4" />

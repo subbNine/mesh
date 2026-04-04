@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Outlet, Link, useParams, useLocation } from 'react-router-dom';
 import { useProjectStore } from '../../store/project.store';
 import { useAuthStore } from '../../store/auth.store';
-import { Folder, Settings, LogOut, Pin, ChevronRight, LayoutGrid, List, User } from 'lucide-react';
+import { Folder, LogOut, Pin, ChevronRight, LayoutGrid, List, User } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
@@ -116,7 +116,7 @@ export function AppShell() {
 
   // ── Responsive Sidebar Rail Logic ──────────────────────────────────────────
   const [isCollapsed, setIsCollapsed] = useState(globalThis.innerWidth < 1200);
-  
+
   useEffect(() => {
     const handleResize = () => {
       setIsCollapsed(globalThis.innerWidth < 1200);
@@ -128,12 +128,11 @@ export function AppShell() {
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
       {/* Sidebar */}
-      <aside 
-        className={`bg-card border-r border-border flex flex-col hidden md:flex flex-shrink-0 relative z-20 transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'w-20' : 'w-64'
-        }`}
+      <aside
+        className={`bg-card border-r border-border flex flex-col hidden md:flex flex-shrink-0 relative z-20 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'
+          }`}
       >
-        
+
         {/* Header Branding */}
         <div className={`pt-6 px-5 pb-5 border-b border-border space-y-4 ${isCollapsed ? 'px-4 flex items-center justify-center' : ''}`}>
           <Link to="/workspaces" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
@@ -143,7 +142,7 @@ export function AppShell() {
             {!isCollapsed && (
               <div className="flex flex-col animate-in fade-in duration-300">
                 <span className="font-bold text-[17px] text-foreground tracking-tight leading-tight">Mesh</span>
-                <span className="text-[11px] text-primary font-medium tracking-wide">Canvas-first PM</span>
+                {/* <span className="text-[11px] text-primary font-medium tracking-wide">Canvas-first PM</span> */}
               </div>
             )}
           </Link>
@@ -153,18 +152,16 @@ export function AppShell() {
             <div className="flex bg-muted/40 p-1 rounded-lg border border-border/60 animate-in fade-in duration-300">
               <button
                 onClick={() => setSidebarMode('navigation')}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[11px] font-bold transition-all ${
-                  sidebarMode === 'navigation' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[11px] font-bold transition-all ${sidebarMode === 'navigation' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 <LayoutGrid className="w-3 h-3" />
                 Nav
               </button>
               <button
                 onClick={() => setSidebarMode('thumbnails')}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[11px] font-bold transition-all ${
-                  sidebarMode === 'thumbnails' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[11px] font-bold transition-all ${sidebarMode === 'thumbnails' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 <List className="w-3 h-3" />
                 Thumbnails
@@ -179,96 +176,93 @@ export function AppShell() {
             <TaskThumbnailSidebar />
           ) : (
             <div className={`py-6 space-y-8 ${isCollapsed ? 'px-2' : 'px-4'}`}>
-          
-          {/* WORKSPACE Section */}
-          <div className="space-y-3">
-            {!isCollapsed && <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1 animate-in fade-in duration-300">Workspace</h4>}
-            <div className="space-y-1">
-              <Link
-                to={`/w/${workspaceId}`}
-                title={isCollapsed ? 'My Workspace' : undefined}
-                className={`flex items-center px-3 py-2 rounded-lg transition-colors group ${
-                  location.pathname === `/w/${workspaceId}` || location.pathname === `/w/${workspaceId}/projects` ? 'bg-primary/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                } ${isCollapsed ? 'justify-center px-0 h-10' : ''}`}
-              >
-                <Folder className={`${isCollapsed ? 'w-5 h-5' : 'w-[18px] h-[18px] mr-3'}`} />
-                {!isCollapsed && <span className="text-sm animate-in fade-in duration-300">My Workspace</span>}
-              </Link>
-            </div>
-          </div>
 
-          {/* PROJECTS Section */}
-          <div className="space-y-3">
-            {!isCollapsed && <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1 animate-in fade-in duration-300">Projects</h4>}
-            <div className="space-y-1">
-              {projects.map((project) => {
-                const isActive = location.pathname.includes(`/p/${project.id}`);
-                return (
+              {/* WORKSPACE Section */}
+              <div className="space-y-3">
+                {!isCollapsed && <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1 animate-in fade-in duration-300">Workspace</h4>}
+                <div className="space-y-1">
                   <Link
-                    key={project.id}
-                    to={`/w/${workspaceId}/p/${project.id}`}
-                    title={isCollapsed ? project.name : undefined}
-                    className={`flex items-center px-3 py-2 rounded-lg transition-colors group ${
-                      isActive ? 'bg-primary/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                    } ${isCollapsed ? 'justify-center px-0 h-10' : ''}`}
+                    to={`/w/${workspaceId}`}
+                    title={isCollapsed ? 'My Workspace' : undefined}
+                    className={`flex items-center px-3 py-2 rounded-lg transition-colors group ${location.pathname === `/w/${workspaceId}` || location.pathname === `/w/${workspaceId}/projects` ? 'bg-primary/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      } ${isCollapsed ? 'justify-center px-0 h-10' : ''}`}
                   >
-                    <div className={`${isCollapsed ? '' : 'w-[18px] h-[18px] mr-3'} flex items-center justify-center flex-shrink-0`}>
-                      <div className={`rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-primary/30 group-hover:bg-primary/60'} ${isCollapsed ? 'w-2 h-2' : 'w-2.5 h-2.5'}`} />
-                    </div>
-                    {!isCollapsed && <span className="text-sm truncate animate-in fade-in duration-300">{project.name}</span>}
+                    <Folder className={`${isCollapsed ? 'w-5 h-5' : 'w-[18px] h-[18px] mr-3'}`} />
+                    {!isCollapsed && <span className="text-sm animate-in fade-in duration-300">My Workspace</span>}
                   </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* PINNED Section */}
-          {pinnedTasks.length > 0 && (
-            <div className="space-y-3">
-              {!isCollapsed && (
-                <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1 flex items-center gap-1.5 animate-in fade-in duration-300">
-                  <Pin className="w-3 h-3" />
-                  Pinned
-                </h4>
-              )}
-              <div className="space-y-0.5">
-                {pinnedTasks.map((task) => {
-                  const isActive = location.pathname.includes(`/tasks/${task.id}`);
-                  return (
-                    <div
-                      key={task.id}
-                      className={`group flex items-center rounded-lg transition-colors ${
-                        isActive ? 'bg-primary/5' : 'hover:bg-muted/50'
-                      } ${isCollapsed ? 'justify-center' : ''}`}
-                    >
-                      <Link
-                        to={`/w/${workspaceId}/p/${task.projectId}/tasks/${task.id}`}
-                        title={isCollapsed ? task.title : undefined}
-                        className={`flex-1 flex items-center ${isCollapsed ? 'px-0 h-10 justify-center' : 'px-3 py-2 min-w-0'}`}
-                      >
-                        <div className={`flex items-center justify-center flex-shrink-0 ${isCollapsed ? '' : 'w-[18px] h-[18px] mr-3'}`}>
-                          <div className={`rounded-full ${statusColor(task.status)} ${isCollapsed ? 'w-1.5 h-1.5' : 'w-2 h-2'}`} />
-                        </div>
-                        {!isCollapsed && (
-                          <div className="min-w-0 flex-1 animate-in fade-in duration-300">
-                            <span className={`text-sm truncate block ${isActive ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground'}`}>
-                              {task.title}
-                            </span>
-                            {task.projectName && (
-                              <span className="text-[10px] text-muted-foreground/60 truncate block leading-tight">
-                                {task.projectName}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {!isCollapsed && <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 ml-1 opacity-0 group-hover:opacity-50 transition-opacity ${isActive ? 'opacity-50' : ''}`} />}
-                      </Link>
-                    </div>
-                  );
-                })}
+                </div>
               </div>
-            </div>
-          )}
+
+              {/* PROJECTS Section */}
+              <div className="space-y-3">
+                {!isCollapsed && <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1 animate-in fade-in duration-300">Projects</h4>}
+                <div className="space-y-1">
+                  {projects.map((project) => {
+                    const isActive = location.pathname.includes(`/p/${project.id}`);
+                    return (
+                      <Link
+                        key={project.id}
+                        to={`/w/${workspaceId}/p/${project.id}`}
+                        title={isCollapsed ? project.name : undefined}
+                        className={`flex items-center px-3 py-2 rounded-lg transition-colors group ${isActive ? 'bg-primary/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                          } ${isCollapsed ? 'justify-center px-0 h-10' : ''}`}
+                      >
+                        <div className={`${isCollapsed ? '' : 'w-[18px] h-[18px] mr-3'} flex items-center justify-center flex-shrink-0`}>
+                          <div className={`rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-primary/30 group-hover:bg-primary/60'} ${isCollapsed ? 'w-2 h-2' : 'w-2.5 h-2.5'}`} />
+                        </div>
+                        {!isCollapsed && <span className="text-sm truncate animate-in fade-in duration-300">{project.name}</span>}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* PINNED Section */}
+              {pinnedTasks.length > 0 && (
+                <div className="space-y-3">
+                  {!isCollapsed && (
+                    <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1 flex items-center gap-1.5 animate-in fade-in duration-300">
+                      <Pin className="w-3 h-3" />
+                      Pinned
+                    </h4>
+                  )}
+                  <div className="space-y-0.5">
+                    {pinnedTasks.map((task) => {
+                      const isActive = location.pathname.includes(`/tasks/${task.id}`);
+                      return (
+                        <div
+                          key={task.id}
+                          className={`group flex items-center rounded-lg transition-colors ${isActive ? 'bg-primary/5' : 'hover:bg-muted/50'
+                            } ${isCollapsed ? 'justify-center' : ''}`}
+                        >
+                          <Link
+                            to={`/w/${workspaceId}/p/${task.projectId}/tasks/${task.id}/canvas`}
+                            title={isCollapsed ? task.title : undefined}
+                            className={`flex-1 flex items-center ${isCollapsed ? 'px-0 h-10 justify-center' : 'px-3 py-2 min-w-0'}`}
+                          >
+                            <div className={`flex items-center justify-center flex-shrink-0 ${isCollapsed ? '' : 'w-[18px] h-[18px] mr-3'}`}>
+                              <div className={`rounded-full ${statusColor(task.status)} ${isCollapsed ? 'w-1.5 h-1.5' : 'w-2 h-2'}`} />
+                            </div>
+                            {!isCollapsed && (
+                              <div className="min-w-0 flex-1 animate-in fade-in duration-300">
+                                <span className={`text-sm truncate block ${isActive ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                                  {task.title}
+                                </span>
+                                {task.projectName && (
+                                  <span className="text-[10px] text-muted-foreground/60 truncate block leading-tight">
+                                    {task.projectName}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {!isCollapsed && <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 ml-1 opacity-0 group-hover:opacity-50 transition-opacity ${isActive ? 'opacity-50' : ''}`} />}
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </nav>
