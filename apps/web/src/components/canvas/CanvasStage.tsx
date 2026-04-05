@@ -257,6 +257,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const stageRef = useRef<any>(null);
   const layerRef = useRef<any>(null);
   const trRef = useRef<any>(null);
+  const dragUpdateTimeoutRef = useRef<number | null>(null);
 
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [comments, setComments] = useState<CanvasComment[]>([]);
@@ -274,6 +275,15 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   useEffect(() => {
     setStageProps(prev => ({ ...prev, scale: globalZoom }));
   }, [globalZoom]);
+
+  // Cleanup drag timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (dragUpdateTimeoutRef.current) {
+        clearTimeout(dragUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const triggerSnapshot = useCallback(() => {
     setTimeout(async () => {
@@ -531,10 +541,65 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     triggerSnapshot();
   };
 
+  const handleDragMove = (e: any) => {
+    const id = e.target.id();
+    const x = e.target.x();
+    const y = e.target.y();
+
+    // Immediately update child elements' positions if this is a parent
+    const parentElement = elements.find(el => el.id === id);
+    if (parentElement) {
+      const children = elements.filter(el => el.parentId === id);
+      children.forEach(child => {
+        const childNode = layerRef.current?.findOne(`#${child.id}`);
+        if (childNode) {
+          const newX = x + (child.relX || 0) * (parentElement.width || 0);
+          const newY = y + (child.relY || 0) * (parentElement.height || 0);
+          childNode.setAttrs({ x: newX, y: newY });
+        }
+      });
+      if (children.length > 0) {
+        layerRef.current?.batchDraw();
+      }
+    }
+
+    // Throttle Yjs updates to every 50ms for efficiency
+    if (dragUpdateTimeoutRef.current) {
+      clearTimeout(dragUpdateTimeoutRef.current);
+    }
+
+    dragUpdateTimeoutRef.current = window.setTimeout(() => {
+      ydoc.transact(() => {
+        const arr = ydoc.getArray<Y.Map<any>>('elements');
+        const map = arr.toArray().find(m => m.get('id') === id);
+        if (map) {
+          if (map.get('parentId')) {
+            const parent = elements.find(p => p.id === map.get('parentId'));
+            if (parent) {
+              map.set('relX', (x - parent.x) / (parent.width || 1));
+              map.set('relY', (y - parent.y) / (parent.height || 1));
+            }
+          } else {
+            map.set('x', x);
+            map.set('y', y);
+          }
+        }
+      });
+    }, 50);
+  };
+
   const handleDragEnd = (e: any) => {
     const id = e.target.id();
     const x = e.target.x();
     const y = e.target.y();
+
+    // Clear pending update timeout
+    if (dragUpdateTimeoutRef.current) {
+      clearTimeout(dragUpdateTimeoutRef.current);
+      dragUpdateTimeoutRef.current = null;
+    }
+
+    // Final position update to Yjs
     ydoc.transact(() => {
       const arr = ydoc.getArray<Y.Map<any>>('elements');
       const map = arr.toArray().find(m => m.get('id') === id);
@@ -546,7 +611,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
             map.set('relY', (y - parent.y) / (parent.height || 1));
           }
         } else {
-          map.set('x', x); 
+          map.set('x', x);
           map.set('y', y);
         }
       }
@@ -707,7 +772,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
               <CanvasElementView
                 key={el.id} el={renderedEl}
                 isSelected={selectedId === el.id} isEditing={editingId === el.id}
-                activeTool={activeTool} handleDragMove={() => {}} handleDragEnd={handleDragEnd}
+                activeTool={activeTool} handleDragMove={handleDragMove} handleDragEnd={handleDragEnd}
                 onSelect={setSelectedId} onEdit={setEditingId}
               />
             );
