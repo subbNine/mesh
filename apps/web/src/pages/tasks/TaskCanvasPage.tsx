@@ -249,7 +249,7 @@ export default function TaskCanvasPage() {
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 320, opacity: 0 }}
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="w-[340px] flex-shrink-0 bg-card/60 backdrop-blur-3xl border-l border-border/40 relative z-20 flex flex-col m-4 rounded-[32px] shadow-2xl overflow-hidden shadow-primary/5"
+                    className="w-[calc(100%-32px)] md:w-[340px] flex-shrink-0 bg-card/60 backdrop-blur-3xl border-l border-border/40 relative z-20 flex flex-col m-4 rounded-[32px] shadow-2xl overflow-hidden shadow-primary/5"
                 >
                     <CommentPane 
                         taskId={taskId!} 

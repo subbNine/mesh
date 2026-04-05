@@ -117,16 +117,16 @@ export function AppShell() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Branding */}
-      <div className={`p-6 flex items-center gap-3 ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-4' : ''}`}>
+      <div className={`p-4 flex items-center gap-2 ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-3' : ''}`}>
         <Link to="/workspaces" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-105 transition-transform">
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-105 transition-transform text-sm">
             M
           </div>
           {(!isCollapsed || isMobileMenuOpen) && (
-            <motion.span 
+            <motion.span
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="font-display font-black text-xl tracking-tighter"
+              className="font-display font-black text-base tracking-tight"
             >
               Mesh
             </motion.span>
@@ -136,62 +136,62 @@ export function AppShell() {
 
       {/* Mode Switcher */}
       {isCanvasRoute && (!isCollapsed || isMobileMenuOpen) && (
-        <div className="px-4 mb-6">
-          <div className="bg-muted/50 p-1 rounded-xl flex gap-1 border border-border/50">
+        <div className="px-2 mb-4">
+          <div className="bg-muted/50 p-0.5 rounded-lg flex gap-0.5 border border-border/50">
             <button
               onClick={() => setSidebarMode('navigation')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${sidebarMode === 'navigation' ? 'bg-card text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${sidebarMode === 'navigation' ? 'bg-card text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              <LayoutGrid size={14} /> Nav
+              <LayoutGrid size={12} /> Nav
             </button>
             <button
               onClick={() => setSidebarMode('thumbnails')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${sidebarMode === 'thumbnails' ? 'bg-card text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${sidebarMode === 'thumbnails' ? 'bg-card text-foreground shadow-sm ring-1 ring-border/50' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              <List size={14} /> Canvas
+              <List size={12} /> Canvas
             </button>
           </div>
         </div>
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-4 space-y-8 scrollbar-none pb-12">
+      <nav className="flex-1 overflow-y-auto px-2 space-y-4 scrollbar-none pb-8">
         {sidebarMode === 'thumbnails' && !isCollapsed ? (
           <TaskThumbnailSidebar />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-4">
              {/* Section: Workspace */}
-             <div className="space-y-2">
-              {(!isCollapsed || isMobileMenuOpen) && <h4 className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Workspace</h4>}
+             <div className="space-y-1">
+              {(!isCollapsed || isMobileMenuOpen) && <h4 className="px-2 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">Workspace</h4>}
               <Link
                 to={`/w/${workspaceId}`}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
-                  location.pathname === `/w/${workspaceId}` || location.pathname === `/w/${workspaceId}/projects` 
-                  ? 'bg-primary/10 text-primary font-bold' 
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${
+                  location.pathname === `/w/${workspaceId}` || location.pathname === `/w/${workspaceId}/projects`
+                  ? 'bg-primary/10 text-primary font-bold'
                   : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
                 } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
               >
-                <Folder size={18} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
-                {(!isCollapsed || isMobileMenuOpen) && <span className="text-sm truncate">Overview</span>}
+                <Folder size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
+                {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">Overview</span>}
               </Link>
             </div>
 
             {/* Section: Projects */}
-            <div className="space-y-2">
-              {(!isCollapsed || isMobileMenuOpen) && <h4 className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Projects</h4>}
-              <div className="space-y-1">
+            <div className="space-y-1">
+              {(!isCollapsed || isMobileMenuOpen) && <h4 className="px-2 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">Projects</h4>}
+              <div className="space-y-0.5">
                 {projects.map(project => {
                   const isActive = location.pathname.includes(`/p/${project.id}`);
                   return (
                     <Link
                       key={project.id}
                       to={`/w/${workspaceId}/p/${project.id}`}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all group ${
-                        isActive ? 'bg-primary/5 text-foreground font-bold' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
+                      className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all group text-xs ${
+                        isActive ? 'bg-primary/5 text-foreground font-bold' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-0.5'
                       } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
                     >
-                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-primary scale-125' : 'bg-primary/40 group-hover:bg-primary/70 group-hover:scale-110'} transition-all`} />
-                      {(!isCollapsed || isMobileMenuOpen) && <span className="text-sm truncate">{project.name}</span>}
+                      <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-primary scale-125' : 'bg-primary/40 group-hover:bg-primary/70 group-hover:scale-110'} transition-all`} />
+                      {(!isCollapsed || isMobileMenuOpen) && <span className="truncate">{project.name}</span>}
                     </Link>
                   );
                 })}
@@ -200,27 +200,27 @@ export function AppShell() {
 
             {/* Section: Pinned */}
             {pinnedTasks.length > 0 && (
-              <div className="space-y-2">
-                {(!isCollapsed || isMobileMenuOpen) && <h4 className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Pinned</h4>}
-                <div className="space-y-1">
+              <div className="space-y-1">
+                {(!isCollapsed || isMobileMenuOpen) && <h4 className="px-2 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">Pinned</h4>}
+                <div className="space-y-0.5">
                   {pinnedTasks.map(task => {
                     const isActive = location.pathname.includes(`/tasks/${task.id}`);
                     return (
                       <Link
                         key={task.id}
                         to={`/w/${workspaceId}/p/${task.projectId}/tasks/${task.id}/canvas`}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all group ${
+                        className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all group text-xs ${
                           isActive ? 'bg-primary/5 text-foreground font-bold' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-0.5'
                         } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
                       >
-                         <div className={`w-1.5 h-1.5 rounded-full ${statusColor(task.status)} group-hover:scale-125 transition-transform`} />
+                         <div className={`w-1 h-1 rounded-full ${statusColor(task.status)} group-hover:scale-125 transition-transform`} />
                         {(!isCollapsed || isMobileMenuOpen) && (
-                          <div className="flex flex-col min-w-0 pr-2">
-                            <span className="text-sm truncate leading-tight">{task.title}</span>
-                            <span className="text-[10px] opacity-50 truncate">{task.projectName}</span>
+                          <div className="flex flex-col min-w-0 pr-1">
+                            <span className="text-xs truncate leading-tight">{task.title}</span>
+                            <span className="text-[9px] opacity-50 truncate">{task.projectName}</span>
                           </div>
                         )}
-                        {(!isCollapsed || isMobileMenuOpen) && isActive && <ChevronRight size={12} className="ml-auto opacity-50" />}
+                        {(!isCollapsed || isMobileMenuOpen) && isActive && <ChevronRight size={10} className="ml-auto opacity-50" />}
                       </Link>
                     )
                   })}
@@ -232,52 +232,52 @@ export function AppShell() {
       </nav>
 
       {/* Footer / User / Theme */}
-      <div className="p-4 border-t border-border/50 space-y-2">
-        <div className={`flex flex-col gap-1 ${isCollapsed && !isMobileMenuOpen ? 'items-center' : ''}`}>
+      <div className="p-2 border-t border-border/50 space-y-1">
+        <div className={`flex flex-col gap-0.5 ${isCollapsed && !isMobileMenuOpen ? 'items-center' : ''}`}>
            {/* Theme Toggle */}
            {(!isCollapsed || isMobileMenuOpen) ? (
-            <div className="bg-muted/50 p-1 rounded-xl flex gap-1 mb-2 border border-border/50">
-              <button 
+            <div className="bg-muted/50 p-0.5 rounded-lg flex gap-0.5 mb-1 border border-border/50">
+              <button
                 onClick={() => setTheme('light')}
-                className={`flex-1 flex items-center justify-center py-1.5 rounded-lg transition-all ${theme === 'light' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`flex-1 flex items-center justify-center py-1 rounded-md transition-all text-xs ${theme === 'light' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                <Sun size={14} />
+                <Sun size={12} />
               </button>
-              <button 
+              <button
                 onClick={() => setTheme('dark')}
-                className={`flex-1 flex items-center justify-center py-1.5 rounded-lg transition-all ${theme === 'dark' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`flex-1 flex items-center justify-center py-1 rounded-md transition-all text-xs ${theme === 'dark' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                <Moon size={14} />
+                <Moon size={12} />
               </button>
-              <button 
+              <button
                 onClick={() => setTheme('system')}
-                className={`flex-1 flex items-center justify-center py-1.5 rounded-lg transition-all ${theme === 'system' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`flex-1 flex items-center justify-center py-1 rounded-md transition-all text-xs ${theme === 'system' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                <Monitor size={14} />
+                <Monitor size={12} />
               </button>
             </div>
            ) : (
-            <button 
+            <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="w-10 h-10 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all mb-2"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all mb-1"
             >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             </button>
            )}
 
           <Link
             to="/settings/profile"
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all ${isCollapsed && !isMobileMenuOpen ? 'justify-center p-0 w-10 h-10' : ''}`}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all text-xs ${isCollapsed && !isMobileMenuOpen ? 'justify-center p-0 w-8 h-8' : ''}`}
           >
-            <User size={18} />
-            {(!isCollapsed || isMobileMenuOpen) && <span className="text-sm font-bold">Profile</span>}
+            <User size={14} />
+            {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs font-bold">Profile</span>}
           </Link>
           <button
             onClick={logout}
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all ${isCollapsed && !isMobileMenuOpen ? 'justify-center p-0 w-10 h-10' : ''}`}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all text-xs ${isCollapsed && !isMobileMenuOpen ? 'justify-center p-0 w-8 h-8' : ''}`}
           >
-            <LogOut size={18} />
-            {(!isCollapsed || isMobileMenuOpen) && <span className="text-sm font-bold">Sign out</span>}
+            <LogOut size={14} />
+            {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs font-bold">Sign out</span>}
           </button>
         </div>
       </div>
@@ -325,7 +325,7 @@ export function AppShell() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-background/50 relative z-10 glass rounded-3xl p-6 pt-16 md:pt-6">
+      <main className="flex-1 overflow-auto bg-background/50 relative z-10 glass rounded-3xl sm:p-4 p-2 pt-14 md:pt-4">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={location.pathname}
