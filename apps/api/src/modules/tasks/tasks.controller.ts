@@ -4,11 +4,12 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { BaseQueryDto } from '../../common/dtos/base-query.dto';
 import { IUser } from '@mesh/shared';
 
 @Controller()
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(private readonly tasksService: TasksService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post('projects/:projectId/tasks')
@@ -25,10 +26,11 @@ export class TasksController {
   findAll(
     @Param('projectId') projectId: string,
     @CurrentUser() user: IUser,
+    @Query() query: BaseQueryDto,
     @Query('status') status?: string,
     @Query('assigneeId') assigneeId?: string,
   ) {
-    return this.tasksService.findAll(projectId, user.id, { status, assigneeId });
+    return this.tasksService.findAll(projectId, user.id, { ...query, status, assigneeId });
   }
 
   @UseGuards(JwtAuthGuard)

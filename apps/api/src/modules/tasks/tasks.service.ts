@@ -5,6 +5,7 @@ import { Task } from './entities/tasks.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { CanvasService } from '../canvas/canvas.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { Pagination, PaginatedResult, PaginatedResultType } from '../../common/utils/pagination.util';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { ProjectMemberRole } from '@mesh/shared';
@@ -18,7 +19,7 @@ export class TasksService {
     @Inject(forwardRef(() => CanvasService))
     private readonly canvasService: CanvasService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   async create(projectId: string, userId: string, dto: CreateTaskDto): Promise<Task> {
     await this.projectsService.checkAccess(projectId, userId);
@@ -39,8 +40,14 @@ export class TasksService {
     }) as Promise<Task>;
   }
 
-  async findAll(projectId: string, userId: string, filters?: { status?: string; assigneeId?: string }): Promise<Task[]> {
+  async findAll(
+    projectId: string,
+    userId: string,
+    filters?: { status?: string; assigneeId?: string; page?: number; perPage?: number }
+  ): Promise<PaginatedResultType<Task>> {
     await this.projectsService.checkAccess(projectId, userId);
+
+    const pagination = new Pagination(filters?.page, filters?.perPage);
 
     const query = this.taskRepo.createQueryBuilder('task')
       .leftJoinAndSelect('task.assignee', 'assignee')
@@ -50,6 +57,7 @@ export class TasksService {
     if (filters?.status) {
       query.andWhere('task.status = :status', { status: filters.status });
     }
+
     if (filters?.assigneeId) {
       if (filters.assigneeId === 'unassigned') {
         query.andWhere('task.assigneeId IS NULL');
@@ -59,7 +67,10 @@ export class TasksService {
     }
 
     query.orderBy('task.createdAt', 'DESC');
-    return query.getMany();
+    query.skip(pagination.skip).take(pagination.perPage);
+
+    const [tasks, total] = await query.getManyAndCount();
+    return PaginatedResult.create(tasks, total, pagination);
   }
 
   async findOne(taskId: string, userId: string): Promise<Task> {
@@ -77,7 +88,7 @@ export class TasksService {
 
   async update(taskId: string, userId: string, dto: UpdateTaskDto): Promise<Task> {
     const task = await this.findOne(taskId, userId);
-    
+
     const wasAssignedTo = task.assigneeId;
     const isChangingAssignee = dto.assigneeId !== undefined && dto.assigneeId !== wasAssignedTo;
 
@@ -106,7 +117,7 @@ export class TasksService {
     // Internal abstract map execution silently validating structural inputs.
     const task = await this.taskRepo.findOne({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Requested native context task mapped undefined locally.');
-    
+
     task.snapshotUrl = snapshotUrl;
     await this.taskRepo.save(task);
   }
@@ -116,8 +127,13 @@ export class TasksService {
     if (!task) throw new NotFoundException('Target task not accessible');
 
     const { role } = await this.projectsService.checkAccess(task.projectId, userId);
-    if (role !== ProjectMemberRole.Admin) {
-      throw new ForbiddenException('Task deletion specifically relies on elevated administrative structural privileges securely.');
+
+    // Allow deletion if user is an Admin OR the original creator
+    const isCreator = task.createdBy === userId;
+    const isAdmin = role === ProjectMemberRole.Admin;
+
+    if (!isCreator && !isAdmin) {
+      throw new ForbiddenException('Task deletion specifically relies on ownership or administrative privileges.');
     }
 
     // Cascade bound inherently executes deletion routines mapping internal documents cleanly natively globally

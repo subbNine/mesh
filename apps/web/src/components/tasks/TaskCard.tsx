@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { type ITask } from '@mesh/shared';
 import { formatDistanceToNow } from 'date-fns';
-import { Pin, PinOff, User } from 'lucide-react';
+import { Pin, PinOff, User, Trash2 } from 'lucide-react';
+import { useTaskStore } from '../../store/task.store';
+import { useAuthStore } from '../../store/auth.store';
+import { useProjectStore } from '../../store/project.store';
 
 interface TaskCardProps {
   task: ITask;
@@ -19,11 +22,25 @@ const statusConfig: Record<string, { label: string, color: string, border: strin
 
 export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
   const [isPinned, setIsPinned] = useState(false);
+  const deleteTask = useTaskStore(state => state.deleteTask);
+  const user = useAuthStore((state: any) => state.user);
+  const members = useProjectStore(state => state.members);
+  const currentProject = useProjectStore(state => state.currentProject);
 
   useEffect(() => {
     const check = (globalThis as any).__meshIsPinned;
     if (check) setIsPinned(check(task.id));
   }, [task.id]);
+
+  const canDelete = useMemo(() => {
+    if (!user) return false;
+    // Creator can delete
+    if (task.createdBy === user.id) return true;
+    // Admin can delete
+    const member = members.find(m => m.userId === user.id);
+    const isAdmin = member?.role === 'admin' || member?.role === 'owner' || currentProject?.createdBy === user.id;
+    return isAdmin;
+  }, [user, task.createdBy, members, currentProject]);
 
   const getInitials = (firstName?: string, lastName?: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
@@ -40,6 +57,13 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
     } else {
       pin?.(task.id);
       setIsPinned(true);
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this task blueprint? This action is irreversible.')) {
+      deleteTask(task.id);
     }
   };
 
@@ -81,17 +105,30 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
             </span>
         </div>
 
-        {/* Pin button */}
-        <button
-          onClick={handlePinToggle}
-          className={`absolute top-3 right-3 p-2 rounded-xl backdrop-blur-xl border border-white/10 transition-all ${
-            isPinned 
-              ? 'bg-primary text-primary-foreground shadow-lg' 
-              : 'bg-black/20 text-white opacity-0 group-hover:opacity-100 hover:bg-black/40'
-          }`}
-        >
-          {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-        </button>
+        {/* Action Buttons */}
+        <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              className="p-2 rounded-xl backdrop-blur-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg"
+              title="Delete Blueprint"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+          
+          <button
+            onClick={handlePinToggle}
+            className={`p-2 rounded-xl backdrop-blur-xl border border-white/10 transition-all ${
+              isPinned 
+                ? 'bg-primary text-primary-foreground shadow-lg opacity-100' 
+                : 'bg-black/20 text-white hover:bg-black/40'
+            }`}
+            title={isPinned ? 'Unpin' : 'Pin to Board'}
+          >
+            {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+          </button>
+        </div>
       </div>
 
       <div className="p-5 flex flex-col flex-1 space-y-3">

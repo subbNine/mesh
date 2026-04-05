@@ -5,7 +5,7 @@ import { TaskStatus } from '@mesh/shared';
 import { useTaskStore } from '../../store/task.store';
 import { TaskCard } from './TaskCard';
 import { TaskCardSkeleton } from './TaskCardSkeleton';
-import { ArrowRight, GripVertical, Settings2, X, LayoutGrid } from 'lucide-react';
+import { GripVertical, Settings2, X, LayoutGrid } from 'lucide-react';
 import { Button } from '../ui/Button';
 import {
   DndContext,
@@ -60,16 +60,27 @@ function SortableStatusItem({ id }: { id: string }) {
 export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
   const navigate = useNavigate();
   const { workspaceId } = useParams();
-  const { tasks, isLoading, rowOrder, rowLimit, fetchTasks, loadPreferences, setRowOrder } = useTaskStore();
+  const { tasks, isLoading, paginationMetadata, rowOrder, rowLimit, fetchTasks, loadPreferences, setRowOrder } = useTaskStore();
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     loadPreferences();
   }, [loadPreferences]);
 
   useEffect(() => {
-    fetchTasks(projectId, filters);
-  }, [projectId, filters, fetchTasks]);
+    // Reset page when project or filters change
+    setPage(1);
+  }, [projectId, activeTab, filters.assigneeId]);
+
+  useEffect(() => {
+    fetchTasks(projectId, { 
+      ...filters, 
+      status: activeTab === 'all' ? undefined : activeTab,
+      page, 
+      perPage: rowLimit 
+    });
+  }, [projectId, filters, activeTab, page, rowLimit, fetchTasks]);
 
   const handleTaskClick = (taskId: string) => {
     navigate(`/w/${workspaceId}/p/${projectId}/tasks/${taskId}/canvas`);
@@ -87,6 +98,44 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
       const newIndex = rowOrder.indexOf(over.id as any);
       setRowOrder(arrayMove(rowOrder, oldIndex, newIndex));
     }
+  };
+
+  const renderPagination = () => {
+    if (!paginationMetadata || paginationMetadata.pages <= 1) return null;
+
+    return (
+      <div className="mt-12 flex items-center justify-between border-t border-border/40 pt-8 bg-background/50 backdrop-blur-sm sticky bottom-0 z-10 -mx-8 px-8">
+        <div className="flex flex-col">
+           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Navigation</span>
+           <div className="text-xs font-black uppercase tracking-widest text-foreground">
+             Page <span className="text-primary">{paginationMetadata.page}</span> 
+             <span className="mx-2 opacity-20">/</span> 
+             {paginationMetadata.pages}
+           </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Button
+            variant="tertiary"
+            size="md"
+            disabled={page <= 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            className="border border-border/40 bg-card/40 font-black uppercase tracking-widest text-[10px]"
+          >
+            Prev Stage
+          </Button>
+          <Button
+            variant="tertiary"
+            size="md"
+            disabled={page >= paginationMetadata.pages}
+            onClick={() => setPage(p => p + 1)}
+            className="border border-border/40 bg-card/40 font-black uppercase tracking-widest text-[10px]"
+          >
+            Next Stage
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -112,7 +161,7 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
   // ALL TAB MODE - Horizontal Rows
   if (activeTab === 'all') {
     return (
-      <div className="flex flex-col gap-16 pb-20">
+      <div className="flex flex-col gap-16 pb-12">
         <div className="flex justify-end">
           <Button 
             variant="outline"
@@ -129,8 +178,6 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
           const statusTasks = tasks.filter(t => t.status === status);
           if (statusTasks.length === 0) return null;
           
-          const displayedTasks = statusTasks.slice(0, rowLimit);
-
           return (
             <motion.div 
               key={status} 
@@ -143,30 +190,12 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
                   <h3 className="font-display font-black text-2xl md:text-3xl tracking-tight text-foreground lowercase">
                      {statusLabels[status] || status}
                   </h3>
-                  <span className="mb-1 text-xs font-black uppercase tracking-widest text-primary/40">
-                    {statusTasks.length} task{statusTasks.length !== 1 ? 's' : ''}
-                  </span>
                 </div>
-                {statusTasks.length > rowLimit && (
-                  <Button 
-                    variant="tertiary"
-                    size="sm"
-                    className="group font-black uppercase tracking-[0.15em] text-[10px]"
-                    onClick={() => {
-                      const url = new URL(globalThis.location.href);
-                      url.searchParams.set('status', status);
-                      globalThis.history.pushState({}, '', url);
-                      globalThis.dispatchEvent(new CustomEvent('task-tab-change', { detail: status }));
-                    }}
-                  >
-                    Drill Down <ArrowRight className="ml-2 w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                )}
               </div>
               
               <div className="flex gap-8 overflow-x-auto no-scrollbar pb-6 -mx-8 px-8 mask-linear">
                 <AnimatePresence mode="popLayout">
-                  {displayedTasks.map(task => (
+                  {statusTasks.map(task => (
                     <div key={task.id} className="w-[320px] flex-shrink-0">
                       <TaskCard task={task} onClick={() => handleTaskClick(task.id)} />
                     </div>
@@ -176,6 +205,8 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
             </motion.div>
           );
         })}
+
+        {renderPagination()}
 
         {/* Modal for reordering */}
         <AnimatePresence>
@@ -231,41 +262,45 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
   }
 
   // STATUS TAB MODE (Specific Status) - Flat Grid
-  const gridTasks = tasks.filter(t => t.status === activeTab);
-
-  if (gridTasks.length === 0) {
+  if (tasks.length === 0) {
     return (
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-border/40 rounded-[40px] bg-card/10 p-12 text-center"
-      >
-        <div className="w-20 h-20 rounded-[32px] bg-muted/50 flex items-center justify-center mb-6 text-muted-foreground/40">
-           <LayoutGrid size={40} />
-        </div>
-        <h3 className="font-display font-black text-3xl text-foreground mb-3">Void Detected.</h3>
-        <p className="max-w-[320px] text-muted-foreground font-serif italic text-lg opacity-80 mb-8">
-           There are no blueprints found within the "{statusLabels[activeTab]}" stage of development.
-        </p>
-        <Button onClick={() => (globalThis as any).__meshShowNewTaskModal?.()} variant="outline" size="lg" className="rounded-2xl h-11 border-dashed">
-            Initiate New Task
-        </Button>
-      </motion.div>
+      <div className="flex flex-col h-full">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center flex-1 min-h-[400px] border-2 border-dashed border-border/40 rounded-[40px] bg-card/10 p-12 text-center"
+        >
+          <div className="w-20 h-20 rounded-[32px] bg-muted/50 flex items-center justify-center mb-6 text-muted-foreground/40">
+            <LayoutGrid size={40} />
+          </div>
+          <h3 className="font-display font-black text-3xl text-foreground mb-3">Void Detected.</h3>
+          <p className="max-w-[320px] text-muted-foreground font-serif italic text-lg opacity-80 mb-8">
+            There are no blueprints found within the "{statusLabels[activeTab]}" stage of development.
+          </p>
+          <Button onClick={() => (globalThis as any).__meshShowNewTaskModal?.()} variant="outline" size="lg" className="rounded-2xl h-11 border-dashed">
+              Initiate New Task
+          </Button>
+        </motion.div>
+        {renderPagination()}
+      </div>
     );
   }
 
   return (
-    <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20"
-    >
-      <AnimatePresence mode="popLayout">
-        {gridTasks.map(task => (
-           <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} />
-        ))}
-      </AnimatePresence>
-    </motion.div>
+    <div className="flex flex-col gap-8">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+      >
+        <AnimatePresence mode="popLayout">
+          {tasks.map(task => (
+             <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} />
+          ))}
+        </AnimatePresence>
+      </motion.div>
+      {renderPagination()}
+    </div>
   );
 }

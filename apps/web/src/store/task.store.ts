@@ -7,10 +7,16 @@ interface TaskState {
   tasks: ITask[];
   currentTask: ITask | null;
   isLoading: boolean;
+  paginationMetadata: {
+    total: number;
+    page: number;
+    perPage: number;
+    pages: number;
+  } | null;
   rowOrder: TaskStatus[];
   rowLimit: number;
   
-  fetchTasks: (projectId: string, filters?: { status?: TaskStatus | string; assigneeId?: string }) => Promise<void>;
+  fetchTasks: (projectId: string, filters?: { status?: TaskStatus | string; assigneeId?: string; page?: number; perPage?: number }) => Promise<void>;
   createTask: (projectId: string, dto: Partial<ITask>) => Promise<ITask>;
   updateTask: (taskId: string, dto: Partial<ITask>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
@@ -24,14 +30,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   currentTask: null,
   isLoading: false,
+  paginationMetadata: null,
   rowOrder: ['todo', 'inprogress', 'review', 'done'],
-  rowLimit: 10,
+  rowLimit: 12, // Align with grid layout better (3-4 cols)
 
   fetchTasks: async (projectId, filters) => {
     set({ isLoading: true });
     try {
       const { data } = await api.get(`/projects/${projectId}/tasks`, { params: filters });
-      set({ tasks: data, isLoading: false });
+      // API now returns { result: ITask[], metadata: {...} }
+      set({ 
+        tasks: data.result, 
+        paginationMetadata: data.metadata,
+        isLoading: false 
+      });
     } catch (err) {
       console.error(err);
       set({ isLoading: false });
@@ -96,7 +108,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       }
     }
     if (savedLimit) {
-      set({ rowLimit: parseInt(savedLimit, 10) });
+      set({ rowLimit: Number.parseInt(savedLimit, 10) });
     }
   },
 }));
