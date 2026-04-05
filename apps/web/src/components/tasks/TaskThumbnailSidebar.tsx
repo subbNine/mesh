@@ -24,7 +24,10 @@ export function TaskThumbnailSidebar() {
     if (projectId) {
       setIsLoading(true);
       api.get(`/projects/${projectId}/tasks`)
-        .then(res => setTasks(res.data))
+        .then(res => {
+          // API returns { result: ITask[], metadata: {...} }
+          setTasks(res.data.result || []);
+        })
         .catch(err => console.error('Failed to fetch tasks for sidebar', err))
         .finally(() => setIsLoading(false));
     }
