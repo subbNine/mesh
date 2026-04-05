@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"turbo dev\" \"npm run dev:ws\"",
+    "dev": "concurrently \"turbo dev\"",
     "dev:ws": "npm run ws -w apps/api",
     "build": "turbo build",
     "lint": "turbo lint",

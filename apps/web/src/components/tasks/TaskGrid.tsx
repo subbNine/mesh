@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TaskStatus } from '@mesh/shared';
 import { useTaskStore } from '../../store/task.store';
 import { TaskCard } from './TaskCard';
 import { TaskCardSkeleton } from './TaskCardSkeleton';
-import { ArrowRight, GripVertical, Settings2, X } from 'lucide-react';
+import { ArrowRight, GripVertical, Settings2, X, LayoutGrid } from 'lucide-react';
+import { Button } from '../ui/Button';
 import {
   DndContext,
   closestCenter,
@@ -47,9 +49,9 @@ function SortableStatusItem({ id }: { id: string }) {
       style={style} 
       {...attributes} 
       {...listeners} 
-      className="p-3 mb-2 bg-card border border-border rounded-lg shadow-sm text-sm font-medium cursor-grab active:cursor-grabbing flex items-center gap-3 touch-none"
+      className="p-4 mb-3 bg-card border border-border/60 rounded-2xl shadow-sm text-sm font-black uppercase tracking-widest cursor-grab active:cursor-grabbing flex items-center gap-3 touch-none hover:border-primary/40 transition-colors group"
     >
-      <GripVertical className="w-4 h-4 text-muted-foreground" />
+      <GripVertical className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
       {statusLabels[id] || id}
     </div>
   );
@@ -89,7 +91,7 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {Array.from({ length: 8 }).map((_, i) => (
           <TaskCardSkeleton key={`skeleton-${i}`} className="w-full" />
         ))}
@@ -97,18 +99,30 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
     );
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05
+      }
+    }
+  };
+
   // ALL TAB MODE - Horizontal Rows
   if (activeTab === 'all') {
     return (
-      <div className="flex flex-col gap-8 pb-10">
+      <div className="flex flex-col gap-16 pb-20">
         <div className="flex justify-end">
-          <button 
+          <Button 
+            variant="outline"
+            size="sm"
             onClick={() => setIsReorderModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="border-dashed border-2 px-4 h-10 rounded-xl"
+            icon={<Settings2 size={16} />}
           >
-            <Settings2 className="w-4 h-4" />
-            Rearrange Sections
-          </button>
+            Structure Blueprint
+          </Button>
         </div>
 
         {rowOrder.map(status => {
@@ -118,17 +132,26 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
           const displayedTasks = statusTasks.slice(0, rowLimit);
 
           return (
-            <div key={status} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-foreground">{statusLabels[status] || status}</h3>
-                  <span className="flex items-center justify-center bg-muted text-muted-foreground text-xs font-semibold px-2 py-0.5 rounded-full">
-                    {statusTasks.length}
+            <motion.div 
+              key={status} 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex flex-col gap-6"
+            >
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-end gap-3">
+                  <h3 className="font-display font-black text-2xl md:text-3xl tracking-tight text-foreground lowercase">
+                     {statusLabels[status] || status}
+                  </h3>
+                  <span className="mb-1 text-xs font-black uppercase tracking-widest text-primary/40">
+                    {statusTasks.length} task{statusTasks.length !== 1 ? 's' : ''}
                   </span>
                 </div>
                 {statusTasks.length > rowLimit && (
-                  <button 
-                    className="text-sm font-medium text-primary hover:text-primary/70 flex items-center gap-1 transition-colors"
+                  <Button 
+                    variant="tertiary"
+                    size="sm"
+                    className="group font-black uppercase tracking-[0.15em] text-[10px]"
                     onClick={() => {
                       const url = new URL(globalThis.location.href);
                       url.searchParams.set('status', status);
@@ -136,56 +159,73 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
                       globalThis.dispatchEvent(new CustomEvent('task-tab-change', { detail: status }));
                     }}
                   >
-                    Show more <ArrowRight className="w-4 h-4" />
-                  </button>
+                    Drill Down <ArrowRight className="ml-2 w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                  </Button>
                 )}
               </div>
               
-              {statusTasks.length > 0 ? (
-                <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4 -mx-2 px-2 mask-linear">
+              <div className="flex gap-8 overflow-x-auto no-scrollbar pb-6 -mx-8 px-8 mask-linear">
+                <AnimatePresence mode="popLayout">
                   {displayedTasks.map(task => (
-                    <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} className="w-[280px]" />
+                    <div key={task.id} className="w-[320px] flex-shrink-0">
+                      <TaskCard task={task} onClick={() => handleTaskClick(task.id)} />
+                    </div>
                   ))}
-                </div>
-              ) : (
-                <div className="h-[140px] border border-dashed border-border rounded-xl flex items-center justify-center text-muted-foreground text-sm flex-shrink-0">
-                  No tasks here yet
-                </div>
-              )}
-            </div>
+                </AnimatePresence>
+              </div>
+            </motion.div>
           );
         })}
 
         {/* Modal for reordering */}
-        {isReorderModalOpen && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-card w-full max-w-sm rounded-xl border border-border shadow-2xl overflow-hidden animate-modal-in">
-              <div className="p-4 border-b border-border flex justify-between items-center bg-muted/20">
-                <h3 className="font-semibold text-foreground">Rearrange Sections</h3>
-                <button onClick={() => setIsReorderModalOpen(false)} className="text-muted-foreground hover:text-foreground">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="p-4">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={rowOrder} strategy={verticalListSortingStrategy}>
-                    {rowOrder.map((id) => (
-                      <SortableStatusItem key={id} id={id} />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              </div>
-              <div className="p-4 border-t border-border flex justify-end bg-muted/20">
-                <button 
-                  onClick={() => setIsReorderModalOpen(false)}
-                  className="px-4 py-2 bg-primary text-primary-foreground font-medium text-sm rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Done
-                </button>
-              </div>
+        <AnimatePresence>
+          {isReorderModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsReorderModalOpen(false)}
+                className="absolute inset-0 bg-background/80 backdrop-blur-xl" 
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-card w-full max-w-md rounded-[32px] border border-border/80 shadow-2xl overflow-hidden relative z-10"
+              >
+                <div className="p-8 border-b border-border/40 flex justify-between items-center bg-muted/20">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1">Architecture</span>
+                    <h3 className="font-display font-black text-2xl tracking-tight text-foreground">Section Hierarchy</h3>
+                  </div>
+                  <button onClick={() => setIsReorderModalOpen(false)} className="w-10 h-10 rounded-full flex items-center justify-center bg-muted/50 text-muted-foreground hover:text-foreground transition-all">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-8 max-h-[60vh] overflow-y-auto no-scrollbar">
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={rowOrder} strategy={verticalListSortingStrategy}>
+                      {rowOrder.map((id) => (
+                        <SortableStatusItem key={id} id={id} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </div>
+                <div className="p-8 border-t border-border/40 flex justify-end bg-muted/20">
+                  <Button 
+                    onClick={() => setIsReorderModalOpen(false)}
+                    variant="primary"
+                    size="lg"
+                    className="w-full h-14"
+                  >
+                    Lock Structure
+                  </Button>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -195,18 +235,37 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
 
   if (gridTasks.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] border-2 border-dashed border-border rounded-xl bg-card/10">
-        <h3 className="text-lg font-medium text-foreground mb-1">No tasks here yet</h3>
-        <p className="text-sm text-muted-foreground">There are no tasks with the status "{statusLabels[activeTab]}".</p>
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-border/40 rounded-[40px] bg-card/10 p-12 text-center"
+      >
+        <div className="w-20 h-20 rounded-[32px] bg-muted/50 flex items-center justify-center mb-6 text-muted-foreground/40">
+           <LayoutGrid size={40} />
+        </div>
+        <h3 className="font-display font-black text-3xl text-foreground mb-3">Void Detected.</h3>
+        <p className="max-w-[320px] text-muted-foreground font-serif italic text-lg opacity-80 mb-8">
+           There are no blueprints found within the "{statusLabels[activeTab]}" stage of development.
+        </p>
+        <Button onClick={() => (globalThis as any).__meshShowNewTaskModal?.()} variant="outline" size="lg" className="rounded-2xl h-11 border-dashed">
+            Initiate New Task
+        </Button>
+      </motion.div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 pb-10">
-      {gridTasks.map(task => (
-        <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} className="w-full" />
-      ))}
-    </div>
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20"
+    >
+      <AnimatePresence mode="popLayout">
+        {gridTasks.map(task => (
+           <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} />
+        ))}
+      </AnimatePresence>
+    </motion.div>
   );
 }

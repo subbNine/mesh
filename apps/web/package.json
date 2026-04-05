@@ -17,6 +17,7 @@
     "autoprefixer": "^10.4.27",
     "axios": "^1.14.0",
     "date-fns": "^4.1.0",
+    "framer-motion": "^11.18.2",
     "konva": "^10.2.3",
     "lucide-react": "^1.7.0",
     "postcss": "^8.5.8",

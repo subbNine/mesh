@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
 import { useProjectStore } from '../../store/project.store';
-import { ArrowLeft, MessageSquare, MoreHorizontal, ChevronDown, Check, UserPlus } from 'lucide-react';
+import { ArrowLeft, MessageSquare, MoreHorizontal, ChevronDown, Check, UserPlus, Layers } from 'lucide-react';
 import { NotificationBell } from '../ui/NotificationBell';
 import { useAuthStore } from '../../store/auth.store';
 import { getUserColor } from '../../lib/user-color';
@@ -15,31 +16,12 @@ type CanvasTopBarProps = Readonly<{
   onTaskUpdate: (updates: Partial<ITask>) => void;
 }>;
 
-const STATUS_COLORS: Record<string, string> = {
-  todo: '#0ca3ba',
-  inprogress: '#f59e0b',
-  review: '#8b5cf6',
-  done: '#22c55e',
+const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, border: string }> = {
+  todo: { label: 'To Do', color: 'text-zinc-600', bg: 'bg-zinc-100', border: 'border-zinc-200' },
+  inprogress: { label: 'In Progress', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
+  review: { label: 'Review', color: 'text-sky-700', bg: 'bg-sky-100', border: 'border-sky-200' },
+  done: { label: 'Done', color: 'text-emerald-700', bg: 'bg-emerald-100', border: 'border-emerald-200' },
 };
-
-const STATUS_BG: Record<string, string> = {
-  todo: '#e0f7fa',
-  inprogress: '#fef3c7',
-  review: '#ede9fe',
-  done: '#dcfce7',
-};
-
-const STATUS_TEXT: Record<string, string> = {
-  todo: '#0e7490',
-  inprogress: '#92400e',
-  review: '#5b21b6',
-  done: '#15803d',
-};
-
-function getStatusLabel(status: string) {
-  if (status === 'inprogress') return 'In Progress';
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
 
 export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBarProps) {
   const navigate = useNavigate();
@@ -92,221 +74,226 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
   const visibleAvatars = awarenessUsers.slice(0, 5);
   const extraAvatars = awarenessUsers.length > 5 ? awarenessUsers.length - 5 : 0;
   const statusKey = task.status?.toLowerCase() ?? 'todo';
+  const config = STATUS_CONFIG[statusKey] || STATUS_CONFIG.todo;
 
   const currentAssignee = members.find(m => m.userId === task.assigneeId)?.user;
 
   return (
-    <div className="h-[52px] border-b border-zinc-200/80 bg-white/98 backdrop-blur-sm px-5 flex items-center justify-between z-30 relative flex-shrink-0 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
-
-      {/* Left: back + title + selectors */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className="h-16 px-6 flex items-center justify-between border-b border-border/40 bg-card/60 backdrop-blur-3xl shadow-sm relative z-30">
+      
+      {/* Left Area: Context & Hierarchy */}
+      <div className="flex items-center gap-6 flex-1 min-w-0">
         <button
           onClick={() => navigate(-1)}
-          className="text-zinc-400 hover:text-zinc-700 transition-colors p-1 rounded-md hover:bg-zinc-100 flex-shrink-0"
-          aria-label="Go back"
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all border border-transparent hover:border-border/40"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft size={18} />
         </button>
 
-        {isEditingTitle ? (
-          <input
-            autoFocus
-            className="font-semibold text-[15px] bg-transparent border-b-2 border-primary outline-none text-zinc-900 min-w-0 w-48"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleTitleBlur}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleTitleBlur();
-              if (e.key === 'Escape') { setTitle(task.title); setIsEditingTitle(false); }
-            }}
-          />
-        ) : (
-          <button
-            className="font-semibold text-[15px] text-zinc-900 truncate cursor-text hover:text-zinc-700 transition-colors max-w-[240px]"
-            onClick={() => setIsEditingTitle(true)}
-            title="Click to edit title"
-          >
-            {task.title}
-          </button>
-        )}
-
-        <div className="flex items-center gap-2">
-          {/* Status Dropdown */}
-          <div className="relative" ref={statusMenuRef}>
-            <button
-              onClick={() => setIsStatusOpen(!isStatusOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all hover:bg-zinc-50 border border-zinc-200/60 shadow-sm"
-              style={{
-                backgroundColor: STATUS_BG[statusKey] ?? '#f4f4f5',
-                color: STATUS_TEXT[statusKey] ?? '#52525b',
-              }}
-            >
-              <div
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: STATUS_COLORS[statusKey] ?? '#a1a1aa' }}
-              />
-              {getStatusLabel(task.status ?? 'todo')}
-              <ChevronDown className="w-3 h-3 opacity-60" />
-            </button>
-
-            {isStatusOpen && (
-              <div className="absolute top-8 left-0 w-40 bg-white rounded-xl shadow-2xl border border-zinc-200/80 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-                {['todo', 'inprogress', 'review', 'done'].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => handleStatusChange(s)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium hover:bg-zinc-50 transition-colors group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
-                      <span className={task.status === s ? 'text-zinc-900 font-bold' : 'text-zinc-600'}>
-                        {getStatusLabel(s)}
-                      </span>
-                    </div>
-                    {task.status === s && <Check className="w-3 h-3 text-primary" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Assignee Selector */}
-          <div className="relative" ref={assigneeMenuRef}>
-            <button
-              onClick={() => setIsAssigneeOpen(!isAssigneeOpen)}
-              className="flex items-center gap-2 px-2 py-0.5 rounded-full hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-200 group"
-            >
-              <div className="flex items-center -space-x-1">
-                {currentAssignee ? (
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white border border-white"
-                    style={{ backgroundColor: getUserColor(currentAssignee.id) }}
-                  >
-                    {currentAssignee.firstName[0]}{currentAssignee.lastName[0]}
-                  </div>
+        <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+                <Layers size={12} className="text-primary opacity-50" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 leading-none">Task Blueprint</span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+                {isEditingTitle ? (
+                <input
+                    autoFocus
+                    className="font-display font-black text-xl bg-transparent border-b border-primary/40 outline-none text-foreground min-w-0 px-0 py-0 leading-none tracking-tight"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onBlur={handleTitleBlur}
+                    onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleTitleBlur();
+                    if (e.key === 'Escape') { setTitle(task.title); setIsEditingTitle(false); }
+                    }}
+                />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400">
-                    <UserPlus className="w-3 h-3" />
-                  </div>
-                )}
-              </div>
-              <span className="text-[11px] font-medium text-zinc-500 group-hover:text-zinc-900 transition-colors">
-                {currentAssignee ? `${currentAssignee.firstName} ${currentAssignee.lastName}` : 'Unassigned'}
-              </span>
-            </button>
-
-            {isAssigneeOpen && (
-              <div className="absolute top-8 left-0 w-56 bg-white rounded-xl shadow-2xl border border-zinc-200/80 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-2.5 py-1.5 mb-1 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Assign to</div>
-                <button
-                  onClick={() => handleAssigneeChange(null)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium hover:bg-zinc-50 transition-colors group"
+                <h2
+                    className="font-display font-black text-xl text-foreground truncate cursor-text hover:text-primary transition-all tracking-tight leading-none"
+                    onClick={() => setIsEditingTitle(true)}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400">
-                      <UserPlus className="w-3 h-3" />
-                    </div>
-                    <span className={task.assigneeId ? 'text-zinc-600' : 'text-zinc-900 font-bold'}>Unassigned</span>
-                  </div>
-                  {!task.assigneeId && <Check className="w-3 h-3 text-primary" />}
-                </button>
-                {members.map((m) => (
-                  <button
-                    key={m.userId}
-                    onClick={() => handleAssigneeChange(m.userId)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium hover:bg-zinc-50 transition-colors group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
-                        style={{ backgroundColor: getUserColor(m.userId) }}
-                      >
-                        {m.user.firstName[0]}{m.user.lastName[0]}
-                      </div>
-                      <span className={task.assigneeId === m.userId ? 'text-zinc-900 font-bold' : 'text-zinc-600'}>
-                        {m.user.firstName} {m.user.lastName}
-                      </span>
-                    </div>
-                    {task.assigneeId === m.userId && <Check className="w-3 h-3 text-primary" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                    {task.title || 'Untitled Blueprint'}
+                </h2>
+                )}
+
+                {/* Status Selector */}
+                <div className="relative" ref={statusMenuRef}>
+                    <button
+                        onClick={() => setIsStatusOpen(!isStatusOpen)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all hover:shadow-sm ${config.bg} ${config.color} ${config.border}`}
+                    >
+                        {config.label}
+                        <ChevronDown size={10} className="opacity-40" />
+                    </button>
+
+                    <AnimatePresence>
+                        {isStatusOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="absolute top-full left-0 mt-2 w-48 bg-card/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-border/80 p-1.5 z-50 overflow-hidden"
+                        >
+                            {Object.entries(STATUS_CONFIG).map(([s, cfg]) => (
+                            <button
+                                key={s}
+                                onClick={() => handleStatusChange(s)}
+                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${task.status === s ? 'bg-primary/10 text-primary' : 'text-muted-foreground/60 hover:bg-muted/80 hover:text-foreground'}`}
+                            >
+                                <div className="flex items-center gap-2">
+                                <div className={`w-1.5 h-1.5 rounded-full ${s === 'inprogress' ? 'bg-primary' : s === 'done' ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+                                {cfg.label}
+                                </div>
+                                {task.status === s && <Check size={12} />}
+                            </button>
+                            ))}
+                        </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
         </div>
       </div>
 
-      {/* Right: presence + actions */}
-      <div className="flex items-center gap-6 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          {awarenessUsers.length > 0 && (
-            <div className="flex items-center -space-x-2">
-              {visibleAvatars.map((user, idx) => {
-                const isMe = user.userId === currentUser?.id;
-                const userColor = user.color || getUserColor(user.userId);
-
-                return (
-                  <div
-                    key={user.clientId}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white border-2 border-white relative group flex-shrink-0 cursor-pointer transition-transform hover:scale-110 hover:z-50 overflow-visible"
-                    style={{
-                      backgroundColor: userColor,
-                      boxShadow: `0 0 0 2px ${userColor}`,
-                      zIndex: visibleAvatars.length - idx,
-                    }}
-                  >
-                    {user.avatarUrl ? (
-                      <img
-                        src={user.avatarUrl}
-                        alt={user.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span>{user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}</span>
-                    )}
-
-                    <div className="absolute top-10 left-1/2 -translate-x-1/2 hidden group-hover:block px-2.5 py-1.5 bg-zinc-900 text-white text-[10px] font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap z-[100] pointer-events-none transition-all">
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        {user.name} {isMe && '(You)'}
-                      </div>
+      {/* Center Checkpoint (Presence) */}
+      <div className="flex items-center gap-8">
+         <div className="flex items-center gap-4">
+            <div className="flex items-center -space-x-3">
+                {visibleAvatars.map((user, idx) => {
+                    const isMe = user.userId === currentUser?.id;
+                    const color = user.color || getUserColor(user.userId);
+                    return (
+                        <motion.div
+                            key={user.clientId}
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            whileHover={{ y: -4, scale: 1.1, zIndex: 100 }}
+                            className="w-10 h-10 rounded-xl border-2 border-card flex items-center justify-center text-[11px] font-black text-white relative shadow-lg overflow-hidden group cursor-pointer"
+                            style={{ backgroundColor: color, zIndex: visibleAvatars.length - idx }}
+                        >
+                            {user.avatarUrl ? (
+                                <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <span>{user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}</span>
+                            )}
+                            <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-xl" />
+                            
+                            <div className="absolute top-12 left-1/2 -translate-x-1/2 hidden group-hover:block px-3 py-1.5 bg-foreground text-background text-[10px] font-black uppercase tracking-widest rounded-lg shadow-2xl border border-white/10 whitespace-nowrap z-[200] pointer-events-none">
+                                {user.name} {isMe && '(You)'}
+                            </div>
+                        </motion.div>
+                    );
+                })}
+                {extraAvatars > 0 && (
+                    <div className="w-10 h-10 rounded-xl bg-muted border-2 border-card flex items-center justify-center text-[10px] font-black text-muted-foreground shadow-lg">
+                        +{extraAvatars}
                     </div>
-                  </div>
-                );
-              })}
-              {extraAvatars > 0 && (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold bg-zinc-100 text-zinc-500 border-2 border-white z-0 relative">
-                  +{extraAvatars}
-                </div>
-              )}
+                )}
             </div>
-          )}
 
-          <div className="flex items-center gap-2 px-2 py-1 bg-emerald-50 rounded-md border border-emerald-100/50">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-tight">
-              {awarenessUsers.length} {awarenessUsers.length === 1 ? 'Viewer' : 'Viewers'}
-            </span>
-          </div>
+            <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 leading-none mb-1">Live Now</span>
+                <span className="text-[11px] font-serif italic text-muted-foreground/60 leading-none">{awarenessUsers.length} collaborator{awarenessUsers.length !== 1 ? 's' : ''}</span>
+            </div>
+         </div>
+      </div>
+
+      {/* Right Area: Management & Control */}
+      <div className="flex items-center gap-3 flex-1 justify-end min-w-0">
+        
+        {/* Assignee Tool */}
+        <div className="relative" ref={assigneeMenuRef}>
+            <button
+                onClick={() => setIsAssigneeOpen(!isAssigneeOpen)}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all hover:bg-muted/50 border border-transparent hover:border-border/40 group"
+            >
+                <div className="flex items-center -space-x-1">
+                    {currentAssignee ? (
+                    <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white border-2 border-card shadow-sm"
+                        style={{ backgroundColor: getUserColor(currentAssignee.id) }}
+                    >
+                        {currentAssignee.firstName[0]}{currentAssignee.lastName[0]}
+                    </div>
+                    ) : (
+                    <div className="w-8 h-8 rounded-lg bg-muted border-2 border-dashed border-border/40 flex items-center justify-center text-muted-foreground">
+                        <UserPlus size={14} />
+                    </div>
+                    )}
+                </div>
+                <div className="flex flex-col items-start pr-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 leading-none mb-0.5">Assigned to</span>
+                    <span className="text-[11px] font-black tracking-tight text-foreground/80 group-hover:text-primary transition-colors leading-none">
+                        {currentAssignee ? `${currentAssignee.firstName} ${currentAssignee.lastName}` : 'Nobody yet'}
+                    </span>
+                </div>
+            </button>
+
+            <AnimatePresence>
+                {isAssigneeOpen && (
+                <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full right-0 mt-2 w-64 bg-card/60 backdrop-blur-3xl rounded-[24px] shadow-2xl border border-border/80 p-2 z-50 overflow-hidden"
+                >
+                    <div className="px-3 py-2 mb-1 text-[9px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] border-b border-border/40">Blueprint Access</div>
+                    <button
+                        onClick={() => handleAssigneeChange(null)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-muted/80 transition-all group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground/40 border border-dashed border-border/60">
+                                <UserPlus size={14} />
+                            </div>
+                            <span className={task.assigneeId ? 'text-muted-foreground/80' : 'text-primary font-black'}>No Assignee</span>
+                        </div>
+                        {!task.assigneeId && <Check size={14} className="text-primary" />}
+                    </button>
+                    {members.map((m) => (
+                    <button
+                        key={m.userId}
+                        onClick={() => handleAssigneeChange(m.userId)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-muted/80 transition-all group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-sm"
+                                style={{ backgroundColor: getUserColor(m.userId) }}
+                            >
+                                {m.user.firstName[0]}{m.user.lastName[0]}
+                            </div>
+                            <span className={task.assigneeId === m.userId ? 'text-primary' : 'text-muted-foreground/80'}>
+                                {m.user.firstName} {m.user.lastName}
+                            </span>
+                        </div>
+                        {task.assigneeId === m.userId && <Check size={14} className="text-primary" />}
+                    </button>
+                    ))}
+                </motion.div>
+                )}
+            </AnimatePresence>
         </div>
 
-        <div className="w-px h-4 bg-zinc-200" />
+        <div className="w-[1px] h-8 bg-border/40 mx-2" />
 
         <button
           onClick={toggleCommentPane}
-          className={`p-1.5 rounded-lg transition-colors ${isCommentPaneOpen
-              ? 'bg-primary/10 text-primary'
-              : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'
+          className={`w-10 h-10 rounded-xl transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${isCommentPaneOpen
+              ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+              : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border/40'
             }`}
-          title="Toggle comments"
+          title="Toggle Blueprint Discussion"
         >
-          <MessageSquare className="w-4 h-4" />
+          <MessageSquare size={18} />
         </button>
 
         <NotificationBell />
 
-        <button className="text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 p-1.5 rounded-lg transition-colors">
-          <MoreHorizontal className="w-4 h-4" />
+        <button className="w-10 h-10 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-all border border-transparent hover:border-border/40 flex items-center justify-center">
+          <MoreHorizontal size={20} />
         </button>
       </div>
     </div>

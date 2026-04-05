@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
 import { connectToCanvas, disconnectFromCanvas } from '../../lib/ws';
 import { useCanvasStore } from '../../store/canvas.store';
@@ -21,7 +22,6 @@ const saveCanvasState = async (doc: Y.Doc, taskId: string) => {
     const authToken = localStorage.getItem('token');
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     
-    // Use native fetch to avoid Axios serialization issues with binary data
     await fetch(`${baseUrl}/canvas/${taskId}`, {
       method: 'POST',
       headers: {
@@ -60,7 +60,6 @@ export default function TaskCanvasPage() {
     setActiveComment
   } = useCanvasStore();
 
-  // Responsive: Hide comment pane by default on smaller screens (< 1400px)
   useEffect(() => {
     if (globalThis.innerWidth < 1400 && isCommentPaneOpen) {
       setCommentPaneOpen(false);
@@ -137,7 +136,6 @@ export default function TaskCanvasPage() {
         });
 
         aw.on('change', () => handleAwarenessChange(aw));
-
         doc.on('update', () => handleDocUpdate(doc));
 
         const res = await api.get(`/tasks/${taskId}`);
@@ -163,41 +161,53 @@ export default function TaskCanvasPage() {
     };
   }, [taskId, currentUser, handleAwarenessChange, loadCommentsFromBackend]);
 
-
-
   const canvasRef = useRef<any>(null);
 
   if (isLoading || !task || !ydoc || !awareness || !currentUser) {
     return (
-      <div className="h-full w-full flex flex-col" style={{ background: '#eef0f3' }}>
+      <div className="h-full w-full flex flex-col bg-background">
         <div className="slim-progress-bar" />
-        {/* Skeleton top bar */}
-        <div className="h-[52px] border-b border-border bg-card px-5 flex items-center gap-3">
-          <div className="w-4 h-4 rounded bg-muted animate-pulse" />
-          <div className="h-4 w-48 rounded-md bg-muted animate-pulse" />
-          <div className="h-5 w-16 rounded-full bg-muted animate-pulse" />
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3 text-muted-foreground">
-            <div className="w-10 h-10 border-2 border-muted border-t-primary rounded-full animate-spin" />
-            <span className="text-sm font-medium">Loading canvas…</span>
+        <div className="h-16 border-b border-border/40 bg-card px-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+             <div className="w-10 h-10 rounded-xl bg-muted animate-pulse" />
+             <div className="h-6 w-48 rounded bg-muted animate-pulse" />
           </div>
+          <div className="flex gap-2">
+            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-12">
+            <div className="relative w-24 h-24 mb-6">
+                <div className="absolute inset-0 border-2 border-primary/20 rounded-full" />
+                <div className="absolute inset-0 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+            <h3 className="font-display font-black text-2xl tracking-tight text-foreground/20 uppercase">Syncing Blueprint</h3>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden" style={{ background: '#f5f5f5' }}>
-      {!isSynced && <div className="slim-progress-bar" />}
-      <CanvasTopBar
-        task={task}
-        awarenessUsers={awarenessUsers}
-        onTaskUpdate={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
-      />
+    <div className="h-full w-full flex flex-col overflow-hidden relative bg-background">
+      
+      {/* Background Decor */}
+      <div className="absolute inset-0 bg-grid opacity-[0.05] pointer-events-none z-0" />
+      <div className="absolute inset-0 bg-dot-grid opacity-[0.1] pointer-events-none z-0" />
 
-      <div className="flex-1 relative flex overflow-hidden">
-        {/* Main canvas area */}
+      {!isSynced && <div className="slim-progress-bar" />}
+      
+      {/* Precision Top Bar */}
+      <div className="relative z-30">
+        <CanvasTopBar
+            task={task}
+            awarenessUsers={awarenessUsers}
+            onTaskUpdate={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
+        />
+      </div>
+
+      <div className="flex-1 relative flex overflow-hidden z-10">
+        {/* Main Workspace Stage */}
         <div className="flex-1 relative overflow-hidden">
           <CanvasStage
             ref={canvasRef}
@@ -212,39 +222,45 @@ export default function TaskCanvasPage() {
             showComments={isCommentPaneOpen}
           />
 
-          <CanvasToolbar
-            taskId={taskId!}
-            ydoc={ydoc}
-            currentUser={currentUser}
-            activeTool={activeTool}
-            onToolChange={setActiveTool as any}
-            onToggleComments={toggleCommentPane}
-            showComments={isCommentPaneOpen}
-            zoomLevel={zoom}
-            onZoomIn={() => setZoom(Math.min(zoom * 1.25, 3))}
-            onZoomOut={() => setZoom(Math.max(zoom / 1.25, 0.2))}
-            onZoomReset={() => setZoom(1)}
-            onFitToView={() => canvasRef.current?.fitToView()}
-          />
-        </div>
-
-        {/* Sliding comment panel — 280px, matches mockup */}
-        {isCommentPaneOpen && (
-          <div
-            className="w-[280px] flex-shrink-0 border-l border-zinc-200/80 bg-white shadow-[-4px_0_16px_rgba(0,0,0,0.04)] relative z-20 flex flex-col"
-            style={{ animation: 'slideInRight 0.18s ease-out' }}
-          >
-            <CommentPane 
-              taskId={taskId!} 
-              ydoc={ydoc} 
-              currentUser={currentUser} 
-              activeCommentId={activeCommentId} 
-              onCommentClick={(id) => {
-                setActiveComment(id);
-              }}
+          {/* Floating Tool Dock */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
+             <CanvasToolbar
+                taskId={taskId!}
+                ydoc={ydoc}
+                currentUser={currentUser}
+                activeTool={activeTool}
+                onToolChange={setActiveTool as any}
+                onToggleComments={toggleCommentPane}
+                showComments={isCommentPaneOpen}
+                zoomLevel={zoom}
+                onZoomIn={() => setZoom(Math.min(zoom * 1.25, 3))}
+                onZoomOut={() => setZoom(Math.max(zoom / 1.25, 0.2))}
+                onZoomReset={() => setZoom(1)}
+                onFitToView={() => canvasRef.current?.fitToView()}
             />
           </div>
-        )}
+        </div>
+
+        {/* Floating Discussion Pane */}
+        <AnimatePresence>
+            {isCommentPaneOpen && (
+                <motion.div
+                    initial={{ x: 320, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 320, opacity: 0 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="w-[340px] flex-shrink-0 bg-card/60 backdrop-blur-3xl border-l border-border/40 relative z-20 flex flex-col m-4 rounded-[32px] shadow-2xl overflow-hidden shadow-primary/5"
+                >
+                    <CommentPane 
+                        taskId={taskId!} 
+                        ydoc={ydoc} 
+                        currentUser={currentUser} 
+                        activeCommentId={activeCommentId} 
+                        onCommentClick={(id) => setActiveComment(id)}
+                    />
+                </motion.div>
+            )}
+        </AnimatePresence>
       </div>
     </div>
   );

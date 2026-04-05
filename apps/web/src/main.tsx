@@ -23,6 +23,7 @@ import { AppShell } from './components/layout/AppShell';
 import { useAuthStore } from './store/auth.store';
 
 import { Toaster } from './components/ui/Toast';
+import { ThemeProvider } from './components/layout/ThemeProvider';
 
 import { connectNotifications, disconnectNotifications } from './lib/notifications-socket';
 
@@ -53,7 +54,7 @@ function AppRoot() {
   }
 
   return (
-    <>
+    <ThemeProvider>
       <Toaster />
       <BrowserRouter>
         <Routes>
@@ -96,7 +97,7 @@ function AppRoot() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
-    </>
+    </ThemeProvider>
   );
 }
 

@@ -1,4 +1,8 @@
 ---
+trigger: always_on
+---
+
+---
 description: Use this instruction before generating any code to ensure that the code adheres to best practices.
 paths: ["src/**/*.ts"]
 ---
