@@ -1,10 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/auth.store';
 import { useToast } from '../../store/toast.store';
 import { api } from '../../lib/api';
-import { User, Camera, Mail, Lock, Check, Loader2 } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
+import { 
+  User, Camera, Mail, Lock, Check, Loader2, 
+  Layers, LogOut, Shield, ArrowLeft, Image as ImageIcon
+} from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuthStore();
@@ -103,221 +107,309 @@ export default function ProfilePage() {
     }
   };
 
+  const sectionVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
   return (
-    <div className="min-h-screen w-full bg-background flex flex-col text-foreground font-sans">
-      {/* Sleek Top Navigation Bar (Matched with Workspace Selector) */}
-      <header className="h-16 bg-white/70 backdrop-blur-xl border-b border-zinc-200/50 sticky top-0 z-50 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-600 flex items-center justify-center text-white font-display font-bold shadow-[inset_0_1px_rgba(255,255,255,0.3),0_2px_4px_rgba(0,0,0,0.1)]">
-              M
-            </div>
-            <span className="font-display font-bold text-[19px] tracking-tight">Mesh</span>
+    <div className="min-h-screen w-full bg-background flex flex-col text-foreground font-sans selection:bg-primary/20 overflow-x-hidden relative transition-colors duration-500">
+      {/* Architectural Background Grid */}
+      <div className="fixed inset-0 bg-dot-grid opacity-20 pointer-events-none" />
+      <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+
+      {/* Floating Glass Navigation */}
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-5xl px-6 z-[100]">
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="glass h-14 rounded-2xl flex items-center justify-between px-6 shadow-2xl backdrop-blur-3xl border-border/40"
+        >
+          <div className="flex items-center gap-6">
+             <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                   <Layers size={18} />
+                </div>
+                <span className="font-display font-black text-lg tracking-tight uppercase text-foreground">Mesh</span>
+             </div>
+             
+             <div className="h-4 w-px bg-border/40 hidden sm:block" />
+             
+             <Button
+               variant="tertiary"
+               size="sm"
+               onClick={() => navigate(-1)}
+               className="hidden sm:flex text-[10px] items-center gap-2"
+               icon={<ArrowLeft size={14} />}
+             >
+               Return to Active Deck
+             </Button>
           </div>
 
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => navigate('/settings/profile')}
-              className="text-sm font-medium text-primary hover:text-primary-600 transition-colors underline underline-offset-4 decoration-2"
-            >
-              Profile
-            </button>
-            <div className="w-[1px] h-4 bg-zinc-200" />
-            <button
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/40 border border-border/40">
+               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Registry Synchronized</span>
+            </div>
+            <div className="w-px h-4 bg-border/40 mx-1" />
+            <Button
+              variant="tertiary"
+              size="sm"
               onClick={logout}
-              className="text-sm font-medium text-muted-foreground hover:text-destructive transition-colors"
+              className="px-3 hover:text-destructive group"
+              icon={<LogOut size={16} className="group-hover:translate-x-0.5 transition-transform" />}
             >
               Sign out
-            </button>
+            </Button>
           </div>
-        </div>
-      </header>
+        </motion.div>
+      </nav>
 
-      <div className="max-w-4xl w-full mx-auto p-8 space-y-10 flex-1">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-black tracking-tight text-zinc-900">Account Configuration</h2>
-          <p className="text-zinc-500 text-base max-w-lg leading-relaxed">Customize your public presence, secure your access credentials and manage data associations.</p>
-        </div>
+      {/* Main Content */}
+      <main className="relative flex-1 w-full max-w-6xl mx-auto px-8 pt-40 pb-32">
+        <header className="mb-20 space-y-4 text-center sm:text-left">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-[0.2em] text-primary"
+          >
+            System / Configuration
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="font-display text-4xl sm:text-6xl font-black tracking-tight text-foreground"
+          >
+            Account <span className="text-primary italic">Configuration</span>.
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-muted-foreground text-lg max-w-2xl font-serif italic leading-relaxed opacity-70 mx-auto sm:mx-0"
+          >
+            Modify your digital signature, security protocols, and visual representation within the Mesh neural network.
+          </motion.p>
+        </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Profile Content */}
-          <div className="md:col-span-2 space-y-8">
-            <Card className="p-6">
-              <div className="space-y-6">
-                <div className="flex items-center gap-4 border-b border-zinc-100 pb-6">
-                  <div className="bg-primary/10 p-2 rounded-lg">
-                    <User className="w-5 h-5 text-primary" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Main Controls */}
+          <div className="lg:col-span-8 space-y-10">
+            {/* Public Profile Card */}
+            <motion.div
+              variants={sectionVariants}
+              initial="hidden"
+              animate="show"
+              className="glass rounded-[40px] border-border/40 overflow-hidden group shadow-2xl transition-colors"
+            >
+              <div className="p-8 border-b border-border/40 flex items-center justify-between bg-muted/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-inner">
+                    <User size={24} />
                   </div>
-                  <h2 className="text-xl font-semibold">Public Profile</h2>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label htmlFor="firstName" className="text-sm font-medium text-zinc-700">First Name</label>
-                    <input
-                      id="firstName"
-                      type="text"
-                      className="w-full px-3 py-2 rounded-md border border-zinc-200 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="E.g. John"
-                    />
+                  <div>
+                    <h2 className="font-display text-2xl font-black text-foreground tracking-tight">Public Profile</h2>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Primary Identity Layer</p>
                   </div>
-                  <div className="space-y-2">
-                    <label htmlFor="lastName" className="text-sm font-medium text-zinc-700">Last Name</label>
-                    <input
-                      id="lastName"
-                      type="text"
-                      className="w-full px-3 py-2 rounded-md border border-zinc-200 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="E.g. Doe"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium text-zinc-700 flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5" /> Email Address
-                  </label>
-                  <div className="relative">
-                      <input
-                          id="email"
-                          type="email"
-                          disabled
-                          className="w-full px-3 py-2 rounded-md border border-zinc-100 bg-zinc-50 text-zinc-400 cursor-not-allowed"
-                          value={user?.email || ''}
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-300 uppercase tracking-wider">
-                          Read Only
-                      </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 italic">Email cannot be changed at this time.</p>
-                </div>
-
-                <div className="pt-4 flex justify-end">
-                  <button
-                    onClick={handleUpdateProfile}
-                    disabled={isUpdatingProfile}
-                    className="px-6 py-2.5 bg-primary text-white rounded-lg font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isUpdatingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Save Changes
-                  </button>
                 </div>
               </div>
-            </Card>
 
-            {/* Password Card */}
-            <Card className="p-6">
-              <form onSubmit={handleChangePassword} className="space-y-6">
-                <div className="flex items-center gap-4 border-b border-zinc-100 pb-6">
-                  <div className="bg-amber-50 p-2 rounded-lg">
-                    <Lock className="w-5 h-5 text-amber-600" />
+              <div className="p-8 space-y-8 relative">
+                {/* Technical Overlay */}
+                <div className="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none" />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10">
+                  <div className="space-y-3">
+                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Forename Designation</label>
+                    <input
+                      type="text"
+                      className="w-full h-14 bg-muted/20 border border-border/40 rounded-2xl px-5 text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-foreground/10"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="e.g. Prince"
+                    />
                   </div>
-                  <h2 className="text-xl font-semibold">Security</h2>
+                  <div className="space-y-3">
+                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Surname Designation</label>
+                    <input
+                      type="text"
+                      className="w-full h-14 bg-muted/20 border border-border/40 rounded-2xl px-5 text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-foreground/10"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="e.g. Ita"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="currentPassword" className="text-sm font-medium text-zinc-700">Current Password</label>
+                <div className="space-y-3 relative z-10">
+                  <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Neural Connection (Email)</label>
+                  <div className="relative group/field">
                     <input
-                      id="currentPassword"
+                      type="email"
+                      disabled
+                      className="w-full h-14 bg-muted/10 border border-border/40 rounded-2xl px-5 text-foreground/40 font-sans cursor-not-allowed italic"
+                      value={user?.email || ''}
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 rounded bg-card/60 border border-border/40 flex items-center gap-2">
+                       <Shield size={10} className="text-primary/40" />
+                       <span className="text-[9px] font-black uppercase tracking-widest text-primary/40">Read Only Layer</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/40 italic font-serif pl-1">Connection persistence is locked to the primary registrar.</p>
+                </div>
+
+                <div className="pt-6 flex justify-end relative z-10">
+                  <Button
+                    onClick={handleUpdateProfile}
+                    loading={isUpdatingProfile}
+                    variant="primary"
+                    size="lg"
+                    className="h-14 rounded-2xl px-12"
+                    icon={<Check size={18} />}
+                  >
+                    Commit Configuration
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Security Card */}
+            <motion.div
+              variants={sectionVariants}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: 0.2 }}
+              className="glass rounded-[40px] border-border/40 overflow-hidden group shadow-2xl transition-colors"
+            >
+              <form onSubmit={handleChangePassword}>
+                <div className="p-8 border-b border-border/40 flex items-center justify-between bg-muted/20">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shadow-inner">
+                      <Lock size={24} />
+                    </div>
+                    <div>
+                      <h2 className="font-display text-2xl font-black text-foreground tracking-tight">Security Protocols</h2>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Access Encryption Layer</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-8 space-y-8 relative">
+                   <div className="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none" />
+                   
+                   <div className="space-y-3 relative z-10">
+                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Current Secret Key</label>
+                    <input
                       type="password"
                       required
-                      className="w-full px-3 py-2 rounded-md border border-zinc-200 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      className="w-full h-14 bg-muted/20 border border-border/40 rounded-2xl px-5 text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-foreground/10"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                          <label htmlFor="newPassword" className="text-sm font-medium text-zinc-700">New Password</label>
-                          <input
-                              id="newPassword"
-                              type="password"
-                              required
-                              className="w-full px-3 py-2 rounded-md border border-zinc-200 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                              value={newPassword}
-                              onChange={(e) => setNewPassword(e.target.value)}
-                          />
-                      </div>
-                      <div className="space-y-2">
-                          <label htmlFor="confirmPassword" className="text-sm font-medium text-zinc-700">Confirm New Password</label>
-                          <input
-                              id="confirmPassword"
-                              type="password"
-                              required
-                              className="w-full px-3 py-2 rounded-md border border-zinc-200 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
-                          />
-                      </div>
-                  </div>
-                </div>
 
-                <div className="pt-4 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={isChangingPassword}
-                    className="px-6 py-2.5 bg-zinc-900 text-white rounded-lg font-bold text-sm shadow-lg shadow-zinc-900/10 hover:bg-zinc-800 transition-all flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Update Password
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10">
+                    <div className="space-y-3">
+                      <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">New Secret Key</label>
+                      <input
+                        type="password"
+                        required
+                        className="w-full h-14 bg-muted/20 border border-border/40 rounded-2xl px-5 text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-foreground/10"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Verify New Key</label>
+                      <input
+                        type="password"
+                        required
+                        className="w-full h-14 bg-muted/20 border border-border/40 rounded-2xl px-5 text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-foreground/10"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-6 flex justify-end relative z-10">
+                    <Button
+                      type="submit"
+                      loading={isChangingPassword}
+                      variant="outline"
+                      size="lg"
+                      className="h-14 rounded-2xl px-12 border-border/40 hover:border-amber-500/50 hover:text-amber-500"
+                    >
+                      Update Security Key
+                    </Button>
+                  </div>
                 </div>
               </form>
-            </Card>
+            </motion.div>
           </div>
 
-          {/* Avatar Sidebar */}
-          <div className="space-y-6">
-            <Card className="p-6 text-center space-y-6 flex flex-col items-center">
-              <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest">Your Avatar</h3>
-              
-              <button 
-                type="button"
-                className="relative group cursor-pointer outline-none focus:ring-4 focus:ring-primary/20 rounded-full transition-all" 
-                onClick={handleAvatarClick}
-              >
-                <div className="w-40 h-40 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-zinc-100 flex items-center justify-center">
-                  {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="text-5xl font-black text-zinc-300">
-                      {user?.firstName?.[0]}{user?.lastName?.[0]}
+          {/* Sidebar - Avatar */}
+          <div className="lg:col-span-4 space-y-10">
+            <motion.div
+              variants={sectionVariants}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: 0.3 }}
+              className="glass rounded-[40px] border-border/40 overflow-hidden group shadow-2xl p-8 flex flex-col items-center text-center space-y-10 transition-colors"
+            >
+              <div className="w-full flex flex-col items-center">
+                 <h3 className="text-[11px] font-black text-muted-foreground/50 uppercase tracking-[0.3em] mb-10">Visual Identification</h3>
+                 
+                 <button 
+                  type="button"
+                  className="relative group cursor-pointer outline-none rounded-full transition-all p-1.5 bg-gradient-to-br from-primary/40 to-transparent shadow-2xl" 
+                  onClick={handleAvatarClick}
+                 >
+                  <div className="w-44 h-44 rounded-full ring-8 ring-background overflow-hidden bg-muted/40 flex items-center justify-center relative">
+                    {user?.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    ) : (
+                      <div className="text-6xl font-display font-black text-primary/10">
+                        {user?.firstName?.[0]}{user?.lastName?.[0]}
+                      </div>
+                    )}
+                    
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white backdrop-blur-sm">
+                      <Camera className="w-8 h-8 mb-2 text-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Update Signature</span>
                     </div>
-                  )}
-                </div>
-                
-                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
-                  <Camera className="w-8 h-8 mb-2" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Change Photo</span>
-                </div>
 
-                {isUploadingAvatar && (
-                  <div className="absolute inset-0 bg-white/60 rounded-full flex items-center justify-center">
-                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                    {isUploadingAvatar && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                      </div>
+                    )}
                   </div>
-                )}
-              </button>
+                 </button>
 
-              <div className="space-y-2">
-                  <p className="text-sm font-bold text-zinc-900">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-xs text-zinc-500">@{user?.userName}</p>
+                 <div className="mt-8 space-y-1">
+                    <p className="font-display text-2xl font-black text-foreground tracking-tight">{user?.firstName} {user?.lastName}</p>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary uppercase tracking-widest">
+                       @{user?.userName || 'subNine'}
+                    </div>
+                 </div>
               </div>
 
-              <button
-                  onClick={handleAvatarClick}
-                  className="w-full py-2 border-2 border-zinc-100 rounded-lg text-xs font-bold text-zinc-600 hover:bg-zinc-50 transition-colors"
-                  disabled={isUploadingAvatar}
-              >
-                  Upload new photo
-              </button>
+              <div className="w-full space-y-4">
+                <Button
+                    onClick={handleAvatarClick}
+                    variant="outline"
+                    className="w-full h-14 rounded-2xl text-[10px] border-border/40 uppercase tracking-widest shadow-none"
+                    disabled={isUploadingAvatar}
+                    icon={<ImageIcon size={16} />}
+                >
+                    Upload System Photo
+                </Button>
 
-              <p className="text-[10px] text-zinc-400">
-                  JPG, GIF or PNG. Max size of 1MB.
-              </p>
+                <p className="text-[10px] text-muted-foreground/30 font-serif italic leading-relaxed">
+                    JPG, GIF or PNG formats supported. <br /> Maximum payload: 1MB.
+                </p>
+              </div>
 
               <input
                 type="file"
@@ -326,10 +418,27 @@ export default function ProfilePage() {
                 accept="image/*"
                 className="hidden"
               />
-            </Card>
+            </motion.div>
+
+            {/* Support / Help Box */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="p-8 rounded-[40px] border border-dashed border-border/60 flex flex-col items-center text-center space-y-4"
+            >
+               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground/40">
+                  <Mail size={18} />
+               </div>
+               <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">Registry Assistance</p>
+               <p className="text-[12px] font-serif italic text-muted-foreground/40 leading-relaxed">
+                  Encountering synchronization errors? <br />
+                  Contact the system administrator.
+               </p>
+            </motion.div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
