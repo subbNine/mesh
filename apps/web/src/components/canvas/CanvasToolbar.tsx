@@ -139,56 +139,37 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   ];
 
   return (
-    <div className="select-none flex flex-col items-center gap-4">
-      {/* Precision Zoom Dock */}
-      <motion.div 
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="glass rounded-full px-4 py-2 flex items-center gap-3 backdrop-blur-2xl border border-border/40 shadow-2xl scale-90"
-      >
-        <button onClick={onZoomOut} className="p-1 text-muted-foreground hover:text-foreground transition-all hover:scale-110 active:scale-95">
-          <ZoomOut size={14} />
-        </button>
-        <button onClick={onZoomReset} className="px-2 text-[10px] font-black uppercase tracking-widest text-primary hover:scale-105 transition-transform">
-          {Math.round(zoomLevel * 100)}%
-        </button>
-        <button onClick={onZoomIn} className="p-1 text-muted-foreground hover:text-foreground transition-all hover:scale-110 active:scale-95">
-          <ZoomIn size={14} />
-        </button>
-        <div className="w-[1px] h-3 bg-border/40 mx-1" />
-        <button onClick={onFitToView} className="p-1 text-muted-foreground hover:text-foreground transition-all hover:scale-110 active:scale-95" title="Architectural View">
-          <Maximize size={14} />
-        </button>
-      </motion.div>
-
-      {/* Main Tool Dock */}
+    <div className="select-none flex flex-col items-center">
+      {/* Unified Tool and Zoom Dock */}
       <motion.div 
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="glass rounded-[28px] p-2 flex items-center gap-1.5 backdrop-blur-3xl border border-border/60 shadow-2xl shadow-primary/5"
+        className="glass rounded-[32px] p-2 flex items-center gap-2 backdrop-blur-3xl border border-border/60 shadow-2xl shadow-primary/5"
       >
-        {tools.map((tool) => {
-          const isActive = activeTool === tool.id;
-          return (
-            <div key={tool.id} className="relative group">
-               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`w-12 h-12 flex items-center justify-center rounded-[20px] transition-all relative z-10 ${
-                    isActive
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
-                    : 'text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground'
-                }`}
-                onClick={() => handleToolClick(tool.id)}
-                >
-                <tool.icon size={20} className={isActive ? 'animate-in zoom-in-75 duration-300' : ''} />
-                
-                {isActive && (
-                    <motion.div 
-                        layoutId="activeTool"
-                        className="absolute inset-0 bg-primary rounded-[20px] -z-10"
-                    />
-                )}
+        {/* Tools Section */}
+        <div className="flex items-center gap-1.5 pr-2">
+          {tools.map((tool) => {
+            const isActive = activeTool === tool.id;
+            return (
+              <div key={tool.id} className="relative group">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`w-12 h-12 flex items-center justify-center rounded-[22px] transition-all relative z-10 ${
+                      isActive
+                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
+                      : 'text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground'
+                  }`}
+                  onClick={() => handleToolClick(tool.id)}
+                  >
+                  <tool.icon size={20} className={isActive ? 'animate-in zoom-in-75 duration-300' : ''} />
+                  
+                  {isActive && (
+                      <motion.div 
+                          layoutId="activeTool"
+                          className="absolute inset-0 bg-primary rounded-[22px] -z-10"
+                      />
+                  )}
                 </motion.button>
 
                 {/* Tooltip */}
@@ -196,9 +177,50 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                     {tool.label}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1"><ChevronUp size={12} className="rotate-180 text-foreground" /></div>
                 </div>
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Separator */}
+        <div className="w-[1px] h-8 bg-border/40 mx-1" />
+
+        {/* Zoom Section */}
+        <div className="flex items-center gap-1 pl-2">
+          <button 
+            onClick={onZoomOut} 
+            className="w-10 h-10 flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
+            title="Zoom Out"
+          >
+            <ZoomOut size={16} />
+          </button>
+          
+          <button 
+            onClick={onZoomReset} 
+            className="px-3 h-10 flex items-center justify-center text-[11px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-xl transition-all"
+            title="Reset Zoom"
+          >
+            {Math.round(zoomLevel * 100)}%
+          </button>
+          
+          <button 
+            onClick={onZoomIn} 
+            className="w-10 h-10 flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
+            title="Zoom In"
+          >
+            <ZoomIn size={16} />
+          </button>
+
+          <div className="w-[1px] h-4 bg-border/20 mx-1" />
+
+          <button 
+            onClick={onFitToView} 
+            className="w-10 h-10 flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all" 
+            title="Fit to Workspace"
+          >
+            <Maximize size={16} />
+          </button>
+        </div>
       </motion.div>
 
       <input
