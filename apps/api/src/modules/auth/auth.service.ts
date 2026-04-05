@@ -18,8 +18,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: IUser; accessToken: string }> {
+    const email = dto.email.toLowerCase();
     const existingUser = await this.userRepository.findOne({
-      where: [{ email: dto.email }, { userName: dto.userName }],
+      where: [{ email }, { userName: dto.userName }],
     });
 
     if (existingUser) {
@@ -30,7 +31,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, salt);
 
     const user = this.userRepository.create({
-      email: dto.email,
+      email,
       firstName: dto.firstName,
       lastName: dto.lastName,
       userName: dto.userName,
@@ -47,7 +48,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<{ user: IUser; accessToken: string }> {
-    const user = await this.userRepository.findOne({ where: { email: dto.email } });
+    const email = dto.email.toLowerCase();
+    const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
