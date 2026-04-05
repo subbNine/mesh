@@ -53,7 +53,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="w-full min-h-full flex flex-col pt-8 pb-20 px-8 lg:px-12 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden font-sans bg-background">
+    <div className="w-full min-h-full flex flex-col pt-8 pb-20 px-8 lg:px-12 overflow-x-hidden font-sans bg-background">
       <div className="max-w-6xl w-full mx-auto space-y-10">
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 gap-4">
           <div>
