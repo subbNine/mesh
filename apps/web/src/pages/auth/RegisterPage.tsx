@@ -13,14 +13,15 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
   
   const register = useAuthStore((state) => state.register);
-  const isLoading = useAuthStore((state) => state.isLoading);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setIsRegistering(true);
     try {
       await register({ firstName, lastName, email, password });
       navigate('/workspaces', { replace: true });
@@ -130,11 +131,11 @@ export default function RegisterPage() {
                 variant="primary" 
                 size="xl" 
                 fullWidth 
-                loading={isLoading} 
+                loading={isRegistering} 
                 className="h-16 rounded-[22px] shadow-2xl shadow-primary/20"
                 icon={<CheckSquare size={20} />}
               >
-                Lock Registration
+                Sign Up
               </Button>
             </form>
           </CardContent>

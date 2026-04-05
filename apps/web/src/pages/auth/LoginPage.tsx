@@ -11,19 +11,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const login = useAuthStore((state) => state.login);
-  const isLoading = useAuthStore((state) => state.isLoading);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setIsLoggingIn(true);
     try {
       await login(email, password);
       navigate('/workspaces', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to login');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -112,7 +114,7 @@ export default function LoginPage() {
                 variant="primary"
                 size="xl"
                 fullWidth
-                loading={isLoading}
+                loading={isLoggingIn}
                 className="h-16 rounded-[22px] shadow-2xl shadow-primary/20"
                 icon={<ArrowRight size={20} />}
               >
