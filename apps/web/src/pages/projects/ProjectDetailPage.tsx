@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectStore } from '../../store/project.store';
 import { useAuthStore } from '../../store/auth.store';
@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { TaskGrid } from '../../components/tasks/TaskGrid';
 import { NewTaskModal } from '../../components/tasks/NewTaskModal';
 import { NotificationBell } from '../../components/ui/NotificationBell';
+import ProjectLibraryPage from './ProjectLibraryPage';
 import { 
   Plus, 
   Settings, 
@@ -19,6 +20,7 @@ import {
 export default function ProjectDetailPage() {
   const { workspaceId, projectId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const currentProject = useProjectStore(state => state.currentProject);
   const updateProject = useProjectStore(state => state.updateProject);
@@ -33,7 +35,7 @@ export default function ProjectDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [filterAssignee, setFilterAssignee] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'all');
 
   const tabs = [
     { id: 'all', label: 'All blueprinted', status: '' },
@@ -41,6 +43,7 @@ export default function ProjectDetailPage() {
     { id: 'inprogress', label: 'In Progress', status: 'inprogress' },
     { id: 'review', label: 'Review', status: 'review' },
     { id: 'done', label: 'Done', status: 'done' },
+    { id: 'library', label: 'Docs & Files', status: '' },
   ];
 
   useEffect(() => {
@@ -53,6 +56,10 @@ export default function ProjectDetailPage() {
       setEditDesc(currentProject.description || '');
     }
   }, [currentProject]);
+
+  useEffect(() => {
+    setActiveTab(searchParams.get('tab') || 'all');
+  }, [searchParams]);
 
   const isProjAdmin = useMemo(() => {
     if (!user || !currentProject) return false;
@@ -128,12 +135,13 @@ export default function ProjectDetailPage() {
                    <Layout size={10} fill="currentColor" /> Project Blueprint
                 </div>
                 <div className="flex items-start gap-2 group">
-                <h1
+                <button
+                    type="button"
                     onClick={() => isProjAdmin && setIsEditingDetails(true)}
-                    className={`text-xl sm:text-3xl md:text-4xl font-display font-black text-foreground tracking-[calc(-0.02em)] leading-tight ${isProjAdmin ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+                    className={`text-left text-xl sm:text-3xl md:text-4xl font-display font-black text-foreground tracking-[calc(-0.02em)] leading-tight ${isProjAdmin ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
                 >
                     {currentProject.name}
-                </h1>
+                </button>
                 <Button
                     variant="tertiary"
                     size="sm"
@@ -182,6 +190,7 @@ export default function ProjectDetailPage() {
                 key={tab.id}
                 onClick={() => {
                   setActiveTab(tab.id);
+                  setSearchParams(tab.id === 'all' ? {} : { tab: tab.id });
                 }}
                 className="relative py-1 group whitespace-nowrap"
               >
@@ -199,41 +208,51 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Precision Controls */}
-          <div className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto justify-between md:justify-end">
-             <div className="relative group">
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none">
-                    <Users size={14} />
-                </div>
-                <select
-                    className="pl-8 pr-8 py-1.5 border border-border/60 rounded-lg text-[9px] font-black uppercase tracking-widest bg-card/30 text-foreground focus:outline-none focus:ring-1.5 focus:ring-primary/40 appearance-none transition-all hover:bg-card/50"
-                    value={filterAssignee}
-                    onChange={(e) => setFilterAssignee(e.target.value)}
-                >
-                    <option value="">All Engineers</option>
-                    <option value="me">Assigned to Me</option>
-                </select>
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                    <ChevronDown size={12} />
-                </div>
-             </div>
+          {activeTab === 'library' ? (
+            <div className="w-full md:w-auto rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-primary text-center md:text-left">
+              Shared docs, files, and folders for this project
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto justify-between md:justify-end">
+               <div className="relative group">
+                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none">
+                      <Users size={14} />
+                  </div>
+                  <select
+                      className="pl-8 pr-8 py-1.5 border border-border/60 rounded-lg text-[9px] font-black uppercase tracking-widest bg-card/30 text-foreground focus:outline-none focus:ring-1.5 focus:ring-primary/40 appearance-none transition-all hover:bg-card/50"
+                      value={filterAssignee}
+                      onChange={(e) => setFilterAssignee(e.target.value)}
+                  >
+                      <option value="">All Engineers</option>
+                      <option value="me">Assigned to Me</option>
+                  </select>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                      <ChevronDown size={12} />
+                  </div>
+               </div>
 
-             <div className="relative group">
-                <Button variant="outline" size="sm" className="h-8 px-3 border-dashed border-1.5 text-[9px]">
-                   <Filter size={12} className="mr-1.5" /> Filter
-                </Button>
-             </div>
-          </div>
+               <div className="relative group">
+                  <Button variant="outline" size="sm" className="h-8 px-3 border-dashed border-1.5 text-[9px]">
+                     <Filter size={12} className="mr-1.5" /> Filter
+                  </Button>
+               </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main Blueprint Gallery */}
       <main className="flex-1 overflow-y-auto p-3 sm:p-5 relative z-0 no-scrollbar">
         <div className="max-w-[1600px] mx-auto h-full min-h-[400px]">
-          <TaskGrid
-            projectId={projectId!}
-            activeTab={activeTab as any}
-            filters={taskFilters}
-          />
+          {activeTab === 'library' ? (
+            <ProjectLibraryPage />
+          ) : (
+            <TaskGrid
+              projectId={projectId!}
+              activeTab={activeTab as any}
+              filters={taskFilters}
+            />
+          )}
         </div>
       </main>
 

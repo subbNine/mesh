@@ -2,7 +2,8 @@ import {
   TaskStatus,
   WorkspaceMemberRole,
   ProjectMemberRole,
-  NotificationType
+  NotificationType,
+  ActivityEventType
 } from './enums';
 
 export type ISODateValue = string | Date;
@@ -70,6 +71,60 @@ export interface IMyAssignmentsResponse {
   dueToday: ITask[];
   dueThisWeek: ITask[];
   other: ITask[];
+}
+
+export interface IProjectFolder {
+  id: string;
+  projectId: string;
+  name: string;
+  createdBy: string;
+  createdAt: ISODateValue;
+  itemCount?: number;
+}
+
+export interface IProjectDocument {
+  id: string;
+  projectId: string;
+  folderId: string | null;
+  title: string;
+  content: Record<string, unknown>;
+  authorId: string;
+  author: IUser;
+  createdAt: ISODateValue;
+  updatedAt: ISODateValue;
+}
+
+export interface IProjectFile {
+  id: string;
+  projectId: string;
+  folderId: string | null;
+  name: string;
+  url: string;
+  key?: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploaderId: string;
+  uploader: IUser;
+  createdAt: ISODateValue;
+}
+
+export interface IProjectLibraryResponse {
+  currentFolder: IProjectFolder | null;
+  folders: IProjectFolder[];
+  documents: IProjectDocument[];
+  files: IProjectFile[];
+}
+
+export interface IActivityEvent {
+  id: string;
+  workspaceId: string;
+  projectId?: string | null;
+  taskId?: string | null;
+  actorId: string;
+  actor: IUser;
+  eventType: ActivityEventType;
+  payload: Record<string, unknown>;
+  createdAt: ISODateValue;
 }
 
 export interface IComment {

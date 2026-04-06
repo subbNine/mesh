@@ -7,6 +7,7 @@ import { CommentReply } from './entities/comment_replies.entity';
 import { TasksModule } from '../tasks/tasks.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { UsersModule } from '../users/users.module';
     TasksModule,
     NotificationsModule,
     UsersModule,
+    ActivityModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

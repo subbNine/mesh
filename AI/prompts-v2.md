@@ -112,10 +112,10 @@ For EACH feature:
 ## 📦 Features (in order)
 
 1. F-01 — Due Dates on Tasks
-2. F-05 — Doors
-3. F-02 — My Assignments
-4. F-03 — Activity Feed
-5. F-04 — Docs & Files
+2. F-02 — My Assignments
+3. F-03 — Activity Feed
+4. F-04 — Docs & Files
+5. F-05 — Doors
 
 -----------------------------------
 

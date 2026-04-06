@@ -10,6 +10,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddProjectMemberDto } from './dto/add-project-member.dto';
 import { ExcludeWorkspaceMemberDto } from './dto/exclude-workspace-member.dto';
+import { ActivityService } from '../activity/activity.service';
 import { ProjectMemberRole } from '@mesh/shared';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class ProjectsService {
     private readonly workspaceMemberRepo: Repository<WorkspaceMember>,
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
+    private readonly activityService: ActivityService,
   ) {}
 
   /**
@@ -75,6 +77,9 @@ export class ProjectsService {
       role: ProjectMemberRole.Admin,
     });
     await this.projectMemberRepo.save(pm);
+
+    await this.activityService.recordProjectCreated(saved, userId)
+      .catch((error) => console.error('Failed to record project.created activity event', error));
 
     return saved;
   }
@@ -146,7 +151,7 @@ export class ProjectsService {
   }
 
   async addMember(projectId: string, requesterId: string, dto: AddProjectMemberDto): Promise<ProjectMember> {
-    const { role } = await this.checkAccess(projectId, requesterId);
+    const { project, role } = await this.checkAccess(projectId, requesterId);
     if (role !== ProjectMemberRole.Admin) throw new ForbiddenException('Only project admins can alter member bindings');
 
     const existing = await this.projectMemberRepo.findOne({ where: { projectId, userId: dto.userId } });
@@ -165,6 +170,10 @@ export class ProjectsService {
     const saved = await this.projectMemberRepo.save(pm);
     const result = await this.projectMemberRepo.findOne({ where: { id: saved.id }, relations: ['user'] });
     if (!result) throw new NotFoundException('Failed to verify implicitly populated member binding');
+
+    await this.activityService.recordMemberAdded(project, requesterId, dto.userId)
+      .catch((error) => console.error('Failed to record member.added activity event', error));
+
     return result;
   }
 

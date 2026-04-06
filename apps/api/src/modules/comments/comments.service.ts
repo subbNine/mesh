@@ -6,6 +6,7 @@ import { CommentReply } from './entities/comment_replies.entity';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
+import { ActivityService } from '../activity/activity.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateReplyDto } from './dto/create-reply.dto';
 import { ProjectMemberRole } from '@mesh/shared';
@@ -20,6 +21,7 @@ export class CommentsService {
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
+    private readonly activityService: ActivityService,
   ) { }
 
   private async parseAndNotifyMentions(taskId: string, body: string, actorId: string) {
@@ -61,6 +63,13 @@ export class CommentsService {
       where: { id: saved.id },
       relations: ['author'],
     });
+
+    if (fetched) {
+      await this.activityService.recordCommentCreated(task, userId, {
+        id: fetched.id,
+        body: fetched.body,
+      }).catch((error) => console.error('Failed to record comment.created activity event', error));
+    }
 
     return { ...fetched, replies: [] };
   }
@@ -121,10 +130,17 @@ export class CommentsService {
     const comment = await this.commentRepo.findOne({ where: { id: commentId } });
     if (!comment) throw new NotFoundException('Comment not found');
 
-    await this.tasksService.findOne(comment.taskId, userId); // Verifies access
+    const task = await this.tasksService.findOne(comment.taskId, userId); // Verifies access
 
     comment.resolvedAt = new Date();
-    return this.commentRepo.save(comment);
+    const saved = await this.commentRepo.save(comment);
+
+    await this.activityService.recordCommentResolved(task, userId, {
+      id: saved.id,
+      body: saved.body,
+    }).catch((error) => console.error('Failed to record comment.resolved activity event', error));
+
+    return saved;
   }
 
   async unresolve(commentId: string, userId: string): Promise<Comment> {

@@ -16,6 +16,9 @@ import { FilesModule } from './modules/files/files.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PresenceModule } from './modules/presence/presence.module';
 import { UsersModule } from './modules/users/users.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { DocsModule } from './modules/docs/docs.module';
+import { ProjectFilesModule } from './modules/project-files/project-files.module';
 
 @Module({
   imports: [
@@ -56,6 +59,9 @@ import { UsersModule } from './modules/users/users.module';
     NotificationsModule,
     PresenceModule,
     UsersModule,
+    ActivityModule,
+    DocsModule,
+    ProjectFilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

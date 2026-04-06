@@ -28,6 +28,20 @@ export const NotificationType = {
 } as const;
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
 
+export const ActivityEventType = {
+  TaskCreated: 'task.created',
+  TaskStatusChanged: 'task.status_changed',
+  TaskAssigned: 'task.assigned',
+  TaskDueDateSet: 'task.due_date_set',
+  CommentCreated: 'comment.created',
+  CommentResolved: 'comment.resolved',
+  CanvasElementAdded: 'canvas.element_added',
+  CanvasElementDeleted: 'canvas.element_deleted',
+  ProjectCreated: 'project.created',
+  MemberAdded: 'member.added',
+} as const;
+export type ActivityEventType = typeof ActivityEventType[keyof typeof ActivityEventType];
+
 export const CanvasElementType = {
   Text: 'text',
   Image: 'image',

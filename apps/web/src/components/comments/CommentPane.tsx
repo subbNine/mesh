@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Check, MessageSquare, CornerDownRight } from 'lucide-react';
+import { X, Send, Check, MessageSquare, CornerDownRight, Activity } from 'lucide-react';
 import { useCanvasStore } from '../../store/canvas.store';
 import { api } from '../../lib/api';
 import type { IUser } from '@mesh/shared';
@@ -8,6 +8,7 @@ import * as Y from 'yjs';
 import { getUserColor } from '../../lib/user-color';
 import { formatRelativeTime } from '../../lib/date-utils';
 import { Button } from '../ui/Button';
+import { ActivityTab } from '../activity/ActivityTab';
 
 export interface CommentReply {
   id: string;
@@ -37,10 +38,10 @@ interface CommentPaneProps {
 
 const highlightMentions = (text: string) => {
   const parts = text.split(/(@\w+)/g);
-  return parts.map((part, i) => {
+  return parts.map((part) => {
     if (part.startsWith('@')) {
       return (
-        <span key={i} className="text-primary font-black bg-primary/10 px-1 rounded-md">
+        <span key={`${part}-${Math.random().toString(36).slice(2, 8)}`} className="text-primary font-black bg-primary/10 px-1 rounded-md">
           {part}
         </span>
       );
@@ -66,10 +67,11 @@ const CommentSkeleton = () => (
   </div>
 );
 
-export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onCommentClick }: CommentPaneProps) {
+export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onCommentClick }: Readonly<CommentPaneProps>) {
   const toggleCommentPane = useCanvasStore(state => state.toggleCommentPane);
   const [comments, setComments] = useState<CanvasComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
   const [showResolved, setShowResolved] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   
@@ -140,7 +142,9 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
         const target = yComments.toArray().find(m => m.get('id') === id);
         if (target) target.set('resolvedAt', isResolved ? null : new Date().toISOString());
       });
-    } catch(e) {}
+    } catch (error) {
+      console.error('Failed to update comment resolution state', error);
+    }
   };
 
   const handleReplySubmit = async (commentId: string) => {
@@ -159,7 +163,10 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
     try {
       await api.post(`/comments/${commentId}/replies`, { body });
       fetchComments(false); 
-    } catch(e) { fetchComments(false); }
+    } catch (error) {
+      console.error('Failed to post comment reply', error);
+      fetchComments(false);
+    }
   };
 
   const visibleComments = comments.filter(c => showResolved || !c.resolvedAt);
@@ -168,57 +175,86 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
     <div className="flex flex-col h-full bg-transparent overflow-hidden">
       
       {/* Discussion Header */}
-      <div className="h-16 px-6 border-b border-border/40 flex items-center justify-between flex-shrink-0 bg-card/40 backdrop-blur-3xl">
-        <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary leading-none mb-1">Collaborative</span>
-            <h3 className="font-display font-black text-xl text-foreground tracking-tight leading-none">Discussion</h3>
-        </div>
-        <div className="flex items-center gap-4">
-          <button onClick={toggleCommentPane} className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl transition-all">
+      <div className="border-b border-border/40 bg-card/40 px-6 py-4 backdrop-blur-3xl">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex flex-col">
+              <span className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] text-primary leading-none">Collaborative</span>
+              <h3 className="font-display text-xl font-black tracking-tight text-foreground leading-none">Task stream</h3>
+            </div>
+            <div className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-background/70 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab('comments')}
+                className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${
+                  activeTab === 'comments'
+                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Comments
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('activity')}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${
+                  activeTab === 'activity'
+                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Activity size={12} />
+                Activity
+              </button>
+            </div>
+          </div>
+          <button onClick={toggleCommentPane} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-muted/50 hover:text-foreground">
             <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* Resolved Toggle Bar */}
-      <div className="px-6 py-3 border-b border-border/40 bg-muted/20 flex items-center justify-between">
-           <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{visibleComments.length} active threads</span>
-           <label className="flex items-center gap-2 cursor-pointer group">
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">Show Resolved</span>
-                <div 
-                    onClick={() => setShowResolved(!showResolved)}
-                    className={`w-8 h-4 rounded-full relative transition-all ${showResolved ? 'bg-primary' : 'bg-muted-foreground/20'}`}
-                >
-                    <motion.div 
-                        animate={{ x: showResolved ? 16 : 2 }}
-                        className="absolute top-1 left-0 w-2 h-2 rounded-full bg-white shadow-sm" 
-                    />
-                </div>
-           </label>
-      </div>
+      {activeTab === 'comments' ? (
+        <>
+          {/* Resolved Toggle Bar */}
+          <div className="px-6 py-3 border-b border-border/40 bg-muted/20 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{visibleComments.length} active threads</span>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">Show Resolved</span>
+              <div
+                onClick={() => setShowResolved(!showResolved)}
+                className={`w-8 h-4 rounded-full relative transition-all ${showResolved ? 'bg-primary' : 'bg-muted-foreground/20'}`}
+              >
+                <motion.div
+                  animate={{ x: showResolved ? 16 : 2 }}
+                  className="absolute top-1 left-0 w-2 h-2 rounded-full bg-white shadow-sm"
+                />
+              </div>
+            </label>
+          </div>
 
-      {/* Comment List */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar pb-32">
-        <AnimatePresence mode="popLayout">
-            {isLoading ? (
-            <div className="space-y-6">
-                <CommentSkeleton />
-                <CommentSkeleton />
-                <CommentSkeleton />
-            </div>
-            ) : visibleComments.length === 0 ? (
-            <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center h-64 text-muted-foreground/40 gap-4"
-            >
-                <div className="w-16 h-16 rounded-[24px] bg-muted/30 flex items-center justify-center border-2 border-dashed border-border/50">
-                    <MessageSquare size={32} />
+          {/* Comment List */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar pb-32">
+            <AnimatePresence mode="popLayout">
+              {isLoading ? (
+                <div className="space-y-6">
+                  <CommentSkeleton />
+                  <CommentSkeleton />
+                  <CommentSkeleton />
                 </div>
-                <p className="font-serif italic text-lg text-balance text-center px-8">The canvas is quiet. Pin a thought to start the conversation.</p>
-            </motion.div>
-            ) : (
-            visibleComments.map((comment) => {
+              ) : visibleComments.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center justify-center h-64 text-muted-foreground/40 gap-4"
+                >
+                  <div className="w-16 h-16 rounded-[24px] bg-muted/30 flex items-center justify-center border-2 border-dashed border-border/50">
+                    <MessageSquare size={32} />
+                  </div>
+                  <p className="font-serif italic text-lg text-balance text-center px-8">The canvas is quiet. Pin a thought to start the conversation.</p>
+                </motion.div>
+              ) : (
+                visibleComments.map((comment) => {
                 const isActive = activeCommentId === comment.id;
                 const isResolved = !!comment.resolvedAt;
 
@@ -331,9 +367,15 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
                 </motion.div>
                 );
             })
-            )}
-        </AnimatePresence>
-      </div>
+              )}
+            </AnimatePresence>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-6 no-scrollbar pb-32">
+          <ActivityTab taskId={taskId} />
+        </div>
+      )}
     </div>
   );
 }

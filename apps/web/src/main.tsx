@@ -8,7 +8,9 @@ import RegisterPage from './pages/auth/RegisterPage';
 import WorkspaceSelectorPage from './pages/workspaces/WorkspaceSelectorPage';
 import ProjectsPage from './pages/projects/ProjectsPage';
 import ProjectDetailPage from './pages/projects/ProjectDetailPage';
+import DocumentEditorPage from './pages/projects/DocumentEditorPage';
 import MyWorkPage from './pages/my-work/MyWorkPage';
+import ActivityFeedPage from './pages/activity/ActivityFeedPage';
 import TaskCanvasPage from './pages/tasks/TaskCanvasPage';
 import ProfilePage from './pages/settings/ProfilePage';
 import WorkspaceSettingsPage from './pages/settings/WorkspaceSettingsPage';
@@ -85,12 +87,14 @@ function AppRoot() {
             
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="my-work" element={<MyWorkPage />} />
+            <Route path="activity" element={<ActivityFeedPage />} />
             <Route path="settings" element={<WorkspaceSettingsPage />} />
             
             {/* Project Bounds */}
             <Route path="p/:projectId" element={<ProjectRoute />}>
               <Route index element={<ProjectDetailPage />} />
               <Route path="settings" element={<ProjectSettingsPage />} />
+              <Route path="docs/:docId" element={<DocumentEditorPage />} />
               <Route path="tasks/:taskId/canvas" element={<TaskCanvasPage />} />
             </Route>
           </Route>

@@ -5,6 +5,7 @@ import { Task } from './entities/tasks.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { CanvasService } from '../canvas/canvas.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ActivityService } from '../activity/activity.service';
 import { Pagination, PaginatedResult, PaginatedResultType } from '../../common/utils/pagination.util';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -19,6 +20,7 @@ export class TasksService {
     @Inject(forwardRef(() => CanvasService))
     private readonly canvasService: CanvasService,
     private readonly notificationsService: NotificationsService,
+    private readonly activityService: ActivityService,
   ) { }
 
   async create(projectId: string, userId: string, dto: CreateTaskDto): Promise<Task> {
@@ -34,10 +36,17 @@ export class TasksService {
     // Bootstrap local dependent properties (e.g., canvas instances mapping securely to the nested task bindings)
     await this.canvasService.createEmpty(saved.id);
 
-    return this.taskRepo.findOne({
+    const hydratedTask = await this.taskRepo.findOne({
       where: { id: saved.id },
       relations: ['assignee', 'creator'],
-    }) as Promise<Task>;
+    });
+
+    if (hydratedTask) {
+      await this.activityService.recordTaskCreated(hydratedTask, userId)
+        .catch((error) => console.error('Failed to record task.created activity event', error));
+    }
+
+    return hydratedTask as Task;
   }
 
   async findAll(
@@ -89,6 +98,8 @@ export class TasksService {
   async update(taskId: string, userId: string, dto: UpdateTaskDto): Promise<Task> {
     const task = await this.findOne(taskId, userId);
 
+    const previousStatus = task.status;
+    const previousDueDate = task.dueDate ? new Date(task.dueDate).toISOString() : null;
     const wasAssignedTo = task.assigneeId;
     const isChangingAssignee = dto.assigneeId !== undefined && dto.assigneeId !== wasAssignedTo;
 
@@ -108,6 +119,25 @@ export class TasksService {
     if (isChangingAssignee && saved.assigneeId) {
       await this.notificationsService.createTaskAssignedNotification(saved.id, saved.assigneeId, userId)
         .catch(e => console.error('Silent failure triggering assignment generic map correctly mapping boundary: ', e));
+    }
+
+    const dueDateChanged = dto.dueDate !== undefined
+      && previousDueDate !== (saved.dueDate ? new Date(saved.dueDate).toISOString() : null);
+    const statusChanged = dto.status !== undefined && previousStatus !== saved.status;
+
+    if (statusChanged) {
+      await this.activityService.recordTaskStatusChanged(saved, userId, previousStatus, saved.status)
+        .catch((error) => console.error('Failed to record task.status_changed activity event', error));
+    }
+
+    if (isChangingAssignee) {
+      await this.activityService.recordTaskAssigned(saved, userId, wasAssignedTo, saved.assigneeId)
+        .catch((error) => console.error('Failed to record task.assigned activity event', error));
+    }
+
+    if (dueDateChanged) {
+      await this.activityService.recordTaskDueDateChanged(saved, userId, previousDueDate, saved.dueDate)
+        .catch((error) => console.error('Failed to record task.due_date_set activity event', error));
     }
 
     return this.taskRepo.findOne({
