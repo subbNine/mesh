@@ -98,6 +98,9 @@ export class TasksService {
     if (dto.assigneeId !== undefined) {
       task.assigneeId = dto.assigneeId === '' ? null : dto.assigneeId;
     }
+    if (dto.dueDate !== undefined) {
+      task.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    }
 
     const saved = await this.taskRepo.save(task);
 

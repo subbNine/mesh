@@ -10,11 +10,13 @@ import { EmailChannel } from './channels/email.channel';
 import { PushChannel } from './channels/push.channel';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
+import { Task } from '../tasks/entities/tasks.entity';
+import { DueDateNotificationsService } from './due-date-notifications.service';
 import { NotificationsGateway } from './notifications.gateway';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification]),
+    TypeOrmModule.forFeature([Notification, Task]),
     BullModule.registerQueue({
       name: 'notifications',
     }),
@@ -24,6 +26,7 @@ import { NotificationsGateway } from './notifications.gateway';
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
+    DueDateNotificationsService,
     NotificationsProcessor,
     NotificationsGateway,
     InAppChannel,

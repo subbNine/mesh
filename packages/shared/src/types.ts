@@ -56,6 +56,7 @@ export interface ITask {
   assigneeId: string | null;
   assignee: IUser | null;
   snapshotUrl: string | null;
+  dueDate?: string | Date | null;
   createdBy: string;
   createdAt: string | Date;
   updatedAt: string | Date;

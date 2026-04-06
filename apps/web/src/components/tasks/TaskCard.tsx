@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { type ITask } from '@mesh/shared';
-import { formatDistanceToNow } from 'date-fns';
-import { Pin, PinOff, User, Trash2 } from 'lucide-react';
-import { useTaskStore } from '../../store/task.store';
-import { useAuthStore } from '../../store/auth.store';
-import { useProjectStore } from '../../store/project.store';
+import React, { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
+import { type ITask } from "@mesh/shared";
+import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
+import { Pin, PinOff, User, Trash2, CalendarDays } from "lucide-react";
+import { useTaskStore } from "../../store/task.store";
+import { useAuthStore } from "../../store/auth.store";
+import { useProjectStore } from "../../store/project.store";
 
 interface TaskCardProps {
   task: ITask;
@@ -13,19 +13,43 @@ interface TaskCardProps {
   className?: string;
 }
 
-const statusConfig: Record<string, { label: string, color: string, border: string, dot: string }> = {
-  todo: { label: 'To Do', color: 'bg-zinc-100 text-zinc-600', border: 'border-zinc-200', dot: 'bg-zinc-400' },
-  inprogress: { label: 'In Progress', color: 'bg-primary/10 text-primary', border: 'border-primary/20', dot: 'bg-primary' },
-  review: { label: 'Review', color: 'bg-sky-100 text-sky-700', border: 'border-sky-200', dot: 'bg-sky-500' },
-  done: { label: 'Done', color: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+const statusConfig: Record<
+  string,
+  { label: string; color: string; border: string; dot: string }
+> = {
+  todo: {
+    label: "To Do",
+    color: "bg-zinc-100 text-zinc-600",
+    border: "border-zinc-200",
+    dot: "bg-zinc-400",
+  },
+  inprogress: {
+    label: "In Progress",
+    color: "bg-primary/10 text-primary",
+    border: "border-primary/20",
+    dot: "bg-primary",
+  },
+  review: {
+    label: "Review",
+    color: "bg-sky-100 text-sky-700",
+    border: "border-sky-200",
+    dot: "bg-sky-500",
+  },
+  done: {
+    label: "Done",
+    color: "bg-emerald-100 text-emerald-700",
+    border: "border-emerald-200",
+    dot: "bg-emerald-500",
+  },
 };
 
-export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
+export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
   const [isPinned, setIsPinned] = useState(false);
-  const deleteTask = useTaskStore(state => state.deleteTask);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
+  const updateTask = useTaskStore((state) => state.updateTask);
   const user = useAuthStore((state: any) => state.user);
-  const members = useProjectStore(state => state.members);
-  const currentProject = useProjectStore(state => state.currentProject);
+  const members = useProjectStore((state) => state.members);
+  const currentProject = useProjectStore((state) => state.currentProject);
 
   useEffect(() => {
     const check = (globalThis as any).__meshIsPinned;
@@ -37,20 +61,23 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
     // Creator can delete
     if (task.createdBy === user.id) return true;
     // Admin can delete
-    const member = members.find(m => m.userId === user.id);
-    const isAdmin = member?.role === 'admin' || member?.role === 'owner' || currentProject?.createdBy === user.id;
+    const member = members.find((m) => m.userId === user.id);
+    const isAdmin =
+      member?.role === "admin" ||
+      member?.role === "owner" ||
+      currentProject?.createdBy === user.id;
     return isAdmin;
   }, [user, task.createdBy, members, currentProject]);
 
   const getInitials = (firstName?: string, lastName?: string) => {
-    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
+    return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
   };
 
   const handlePinToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     const pin = (globalThis as any).__meshPinTask;
     const unpin = (globalThis as any).__meshUnpinTask;
-    
+
     if (isPinned) {
       unpin?.(task.id);
       setIsPinned(false);
@@ -62,9 +89,39 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this task blueprint? This action is irreversible.')) {
+    if (
+      confirm(
+        "Are you sure you want to delete this task blueprint? This action is irreversible.",
+      )
+    ) {
       deleteTask(task.id);
     }
+  };
+
+  const [isDueDateOpen, setIsDueDateOpen] = useState(false);
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  const dueStatus = dueDate
+    ? isPast(dueDate) && !isToday(dueDate)
+      ? "overdue"
+      : isToday(dueDate)
+        ? "today"
+        : "future"
+    : null;
+  const dueClasses =
+    dueStatus === "overdue"
+      ? "bg-red-50 border-red-200 text-red-700"
+      : dueStatus === "today"
+        ? "bg-amber-50 border-amber-200 text-amber-800"
+        : "bg-zinc-100 border-zinc-200 text-zinc-600";
+
+  const updateDueDate = (value: string | null) => {
+    setIsDueDateOpen(false);
+    updateTask(task.id, { dueDate: value });
+  };
+
+  const handleClearDueDate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateDueDate(null);
   };
 
   const config = statusConfig[task.status] || statusConfig.todo;
@@ -76,7 +133,7 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       onClick={onClick}
-      className={`group flex flex-col bg-card border border-border/60 rounded-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer overflow-hidden ${className}`}
+      className={`relative group flex flex-col bg-card border border-border/60 rounded-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer overflow-hidden ${className}`}
     >
       {/* Blueprint Thumbnail */}
       <div className="h-[120px] w-full bg-muted/30 border-b border-border/40 relative overflow-hidden flex items-center justify-center">
@@ -93,16 +150,20 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
           <div className="flex flex-col items-center gap-1 opacity-20 group-hover:opacity-40 transition-opacity">
             <div className="w-10 h-0.5 bg-border rounded-full" />
             <div className="w-6 h-0.5 bg-border rounded-full" />
-            <span className="text-[8px] font-black uppercase tracking-widest mt-1">New Canvas</span>
+            <span className="text-[8px] font-black uppercase tracking-widest mt-1">
+              New Canvas
+            </span>
           </div>
         )}
 
         {/* Overlay Badges */}
         <div className="absolute top-2 left-2 flex gap-1.5">
-            <span className={`flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md backdrop-blur-md border ${config.border} ${config.color}`}>
-                <div className={`w-0.5 h-0.5 rounded-full ${config.dot}`} />
-                {config.label}
-            </span>
+          <span
+            className={`flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md backdrop-blur-md border ${config.border} ${config.color}`}
+          >
+            <div className={`w-0.5 h-0.5 rounded-full ${config.dot}`} />
+            {config.label}
+          </span>
         </div>
 
         {/* Action Buttons */}
@@ -121,10 +182,10 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
             onClick={handlePinToggle}
             className={`p-1.5 rounded-lg backdrop-blur-xl border border-white/10 transition-all ${
               isPinned
-                ? 'bg-primary text-primary-foreground shadow-lg opacity-100'
-                : 'bg-black/20 text-white hover:bg-black/40'
+                ? "bg-primary text-primary-foreground shadow-lg opacity-100"
+                : "bg-black/20 text-white hover:bg-black/40"
             }`}
-            title={isPinned ? 'Unpin' : 'Pin to Board'}
+            title={isPinned ? "Unpin" : "Pin to Board"}
           >
             {isPinned ? <PinOff size={12} /> : <Pin size={12} />}
           </button>
@@ -133,35 +194,110 @@ export function TaskCard({ task, onClick, className = '' }: TaskCardProps) {
 
       <div className="sm:p-3 p-2.5 flex flex-col flex-1 space-y-2">
         <div className="space-y-0.5">
-            <h4 className="font-display font-black text-sm text-foreground tracking-tight leading-tight group-hover:text-primary transition-colors line-clamp-2">
-                {task.title || 'Untitled Task'}
-            </h4>
-            <p className="text-[11px] text-muted-foreground font-serif italic line-clamp-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
-                {task.description || 'No blueprint description...'}
-            </p>
+          <h4 className="font-display font-black text-sm text-foreground tracking-tight leading-tight group-hover:text-primary transition-colors line-clamp-2">
+            {task.title || "Untitled Task"}
+          </h4>
+          <p className="text-[11px] text-muted-foreground font-serif italic line-clamp-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+            {task.description || "No blueprint description..."}
+          </p>
         </div>
 
-        <div className="pt-1.5 flex items-center justify-between border-t border-border/40">
-          <span className="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-tight">
-            {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
-          </span>
+        <div className="pt-1.5 space-y-2 border-t border-border/40">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-tight">
+              {formatDistanceToNow(new Date(task.createdAt), {
+                addSuffix: true,
+              })}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsDueDateOpen((prev) => !prev);
+              }}
+              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
+              title="Set due date"
+            >
+              <CalendarDays size={12} />
+              {dueDate ? format(dueDate, "MMM d") : "Add due date"}
+            </button>
+          </div>
 
-          {/* User Info */}
-          {task.assignee ? (
-            <div className="flex items-center gap-1.5">
-                 <div className="w-5 h-5 rounded-md bg-primary/10 border border-primary/20 flex flex-shrink-0 items-center justify-center text-primary text-[8px] font-black overflow-hidden shadow-sm" title={`${task.assignee.firstName} ${task.assignee.lastName}`}>
-                    {task.assignee.avatarUrl ? (
-                        <img src={task.assignee.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                        getInitials(task.assignee.firstName, task.assignee.lastName)
-                    )}
-                </div>
+          {dueDate && (
+            <div
+              className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${dueClasses}`}
+            >
+              <span>
+                {isPast(dueDate) && !isToday(dueDate)
+                  ? "Overdue"
+                  : isToday(dueDate)
+                    ? "Due today"
+                    : "Due"}
+              </span>
+              <span className="opacity-80">{format(dueDate, "MMM d")}</span>
             </div>
-          ) : (
-             <div className="w-5 h-5 rounded-md border-2 border-dashed border-border/60 flex items-center justify-center text-muted-foreground/30" title="Unassigned">
-                <User size={10} />
-             </div>
           )}
+
+          {isDueDateOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-3 bottom-20 z-50 w-44 rounded-2xl border border-border/70 bg-card p-3 shadow-xl"
+            >
+              <input
+                type="date"
+                value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
+                onChange={(e) => updateDueDate(e.target.value || null)}
+                className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm outline-none"
+              />
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleClearDueDate}
+                  className="rounded-xl bg-muted/80 px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-foreground/80 hover:bg-muted"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDueDateOpen(false);
+                  }}
+                  className="rounded-xl bg-primary px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-white hover:bg-primary/90"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            {/* User Info */}
+            {task.assignee ? (
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="w-5 h-5 rounded-md bg-primary/10 border border-primary/20 flex flex-shrink-0 items-center justify-center text-primary text-[8px] font-black overflow-hidden shadow-sm"
+                  title={`${task.assignee.firstName} ${task.assignee.lastName}`}
+                >
+                  {task.assignee.avatarUrl ? (
+                    <img
+                      src={task.assignee.avatarUrl}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    getInitials(task.assignee.firstName, task.assignee.lastName)
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div
+                className="w-5 h-5 rounded-md border-2 border-dashed border-border/60 flex items-center justify-center text-muted-foreground/30"
+                title="Unassigned"
+              >
+                <User size={10} />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>

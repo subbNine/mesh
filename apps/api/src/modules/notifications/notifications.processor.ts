@@ -5,6 +5,7 @@ import { NotificationPayload } from './channels/channel.interface';
 import { InAppChannel } from './channels/in-app.channel';
 import { EmailChannel } from './channels/email.channel';
 import { PushChannel } from './channels/push.channel';
+import { DueDateNotificationsService } from './due-date-notifications.service';
 
 @Processor('notifications')
 export class NotificationsProcessor extends WorkerHost {
@@ -14,13 +15,19 @@ export class NotificationsProcessor extends WorkerHost {
     private readonly inAppChannel: InAppChannel,
     private readonly emailChannel: EmailChannel,
     private readonly pushChannel: PushChannel,
+    private readonly dueDateNotificationsService: DueDateNotificationsService,
   ) {
     super();
   }
 
   async process(job: Job<NotificationPayload, any, string>): Promise<any> {
     this.logger.log(`Processing notification job ${job.id} of type ${job.name} for user ${job.data.recipientId}`);
-    
+
+    if (job.name === 'due-date-scan') {
+      await this.dueDateNotificationsService.runDueDateNotifications();
+      return;
+    }
+
     const payload = job.data;
     const channels = payload.channels || [];
 

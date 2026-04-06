@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, MinLength, IsUUID, IsEnum } from 'class-validator';
+import { IsString, IsOptional, MaxLength, MinLength, IsUUID, IsEnum, IsDateString } from 'class-validator';
 import { TaskStatus } from '@mesh/shared';
 
 export class UpdateTaskDto {
@@ -19,4 +19,8 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string | null;
 }

@@ -23,6 +23,8 @@ export const NotificationType = {
   Mentioned: 'mentioned',
   Commented: 'commented',
   AddedToProject: 'added_to_project',
+  DueSoon: 'due_soon',
+  DueToday: 'due_today',
 } as const;
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
 

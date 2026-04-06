@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
+import { format } from 'date-fns';
 import { useCanvasStore } from '../../store/canvas.store';
 import { useProjectStore } from '../../store/project.store';
-import { ArrowLeft, MessageSquare, MoreHorizontal, ChevronDown, Check, UserPlus, Layers } from 'lucide-react';
+import { ArrowLeft, MessageSquare, MoreHorizontal, ChevronDown, Check, UserPlus, Layers, CalendarDays } from 'lucide-react';
 import { NotificationBell } from '../ui/NotificationBell';
 import { useAuthStore } from '../../store/auth.store';
 import { getUserColor } from '../../lib/user-color';
@@ -33,9 +34,11 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
 
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
+  const [isDueDateOpen, setIsDueDateOpen] = useState(false);
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const assigneeMenuRef = useRef<HTMLDivElement>(null);
+  const dueDateMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleCommentPane = useCanvasStore(state => state.toggleCommentPane);
   const isCommentPaneOpen = useCanvasStore(state => state.isCommentPaneOpen);
@@ -44,6 +47,7 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
     const handleClickOutside = (e: MouseEvent) => {
       if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) setIsStatusOpen(false);
       if (assigneeMenuRef.current && !assigneeMenuRef.current.contains(e.target as Node)) setIsAssigneeOpen(false);
+      if (dueDateMenuRef.current && !dueDateMenuRef.current.contains(e.target as Node)) setIsDueDateOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -69,6 +73,13 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
     if (userId === task.assigneeId) return;
     onTaskUpdate({ assigneeId: userId } as any);
     api.patch(`/tasks/${task.id}`, { assigneeId: userId }).catch(console.error);
+  };
+
+  const handleDueDateChange = (dueDate: string | null) => {
+    setIsDueDateOpen(false);
+    if (dueDate === task.dueDate) return;
+    onTaskUpdate({ dueDate });
+    api.patch(`/tasks/${task.id}`, { dueDate }).catch(console.error);
   };
 
   const visibleAvatars = awarenessUsers.slice(0, 5);
@@ -275,6 +286,52 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
                 </motion.div>
                 )}
             </AnimatePresence>
+        </div>
+
+        <div className="relative" ref={dueDateMenuRef}>
+          <button
+            onClick={() => setIsDueDateOpen((prev) => !prev)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-muted/40 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground hover:bg-muted/80 transition-all"
+          >
+            <CalendarDays size={14} />
+            <span>
+              {task.dueDate ? format(new Date(task.dueDate), 'MMM d') : 'Add due date'}
+            </span>
+          </button>
+
+          <AnimatePresence>
+            {isDueDateOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-2xl z-50"
+              >
+                <input
+                  type="date"
+                  value={task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : ''}
+                  onChange={(e) => handleDueDateChange(e.target.value || null)}
+                  className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm outline-none"
+                />
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDueDateChange(null)}
+                    className="rounded-xl bg-muted/80 px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/80 hover:bg-muted"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsDueDateOpen(false)}
+                    className="rounded-xl bg-primary px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:bg-primary/90"
+                  >
+                    Done
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Mobile Collaborator Indicator */}

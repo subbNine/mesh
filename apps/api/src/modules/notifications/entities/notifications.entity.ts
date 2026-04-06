@@ -20,7 +20,7 @@ export class Notification {
   @JoinColumn({ name: 'actorId' })
   actor: User;
 
-  @Column({ type: 'enum', enum: ['assigned', 'mentioned', 'commented', 'added_to_project'] })
+  @Column({ type: 'enum', enum: ['assigned', 'mentioned', 'commented', 'added_to_project', 'due_soon', 'due_today'] })
   type: string;
 
   @Column({ type: 'uuid', nullable: true })

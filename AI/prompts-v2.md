@@ -148,4 +148,4 @@ Focus on:
 - Updating task UI (card + canvas)
 - Notification cron job
 
-Do NOT move to the next feature until I say "continue".
+Do NOT move to the next feature until I say "continue <feature name>".

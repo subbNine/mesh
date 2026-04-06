@@ -33,6 +33,9 @@ export class Task {
   @Column({ nullable: true })
   snapshotUrl: string;
 
+  @Column({ type: 'timestamp', nullable: true })
+  dueDate: Date | null;
+
   @Column()
   createdBy: string;
 
