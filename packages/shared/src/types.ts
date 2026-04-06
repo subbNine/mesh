@@ -5,6 +5,8 @@ import {
   NotificationType
 } from './enums';
 
+export type ISODateValue = string | Date;
+
 export interface IUser {
   id: string;
   email: string;
@@ -56,10 +58,18 @@ export interface ITask {
   assigneeId: string | null;
   assignee: IUser | null;
   snapshotUrl: string | null;
-  dueDate?: string | Date | null;
+  dueDate?: ISODateValue | null;
+  projectName?: string;
   createdBy: string;
   createdAt: string | Date;
   updatedAt: string | Date;
+}
+
+export interface IMyAssignmentsResponse {
+  overdue: ITask[];
+  dueToday: ITask[];
+  dueThisWeek: ITask[];
+  other: ITask[];
 }
 
 export interface IComment {

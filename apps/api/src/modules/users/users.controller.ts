@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Body, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -10,6 +10,22 @@ import { IUser } from '@mesh/shared';
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('me/assignments')
+  async getMyAssignments(
+    @CurrentUser() user: IUser,
+    @Query('workspaceId') workspaceId: string,
+    @Query('status') status?: string,
+    @Query('includeCompleted') includeCompleted?: string,
+    @Query('projectId') projectId?: string | string[],
+  ) {
+    return this.usersService.getMyAssignments(user.id, {
+      workspaceId,
+      status,
+      includeCompleted,
+      projectId,
+    });
+  }
 
   @Get('me')
   async getMe(@CurrentUser() user: IUser) {

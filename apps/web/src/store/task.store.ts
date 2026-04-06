@@ -1,7 +1,32 @@
 import { create } from 'zustand';
-import { type TaskStatus, type ITask } from '@mesh/shared';
+import { type TaskStatus, type ITask, type IMyAssignmentsResponse } from '@mesh/shared';
 import { api } from '../lib/api';
 import { useToastStore } from './toast.store';
+
+interface MyAssignmentsFilters {
+  workspaceId: string;
+  status?: TaskStatus[];
+  includeCompleted?: boolean;
+  projectId?: string[];
+}
+
+const emptyAssignments: IMyAssignmentsResponse = {
+  overdue: [],
+  dueToday: [],
+  dueThisWeek: [],
+  other: [],
+};
+
+const mapAssignments = (
+  groups: IMyAssignmentsResponse,
+  taskId: string,
+  updater: (task: ITask) => ITask,
+): IMyAssignmentsResponse => ({
+  overdue: groups.overdue.map((task) => (task.id === taskId ? updater(task) : task)),
+  dueToday: groups.dueToday.map((task) => (task.id === taskId ? updater(task) : task)),
+  dueThisWeek: groups.dueThisWeek.map((task) => (task.id === taskId ? updater(task) : task)),
+  other: groups.other.map((task) => (task.id === taskId ? updater(task) : task)),
+});
 
 interface TaskState {
   tasks: ITask[];
@@ -13,10 +38,12 @@ interface TaskState {
     perPage: number;
     pages: number;
   } | null;
+  assignments: IMyAssignmentsResponse;
   rowOrder: TaskStatus[];
   rowLimit: number;
   
-  fetchTasks: (projectId: string, filters?: { status?: TaskStatus | string; assigneeId?: string; page?: number; perPage?: number }) => Promise<void>;
+  fetchTasks: (projectId: string, filters?: { status?: TaskStatus; assigneeId?: string; page?: number; perPage?: number }) => Promise<void>;
+  fetchMyAssignments: (filters: MyAssignmentsFilters) => Promise<void>;
   createTask: (projectId: string, dto: Partial<ITask>) => Promise<ITask>;
   updateTask: (taskId: string, dto: Partial<ITask>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
@@ -31,6 +58,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   currentTask: null,
   isLoading: false,
   paginationMetadata: null,
+  assignments: emptyAssignments,
   rowOrder: ['todo', 'inprogress', 'review', 'done'],
   rowLimit: 12, // Align with grid layout better (3-4 cols)
 
@@ -50,6 +78,31 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }
   },
 
+  fetchMyAssignments: async ({ workspaceId, status, includeCompleted, projectId }) => {
+    set({ isLoading: true });
+    try {
+      const params: Record<string, string | boolean> = { workspaceId };
+
+      if (status && status.length > 0) {
+        params.status = status.join(',');
+      }
+
+      if (projectId && projectId.length > 0) {
+        params.projectId = projectId.join(',');
+      }
+
+      if (includeCompleted) {
+        params.includeCompleted = true;
+      }
+
+      const { data } = await api.get('/users/me/assignments', { params });
+      set({ assignments: { ...emptyAssignments, ...data }, isLoading: false });
+    } catch (err) {
+      console.error('Failed to fetch assignments:', err);
+      set({ assignments: emptyAssignments, isLoading: false });
+    }
+  },
+
   createTask: async (projectId, dto) => {
     const { data } = await api.post(`/projects/${projectId}/tasks`, dto);
     set((state) => ({ tasks: [data, ...state.tasks] }));
@@ -58,17 +111,27 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   updateTask: async (taskId, dto) => {
     const previousTasks = get().tasks;
+    const previousAssignments = get().assignments;
+    const previousCurrentTask = get().currentTask;
+
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, ...dto } as ITask : t)),
+      tasks: state.tasks.map((task) => (task.id === taskId ? { ...task, ...dto } as ITask : task)),
+      currentTask: state.currentTask?.id === taskId ? { ...state.currentTask, ...dto } as ITask : state.currentTask,
+      assignments: mapAssignments(state.assignments, taskId, (task) => ({ ...task, ...dto } as ITask)),
     }));
 
     try {
-      await api.patch(`/tasks/${taskId}`, dto);
+      const { data } = await api.patch(`/tasks/${taskId}`, dto);
+      set((state) => ({
+        tasks: state.tasks.map((task) => (task.id === taskId ? data : task)),
+        currentTask: state.currentTask?.id === taskId ? data : state.currentTask,
+        assignments: mapAssignments(state.assignments, taskId, () => data),
+      }));
       useToastStore.getState().addToast('success', 'Task updated');
     } catch (err) {
       console.error('Failed to update task:', err);
       useToastStore.getState().addToast('error', 'Failed to update task');
-      set({ tasks: previousTasks });
+      set({ tasks: previousTasks, assignments: previousAssignments, currentTask: previousCurrentTask });
     }
   },
 

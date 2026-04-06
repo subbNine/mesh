@@ -8,6 +8,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import WorkspaceSelectorPage from './pages/workspaces/WorkspaceSelectorPage';
 import ProjectsPage from './pages/projects/ProjectsPage';
 import ProjectDetailPage from './pages/projects/ProjectDetailPage';
+import MyWorkPage from './pages/my-work/MyWorkPage';
 import TaskCanvasPage from './pages/tasks/TaskCanvasPage';
 import ProfilePage from './pages/settings/ProfilePage';
 import WorkspaceSettingsPage from './pages/settings/WorkspaceSettingsPage';
@@ -83,6 +84,7 @@ function AppRoot() {
             <Route index element={<ProjectsPage />} />
             
             <Route path="projects" element={<ProjectsPage />} />
+            <Route path="my-work" element={<MyWorkPage />} />
             <Route path="settings" element={<WorkspaceSettingsPage />} />
             
             {/* Project Bounds */}

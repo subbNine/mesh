@@ -174,6 +174,17 @@ export function AppShell() {
                 <Folder size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
                 {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">Overview</span>}
               </Link>
+              <Link
+                to={`/w/${workspaceId}/my-work`}
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${
+                  location.pathname === `/w/${workspaceId}/my-work`
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
+                } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
+              >
+                <List size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
+                {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">My work</span>}
+              </Link>
             </div>
 
             {/* Section: Projects */}
