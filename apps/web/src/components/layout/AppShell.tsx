@@ -34,7 +34,8 @@ export function AppShell() {
   const fetchProjects = useProjectStore(state => state.fetchProjects);
   const projects = useProjectStore(state => state.projects);
 
-  const { sidebarMode, setSidebarMode } = useCanvasStore();
+  const sidebarMode = useCanvasStore(state => state.sidebarMode);
+  const setSidebarMode = useCanvasStore(state => state.setSidebarMode);
   const isCanvasRoute = location.pathname.includes('/canvas');
 
   useEffect(() => {
@@ -114,7 +115,7 @@ export function AppShell() {
     return () => globalThis.removeEventListener('resize', handleResize);
   }, []);
 
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Branding */}
       <div className={`p-4 flex items-center gap-2 ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-3' : ''}`}>
@@ -318,7 +319,7 @@ export function AppShell() {
         animate={{ width: isCollapsed ? 80 : 280 }}
         className="hidden md:flex flex-col glass rounded-3xl border border-border/40 relative z-30 transition-all duration-300"
       >
-        <SidebarContent />
+        {renderSidebarContent()}
       </motion.aside>
 
       {/* Mobile Top Bar */}
@@ -341,7 +342,7 @@ export function AppShell() {
             exit={{ opacity: 0, x: -100 }}
             className="md:hidden fixed inset-0 top-16 bg-background z-30"
           >
-            <SidebarContent />
+            {renderSidebarContent()}
           </motion.div>
         )}
       </AnimatePresence>

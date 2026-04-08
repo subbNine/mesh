@@ -1,242 +1,298 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button } from '../components/ui/Button';
-import { 
-  BarChart3, 
-  Layers, 
-  MousePointer2, 
-  Sparkles, 
-  Zap, 
+import {
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  Layers,
+  LayoutGrid,
+  MessageSquare,
+  MousePointer2,
+  Sparkles,
   Users,
-  Layout
 } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55 } },
+};
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.3
-      }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
-  };
-
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/20 overflow-x-hidden">
-      
-      {/* Background Grids */}
-      <div className="fixed inset-0 bg-dot-grid opacity-[0.15] pointer-events-none z-0" />
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_-20%,var(--primary)_0%,transparent_50%)] opacity-[0.05] pointer-events-none z-0 dark:opacity-[0.1]" />
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+      <div className="fixed inset-0 pointer-events-none bg-dot-grid opacity-[0.08]" />
 
-      {/* Navigation */}
-      <header className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl">
-        <div className="container mx-auto flex h-20 items-center justify-between px-6 md:px-12">
-          <div className="flex items-center gap-8">
-            <a href="/" className="flex items-center space-x-2 group">
-                <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-black text-xl shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-105 transition-transform duration-300">M</div>
-                <span className="font-display font-black text-2xl tracking-tighter">Mesh.</span>
-            </a>
-            <nav className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors tracking-tight">Capabilities</a>
-              <a href="#vision" className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors tracking-tight">Vision</a>
-            </nav>
+      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <Layers size={20} />
+            </div>
+            <div>
+              <p className="font-display text-lg font-black tracking-tight">Mesh</p>
+              <p className="text-xs text-muted-foreground">Canvas-first project management</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="tertiary" onClick={() => navigate('/login')} size="sm">Log in</Button>
-            <Button onClick={() => navigate('/register')} size="sm" className="px-6">Get Started</Button>
+
+          <nav className="hidden items-center gap-6 md:flex">
+            <a href="#features" className="text-sm text-muted-foreground transition hover:text-foreground">Features</a>
+            <a href="#how-it-works" className="text-sm text-muted-foreground transition hover:text-foreground">How it works</a>
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <Button variant="tertiary" size="sm" onClick={() => navigate('/login')}>Sign in</Button>
+            <Button size="sm" onClick={() => navigate('/register')}>Get started</Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="relative z-10 pt-32 pb-20 md:pt-48 md:pb-32">
-        <div className="container mx-auto px-6 md:px-12">
-          <div className="flex flex-col lg:flex-row items-center gap-16">
-            
-            {/* Hero Text */}
-            <motion.div 
-              variants={container}
-              initial="hidden"
-              animate="show"
-              className="flex-1 text-center lg:text-left space-y-8"
-            >
-              <motion.div variants={item} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-widest">
-                <Sparkles size={12} /> Version 1.0 is Live
+      <main>
+        <section className="relative mx-auto max-w-7xl px-5 pb-16 pt-10 sm:px-6 lg:px-8 lg:pb-24 lg:pt-16">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+            <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }} className="space-y-6">
+              <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                <Sparkles size={12} />
+                Built for small product, design, and engineering teams
               </motion.div>
-              
-              <motion.h1 variants={item} className="font-display text-5xl sm:text-7xl md:text-8xl font-black tracking-[calc(-0.06em)] leading-[1.0] text-balance">
-                Orchestrate work in <span className="text-primary italic">freeform.</span>
+
+              <motion.h1 variants={fadeUp} className="max-w-3xl text-balance font-display text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">
+                Plan, discuss, and ship from the <span className="text-primary">canvas</span>.
               </motion.h1>
-              
-              <motion.p variants={item} className="max-w-[540px] mx-auto lg:mx-0 text-xl md:text-2xl text-muted-foreground/80 font-serif leading-relaxed italic">
-                Mesh is the canvas-first project management engine. Stop filling forms. Start making decisions where the work actually lives.
+
+              <motion.p variants={fadeUp} className="max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">
+                Mesh keeps tasks, comments, files, and decisions in one canvas-first workspace, so your team can work where the context already lives.
               </motion.p>
-              
-              <motion.div variants={item} className="flex flex-col sm:flex-row items-center gap-4 pt-4">
-                <Button size="xl" onClick={() => navigate('/register')} className="w-full sm:w-auto shadow-2xl shadow-primary/30">
-                  Build your workspace
+
+              <motion.div variants={fadeUp} className="flex flex-col gap-3 sm:flex-row">
+                <Button size="xl" onClick={() => navigate('/register')} icon={<ArrowRight size={18} />}>
+                  Create your workspace
                 </Button>
-                <Button size="xl" variant="outline" onClick={() => navigate('/login')} className="w-full sm:w-auto">
-                    View Demo
+                <Button size="xl" variant="outline" onClick={() => navigate('/login')}>
+                  Sign in
                 </Button>
+              </motion.div>
+
+              <motion.div variants={fadeUp} className="grid gap-3 pt-2 sm:grid-cols-3">
+                <PreviewStat label="Canvas tasks" value="Core workflow" />
+                <PreviewStat label="Comments in context" value="Figma-style pins" />
+                <PreviewStat label="Realtime presence" value="Multi-user sync" />
               </motion.div>
             </motion.div>
 
-            {/* Hero Visual: The "Drafting Table" simulation */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
-              className="flex-1 w-full relative"
+            <motion.div
+              initial={{ opacity: 0, y: 22, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="relative"
             >
-              <div className="relative aspect-[4/3] w-full max-w-[600px] mx-auto">
-                {/* Main "Task" Card */}
-                <div className="absolute inset-0 bg-card border-2 border-border/80 rounded-[32px] shadow-2xl overflow-hidden glass p-8 group">
-                   <div className="w-full h-full border border-dashed border-border rounded-2xl bg-muted/30 relative overflow-hidden">
-                      {/* Floating Canvas Elements */}
-                      <motion.div 
-                         animate={{ y: [0, -10, 0] }}
-                         transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                         className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary rounded-xl shadow-xl flex items-center justify-center text-white"
-                      >
-                         <Layers size={32} />
-                      </motion.div>
-                      
-                      <motion.div 
-                         animate={{ y: [0, 10, 0], x: [0, 5, 0] }}
-                         transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
-                         className="absolute bottom-1/4 right-1/4 w-40 h-24 bg-card border border-border rounded-xl shadow-2xl p-4"
-                      >
-                        <div className="w-full h-2 bg-muted rounded-full mb-2" />
-                        <div className="w-2/3 h-2 bg-muted rounded-full" />
-                      </motion.div>
+              <div className="absolute -inset-6 rounded-[32px] bg-primary/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[28px] border border-border/80 bg-card/90 shadow-[0_30px_90px_-40px_rgba(15,23,42,0.45)]">
+                <div className="border-b border-border/70 px-5 py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Launch Week</p>
+                      <p className="text-xs text-muted-foreground">Project overview</p>
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+                      <Users size={12} />
+                      6 active now
+                    </div>
+                  </div>
 
-                      {/* Cursor */}
-                      <motion.div
-                        animate={{ x: [0, 150, 50, 200], y: [0, 100, 200, 50] }}
-                        transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
-                        className="absolute text-primary pointer-events-none drop-shadow-xl z-20"
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {['All tasks', 'Docs & files', 'Activity'].map((tab, index) => (
+                      <span
+                        key={tab}
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          index === 0 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                        }`}
                       >
-                        <MousePointer2 size={32} fill="currentColor" />
-                        <div className="ml-6 -mt-2 bg-primary text-primary-foreground text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Designer</div>
-                      </motion.div>
-                   </div>
+                        {tab}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Decorative floating cards */}
-                <div className="absolute -top-12 -right-8 w-40 h-40 bg-accent/20 border border-accent/30 rounded-3xl backdrop-blur-md hidden md:block -z-10 rotate-12" />
-                <div className="absolute -bottom-12 -left-8 w-48 h-48 bg-primary/10 border border-primary/20 rounded-[40px] backdrop-blur-md hidden md:block -z-10 -rotate-6" />
+                <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.85fr]">
+                  <div className="space-y-3 rounded-2xl border border-border/70 bg-secondary/55 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground">My work</p>
+                        <h2 className="text-base font-semibold text-foreground">This week</h2>
+                      </div>
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">2 due soon</span>
+                    </div>
+
+                    {[
+                      { title: 'Finalize homepage messaging', meta: 'Due today', tone: 'text-amber-700 bg-amber-100' },
+                      { title: 'Review onboarding canvas', meta: 'In progress', tone: 'text-sky-700 bg-sky-100' },
+                      { title: 'Upload launch assets', meta: 'Docs & files', tone: 'text-emerald-700 bg-emerald-100' },
+                    ].map((item) => (
+                      <div key={item.title} className="rounded-xl border border-border/70 bg-card p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Canvas task · Product team</p>
+                          </div>
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${item.tone}`}>
+                            {item.meta}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-border/70 bg-secondary/55 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <MousePointer2 size={15} className="text-primary" />
+                        <p className="text-sm font-semibold">Live canvas activity</p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm">
+                          <MessageSquare size={14} className="text-accent" />
+                          New comment pinned to onboarding flow
+                        </div>
+                        <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm">
+                          <FileText size={14} className="text-primary" />
+                          Brand brief updated in Docs & files
+                        </div>
+                        <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm">
+                          <Activity size={14} className="text-emerald-600" />
+                          Status changed to Review
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-border/70 bg-slate-950 p-4 text-white shadow-inner dark:bg-slate-900">
+                      <div className="mb-3 flex items-center gap-2 text-slate-300">
+                        <LayoutGrid size={15} />
+                        Canvas snapshot
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="h-16 rounded-lg bg-teal-400/80" />
+                          <div className="rounded-lg border border-dashed border-white/15 p-3 text-xs text-slate-300">
+                            Launch checklist, notes, and comments stay together here.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>
-        </div>
+        </section>
+
+        <section id="features" className="border-y border-border/70 bg-card/35 py-16 sm:py-20">
+          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+            <div className="mb-8 max-w-2xl">
+              <p className="text-sm font-semibold text-primary">Why Mesh feels different</p>
+              <h2 className="mt-2 text-balance font-display text-3xl font-black tracking-tight sm:text-4xl">
+                A calmer workflow for teams that think visually.
+              </h2>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <FeatureCard
+                icon={<Layers size={18} />}
+                title="Every task is a canvas"
+                description="Sketch, annotate, upload images, and keep the working context attached to the task itself."
+              />
+              <FeatureCard
+                icon={<MessageSquare size={18} />}
+                title="Comments where they matter"
+                description="Drop pins directly on the canvas so feedback stays anchored to the exact spot under discussion."
+              />
+              <FeatureCard
+                icon={<FileText size={18} />}
+                title="Docs and files nearby"
+                description="Store briefs, PDFs, assets, and rich-text notes inside each project instead of scattering them elsewhere."
+              />
+              <FeatureCard
+                icon={<CheckCircle2 size={18} />}
+                title="Personal focus view"
+                description="My work and workspace activity help everyone stay aligned without heavy process overhead."
+              />
+            </div>
+          </div>
+        </section>
+
+        <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {[
+              {
+                title: 'Start from the project view',
+                description: 'Projects stay lightweight: a clean overview of tasks, assignees, due dates, docs, and activity.',
+              },
+              {
+                title: 'Open a task canvas',
+                description: 'The canvas becomes the place to think, map, review, and decide with your team in real time.',
+              },
+              {
+                title: 'Keep momentum across the workspace',
+                description: 'Use My work, notifications, and activity to stay on top of what needs attention next.',
+              },
+            ].map((step, index) => (
+              <div key={step.title} className="rounded-2xl border border-border/70 bg-card/70 p-5">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                  {index + 1}
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">{step.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-5 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+          <div className="overflow-hidden rounded-[28px] border border-border/80 bg-slate-950 px-6 py-8 text-white shadow-[0_30px_80px_-40px_rgba(8,17,31,0.9)] sm:px-8">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-sm font-semibold text-teal-300">Ready to try Mesh?</p>
+                <h2 className="mt-2 text-balance font-display text-3xl font-black tracking-tight">
+                  Bring the work, the conversation, and the context into one place.
+                </h2>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button size="lg" onClick={() => navigate('/register')} className="bg-white text-slate-950 hover:bg-slate-100">
+                  Create account
+                </Button>
+                <Button size="lg" variant="outline" onClick={() => navigate('/login')} className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                  Sign in
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
-
-      {/* Feature Grid */}
-      <section id="features" className="py-24 md:py-48 bg-card/30 border-y border-border/40 relative">
-        <div className="container mx-auto px-6 md:px-12">
-          <div className="max-w-3xl mx-auto text-center mb-24 space-y-6">
-            <h2 className="font-display text-4xl md:text-6xl font-black tracking-tight leading-none italic-slnt-0">
-               Tools should be <span className="text-primary italic font-serif">invisible.</span>
-            </h2>
-            <p className="text-xl text-muted-foreground/80 font-serif leading-relaxed italic">
-              We built Mesh to vanish. No bloat, no complex hierarchies. Just you, your team, and the canvas.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <FeatureCard 
-               icon={<Zap className="text-primary" />}
-               title="Multiplayer Sync"
-               description="Real-time collaboration faster than you can think. Cursors, presence, and CRDT sync built-in."
-            />
-            <FeatureCard 
-               icon={<Layout className="text-primary" />}
-               title="Spatial Layout"
-               description="Ditch the grid. Organize tasks spatially. Map out the actual structure of your project."
-            />
-            <FeatureCard 
-               icon={<Users className="text-primary" />}
-               title="Human Comments"
-               description="Pin discussions exactly where they matter. Figma-style pins, formatted as high-end editorial."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Vision Section */}
-      <section id="vision" className="py-24 md:py-48">
-        <div className="container mx-auto px-6 md:px-12">
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
-              <div className="space-y-8">
-                 <h3 className="font-display text-5xl font-black leading-[1.1] tracking-tight">
-                    Beyond Project Management.
-                 </h3>
-                 <p className="text-xl text-muted-foreground/80 font-serif leading-relaxed italic">
-                    Traditional tools treat tasks as data entries. Mesh treats them as creative spaces. It's the difference between a spreadsheet and a whiteboard.
-                 </p>
-                 <div className="space-y-4">
-                    <div className="flex items-start gap-4">
-                       <div className="p-2 rounded-lg bg-primary/10 text-primary mt-1"><BarChart3 size={20} /></div>
-                       <div>
-                          <h4 className="font-bold text-lg">Visual Progress</h4>
-                          <p className="text-muted-foreground text-sm">See the health of your project through the snapshots of your canvas.</p>
-                       </div>
-                    </div>
-                 </div>
-              </div>
-              <div className="aspect-video bg-muted/50 rounded-[40px] border border-border/50 relative overflow-hidden group">
-                 <div className="absolute inset-0 bg-grid opacity-20 group-hover:opacity-30 transition-opacity" />
-                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="p-12 text-center space-y-4">
-                       <div className="font-display font-black text-6xl text-primary/20 group-hover:text-primary/40 transition-all">Spatially Focused</div>
-                    </div>
-                 </div>
-              </div>
-           </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 border-t border-border/40">
-        <div className="container mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center text-background font-black text-sm">M</div>
-                <span className="font-display font-black text-xl tracking-tighter">Mesh.</span>
-            </div>
-            <p className="text-sm text-muted-foreground font-serif italic">Created with obsession for the craft. &copy; 2026 Mesh Team.</p>
-            <div className="flex gap-8">
-                <a href="#" className="text-sm font-bold text-muted-foreground hover:text-foreground">GitHub</a>
-                <a href="#" className="text-sm font-bold text-muted-foreground hover:text-foreground">Twitter</a>
-            </div>
-        </div>
-      </footer>
     </div>
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function PreviewStat({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
-    <motion.div 
-      whileHover={{ y: -8 }}
-      className="p-8 rounded-[32px] bg-card border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 group"
-    >
-      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 ring-1 ring-primary/20 group-hover:bg-primary group-hover:text-white transition-all">
+    <div className="rounded-xl border border-border/70 bg-card/75 px-4 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function FeatureCard({ icon, title, description }: Readonly<{ icon: ReactNode; title: string; description: string }>) {
+  return (
+    <motion.div whileHover={{ y: -4 }} className="rounded-2xl border border-border/70 bg-card/75 p-5 shadow-sm">
+      <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
         {icon}
       </div>
-      <h3 className="font-display text-2xl font-black mb-3 italic-slnt-0 leading-none">{title}</h3>
-      <p className="text-muted-foreground font-serif italic leading-relaxed text-balance">
-        {description}
-      </p>
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
     </motion.div>
   );
 }

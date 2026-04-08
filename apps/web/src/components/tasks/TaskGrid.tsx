@@ -39,7 +39,7 @@ const statusLabels: Record<string, string> = {
 };
 
 // Sortable item wrapper for Reorder Modal
-function SortableStatusItem({ id }: { id: string }) {
+function SortableStatusItem({ id }: Readonly<{ id: string }>) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
@@ -57,7 +57,7 @@ function SortableStatusItem({ id }: { id: string }) {
   );
 }
 
-export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
+export function TaskGrid({ projectId, activeTab, filters }: Readonly<TaskGridProps>) {
   const navigate = useNavigate();
   const { workspaceId } = useParams();
   const { tasks, isLoading, paginationMetadata, rowOrder, rowLimit, fetchTasks, loadPreferences, setRowOrder } = useTaskStore();
@@ -104,34 +104,32 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
     if (!paginationMetadata || paginationMetadata.pages <= 1) return null;
 
     return (
-      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/40 pt-5 bg-background/50 backdrop-blur-sm sticky bottom-0 z-10 -mx-4 px-4 pb-3 sm:pb-0">
-        <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
-           <span className="text-[8px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 mb-0.5">Navigation</span>
-           <div className="text-xs font-black uppercase tracking-widest text-foreground">
-             Page <span className="text-primary">{paginationMetadata.page}</span>
-             <span className="mx-1.5 opacity-20">/</span>
-             {paginationMetadata.pages}
-           </div>
+      <div className="sticky bottom-0 z-10 mt-6 -mx-4 flex flex-col items-center justify-between gap-4 border-t border-border/40 bg-background/80 px-4 pb-3 pt-5 backdrop-blur-sm sm:flex-row sm:pb-0">
+        <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+          <span className="mb-0.5 text-[10px] font-semibold text-muted-foreground">Page</span>
+          <div className="text-sm font-semibold text-foreground">
+            {paginationMetadata.page} of {paginationMetadata.pages}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Button
             variant="tertiary"
             size="sm"
             disabled={page <= 1}
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            className="flex-1 sm:flex-none border border-border/40 bg-card/40 font-black uppercase tracking-widest text-[9px] h-8"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="h-8 flex-1 border border-border/40 bg-card/40 sm:flex-none"
           >
-            Prev Stage
+            Previous
           </Button>
           <Button
             variant="tertiary"
             size="sm"
             disabled={page >= paginationMetadata.pages}
-            onClick={() => setPage(p => p + 1)}
-            className="flex-1 sm:flex-none border border-border/40 bg-card/40 font-black uppercase tracking-widest text-[9px] h-8"
+            onClick={() => setPage((p) => p + 1)}
+            className="h-8 flex-1 border border-border/40 bg-card/40 sm:flex-none"
           >
-            Next Stage
+            Next
           </Button>
         </div>
       </div>
@@ -141,8 +139,8 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <TaskCardSkeleton key={`skeleton-${i}`} className="w-full" />
+        {['task-a', 'task-b', 'task-c', 'task-d', 'task-e', 'task-f', 'task-g', 'task-h'].map((key) => (
+          <TaskCardSkeleton key={key} className="w-full" />
         ))}
       </div>
     );
@@ -167,10 +165,10 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
             variant="outline"
             size="sm"
             onClick={() => setIsReorderModalOpen(true)}
-            className="border-dashed border-1.5 px-3 h-8 rounded-lg text-[10px]"
+            className="h-8 rounded-lg border-dashed px-3 text-[10px]"
             icon={<Settings2 size={14} />}
           >
-            Structure Blueprint
+            Reorder lanes
           </Button>
         </div>
 
@@ -187,10 +185,13 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
             >
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-end gap-2">
-                  <h3 className="font-display font-black text-base md:text-lg tracking-tight text-foreground lowercase">
-                     {statusLabels[status] || status}
+                  <h3 className="font-display text-base font-black tracking-tight text-foreground md:text-lg">
+                    {statusLabels[status] || status}
                   </h3>
                 </div>
+                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  {statusTasks.length}
+                </span>
               </div>
 
               <div className="flex gap-4 overflow-x-auto no-scrollbar pb-3 -mx-4 px-4 mask-linear">
@@ -225,12 +226,12 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 className="bg-card w-full max-w-sm rounded-2xl border border-border/80 shadow-xl overflow-hidden relative z-10"
               >
-                <div className="p-5 border-b border-border/40 flex justify-between items-center bg-muted/20">
+                <div className="flex items-center justify-between border-b border-border/40 bg-muted/20 p-5">
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-primary mb-0.5">Architecture</span>
-                    <h3 className="font-display font-black text-lg tracking-tight text-foreground">Section Hierarchy</h3>
+                    <span className="mb-0.5 text-[10px] font-semibold text-primary">Task layout</span>
+                    <h3 className="font-display text-lg font-black tracking-tight text-foreground">Reorder task lanes</h3>
                   </div>
-                  <button onClick={() => setIsReorderModalOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center bg-muted/50 text-muted-foreground hover:text-foreground transition-all">
+                  <button onClick={() => setIsReorderModalOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-all hover:text-foreground">
                     <X size={16} />
                   </button>
                 </div>
@@ -243,14 +244,14 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
                     </SortableContext>
                   </DndContext>
                 </div>
-                <div className="p-5 border-t border-border/40 flex justify-end bg-muted/20">
+                <div className="flex justify-end border-t border-border/40 bg-muted/20 p-5">
                   <Button
                     onClick={() => setIsReorderModalOpen(false)}
                     variant="primary"
                     size="sm"
-                    className="w-full h-9"
+                    className="h-9 w-full"
                   >
-                    Lock Structure
+                    Done
                   </Button>
                 </div>
               </motion.div>
@@ -268,17 +269,17 @@ export function TaskGrid({ projectId, activeTab, filters }: TaskGridProps) {
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center flex-1 min-h-[300px] border-2 border-dashed border-border/40 rounded-2xl bg-card/10 p-8 text-center"
+          className="flex min-h-[300px] flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/40 bg-card/10 p-8 text-center"
         >
-          <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 text-muted-foreground/40">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground/40">
             <LayoutGrid size={32} />
           </div>
-          <h3 className="font-display font-black text-2xl text-foreground mb-2">Void Detected.</h3>
-          <p className="max-w-xs text-sm text-muted-foreground font-serif italic opacity-80 mb-6">
-            There are no blueprints found within the "{statusLabels[activeTab]}" stage of development.
+          <h3 className="mb-2 font-display text-2xl font-black text-foreground">No tasks here yet</h3>
+          <p className="mb-6 max-w-xs text-sm text-muted-foreground">
+            There aren’t any tasks in <span className="font-semibold text-foreground">{statusLabels[activeTab]}</span> right now.
           </p>
-          <Button onClick={() => (globalThis as any).__meshShowNewTaskModal?.()} variant="outline" size="sm" className="rounded-lg h-9 border-dashed">
-              Initiate New Task
+          <Button onClick={() => (globalThis as any).__meshShowNewTaskModal?.()} variant="outline" size="sm" className="h-9 rounded-lg border-dashed">
+            Create task
           </Button>
         </motion.div>
         {renderPagination()}

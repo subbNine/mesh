@@ -32,21 +32,26 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
   return (
     <dialog
       ref={dialogRef}
-      className="backdrop:bg-black/50 p-0 m-auto rounded-xl shadow-xl w-full max-w-md bg-card border border-border text-foreground"
+      className="m-auto w-full max-w-lg rounded-2xl border border-border/80 bg-card p-0 text-foreground shadow-[0_30px_80px_-30px_rgba(15,23,42,0.45)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-sm"
       onCancel={handleClose}
     >
-      <div className="p-6 relative">
-        <h2 className="text-xl font-bold mb-1">{title}</h2>
-        {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
-        {children}
-        <button 
-          onClick={handleClose} 
-          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+      <div className="relative p-6 sm:p-7">
+        <button
+          onClick={handleClose}
+          className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label="Close modal"
         >
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-5 w-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+
+        <div className="pr-10">
+          <h2 className="text-xl font-bold text-foreground">{title}</h2>
+          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        </div>
+
+        <div className="mt-5">{children}</div>
       </div>
     </dialog>
   );

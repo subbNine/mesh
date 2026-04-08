@@ -21,5 +21,10 @@ export function connectToCanvas(taskId: string, token: string) {
 }
 
 export function disconnectFromCanvas(provider: WebsocketProvider) {
-  provider.destroy();
+  try {
+    provider.awareness?.setLocalState(null);
+    provider.disconnect();
+  } finally {
+    provider.destroy();
+  }
 }

@@ -67,15 +67,24 @@ export default function TaskCanvasPage() {
   }, []);
 
   const handleAwarenessChange = useCallback((aw: Awareness) => {
-    const states = Array.from(aw.getStates().entries());
-    const activeUsers = states
-      .filter(([, state]) => state.userId)
-      .map(([clientId, state]) => ({
+    const uniqueUsers = new Map<string, any>();
+
+    for (const [clientId, state] of aw.getStates().entries()) {
+      if (!state?.userId) continue;
+
+      const nextUser = {
         clientId,
-        ...state
-      }));
-    setAwarenessUsers(activeUsers);
-  }, [setAwarenessUsers]);
+        ...state,
+      };
+      const existingUser = uniqueUsers.get(state.userId);
+
+      if (!existingUser || clientId === aw.clientID || (!!state.cursor && !existingUser.cursor)) {
+        uniqueUsers.set(state.userId, nextUser);
+      }
+    }
+
+    setAwarenessUsers(Array.from(uniqueUsers.values()));
+  }, []);
 
   const loadCommentsFromBackend = useCallback(async (doc: Y.Doc) => {
     try {
@@ -102,14 +111,23 @@ export default function TaskCanvasPage() {
   useEffect(() => {
     if (!taskId || !currentUser) return;
 
-    let wsProvider: WebsocketProvider;
-    let debounceTimer: ReturnType<typeof setTimeout>;
+    setIsLoading(true);
+    setIsSynced(false);
+    setAwarenessUsers([]);
+
+    let wsProvider: WebsocketProvider | undefined;
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
     let currentAwareness: Awareness | null = null;
+    let removeAwarenessListener: (() => void) | null = null;
+    let removeDocListener: (() => void) | null = null;
+    let isDisposed = false;
 
     const handleDocUpdate = (doc: Y.Doc) => {
-      clearTimeout(debounceTimer);
+      if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        saveCanvasState(doc, taskId);
+        if (!isDisposed) {
+          saveCanvasState(doc, taskId);
+        }
       }, 1500);
     };
 
@@ -117,14 +135,21 @@ export default function TaskCanvasPage() {
       try {
         const token = localStorage.getItem('token') || '';
         const { ydoc: doc, provider: prov, awareness: aw } = connectToCanvas(taskId, token);
-        
+
+        if (isDisposed) {
+          disconnectFromCanvas(prov);
+          return;
+        }
+
         wsProvider = prov;
         currentAwareness = aw;
         setYdoc(doc);
         setAwareness(aw);
 
-        prov.on('sync', (isSynced: boolean) => {
-          setIsSynced(isSynced);
+        prov.on('sync', (nextIsSynced: boolean) => {
+          if (!isDisposed) {
+            setIsSynced(nextIsSynced);
+          }
         });
 
         aw.setLocalState({
@@ -135,28 +160,47 @@ export default function TaskCanvasPage() {
           cursor: null
         });
 
-        aw.on('change', () => handleAwarenessChange(aw));
-        doc.on('update', () => handleDocUpdate(doc));
+        const awarenessChangeHandler = () => handleAwarenessChange(aw);
+        const docUpdateHandler = () => handleDocUpdate(doc);
+
+        aw.on('change', awarenessChangeHandler);
+        doc.on('update', docUpdateHandler);
+        removeAwarenessListener = () => aw.off('change', awarenessChangeHandler);
+        removeDocListener = () => doc.off('update', docUpdateHandler);
+        handleAwarenessChange(aw);
 
         const res = await api.get(`/tasks/${taskId}`);
-        setTask(res.data);
+        if (!isDisposed) {
+          setTask(res.data);
+          await loadCommentsFromBackend(doc);
+        }
 
-        await loadCommentsFromBackend(doc);
-
+        if (isDisposed) {
+          removeAwarenessListener?.();
+          removeDocListener?.();
+          disconnectFromCanvas(prov);
+        }
       } catch (err) {
         console.error('Failed to initialize canvas page', err);
       } finally {
-        setIsLoading(false);
+        if (!isDisposed) {
+          setIsLoading(false);
+        }
       }
     };
 
     init();
 
     return () => {
-      clearTimeout(debounceTimer);
-      if (wsProvider) disconnectFromCanvas(wsProvider);
+      isDisposed = true;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      removeAwarenessListener?.();
+      removeDocListener?.();
       if (currentAwareness) {
         currentAwareness.setLocalState(null);
+      }
+      if (wsProvider) {
+        disconnectFromCanvas(wsProvider);
       }
     };
   }, [taskId, currentUser, handleAwarenessChange, loadCommentsFromBackend]);

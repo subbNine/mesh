@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { ArrowRight, BriefcaseBusiness, LayoutGrid, Plus, Users } from 'lucide-react';
 import { useProjectStore } from '../../store/project.store';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Plus, LayoutGrid, Users, Briefcase, ArrowRight } from 'lucide-react';
 
 export default function ProjectsPage() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
-  
-  const projects = useProjectStore(state => state.projects);
-  const isLoading = useProjectStore(state => state.isLoading);
-  const fetchProjects = useProjectStore(state => state.fetchProjects);
-  const createProject = useProjectStore(state => state.createProject);
+
+  const projects = useProjectStore((state) => state.projects);
+  const isLoading = useProjectStore((state) => state.isLoading);
+  const fetchProjects = useProjectStore((state) => state.fetchProjects);
+  const createProject = useProjectStore((state) => state.createProject);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -32,7 +32,7 @@ export default function ProjectsPage() {
     e.preventDefault();
     if (!newProjectName.trim()) return;
     setError('');
-    
+
     try {
       setIsCreating(true);
       const proj = await createProject(workspaceId!, newProjectName.trim(), newProjectDesc.trim() || undefined);
@@ -47,184 +47,182 @@ export default function ProjectsPage() {
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
+  const totalTasks = useMemo(
+    () => projects.reduce((sum: number, project: any) => sum + (project.taskCount || 0), 0),
+    [projects],
+  );
 
   return (
-    <div className="w-full min-h-full flex flex-col pt-12 pb-24 px-8 lg:px-12 overflow-x-hidden font-sans bg-background relative transition-colors duration-500">
-      {/* Architectural Underlay */}
-      <div className="absolute inset-0 bg-dot-grid opacity-10 pointer-events-none" />
-
-      <div className="max-w-7xl w-full mx-auto space-y-16 relative z-10">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <div className="space-y-4">
-             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-[.2em] text-primary">
-                Registry / Projects
-             </div>
-             <h1 className="font-display text-4xl sm:text-6xl font-black tracking-tight text-foreground">
-                Blueprint <span className="text-primary italic">Gallery</span>.
-             </h1>
-             <p className="text-muted-foreground mt-4 text-lg max-w-xl font-serif italic leading-relaxed opacity-70">
-                Manage and organize all active initiatives mapped within this technical environment.
-             </p>
-          </div>
-          <Button 
-            onClick={() => setIsModalOpen(true)} 
-            variant="primary" 
-            size="lg" 
-            className="h-14 rounded-2xl px-8 shadow-xl shadow-primary/20"
-            icon={<Plus size={20} />}
+    <div className="w-full min-h-full bg-background px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-7"
           >
-            New Project
-          </Button>
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <BriefcaseBusiness size={14} /> Workspace projects
+            </div>
+            <h1 className="mt-4 text-balance font-display text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+              Projects that keep the work in motion.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+              Open a project to view its task canvas, discussions, files, docs, and everything your team needs in context.
+            </p>
+
+            <div className="mt-6">
+              <Button onClick={() => setIsModalOpen(true)} size="lg" icon={<Plus size={18} />}>
+                New project
+              </Button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
+          >
+            <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+              <div className="text-sm font-medium text-muted-foreground">Projects</div>
+              <div className="mt-2 text-3xl font-black tracking-tight text-foreground">{projects.length}</div>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+              <div className="text-sm font-medium text-muted-foreground">Tracked tasks</div>
+              <div className="mt-2 flex items-center gap-2 text-3xl font-black tracking-tight text-foreground">
+                {totalTasks}
+                <LayoutGrid size={18} className="text-primary" />
+              </div>
+            </div>
+          </motion.div>
         </header>
 
         {isLoading && projects.length === 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-64 rounded-[40px] bg-muted/20 animate-pulse border border-border/40" />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {['project-a', 'project-b', 'project-c', 'project-d', 'project-e', 'project-f'].map((key) => (
+              <div key={key} className="h-64 animate-pulse rounded-3xl border border-border/60 bg-card/60" />
             ))}
           </div>
         ) : projects.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center py-24 px-8 text-center glass rounded-[48px] border-dashed border-2 border-border/40"
+            className="rounded-3xl border border-dashed border-border/80 bg-card/50 px-6 py-16 text-center shadow-sm"
           >
-             <div className="w-24 h-24 rounded-[36px] bg-muted/40 flex items-center justify-center mb-8 text-muted-foreground/20 ring-1 ring-border/50">
-                <Briefcase size={44} />
-             </div>
-             <h3 className="font-display text-3xl font-black text-foreground mb-4">Void Entry</h3>
-             <p className="text-muted-foreground mb-12 max-w-md italic font-serif text-lg leading-relaxed opacity-60">
-                Launch your first dedicated project canvas to start plotting tasks and workflows.
-             </p>
-             <Button onClick={() => setIsModalOpen(true)} size="xl" className="rounded-2xl h-14 px-10">Initialize Project</Button>
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <BriefcaseBusiness size={28} />
+            </div>
+            <h2 className="mt-4 text-2xl font-black tracking-tight text-foreground">No projects yet</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+              Create your first project to start organizing tasks, comments, docs, and files around the canvas.
+            </p>
+            <div className="mt-6">
+              <Button onClick={() => setIsModalOpen(true)} size="lg" icon={<Plus size={18} />}>
+                Create project
+              </Button>
+            </div>
           </motion.div>
         ) : (
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"
-          >
-            {projects.map((proj: any) => (
-              <motion.div 
-                key={proj.id} 
-                variants={itemVariants}
-                whileHover={{ y: -8 }}
-                className="group relative cursor-pointer"
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {projects.map((proj: any, idx: number) => (
+              <motion.button
+                key={proj.id}
+                type="button"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04 }}
+                className="group text-left"
                 onClick={() => navigate(`/w/${workspaceId}/p/${proj.id}`)}
               >
-                {/* Visual Glow */}
-                <div className="absolute inset-0 bg-primary/10 blur-[40px] opacity-0 group-hover:opacity-30 transition-opacity duration-500 rounded-full" />
-                
-                <div className="relative glass h-[340px] flex flex-col rounded-[44px] border-border/40 group-hover:border-primary/40 transition-all duration-500 overflow-hidden shadow-2xl shadow-black/5 dark:shadow-black/20">
-                    {/* Architectural Header (Thumbnail style) */}
-                    <div className="h-32 bg-muted/30 border-b border-border/40 relative overflow-hidden flex items-center justify-center">
-                        <div className="absolute inset-0 bg-dot-grid opacity-[0.04] pointer-events-none" />
-                        <div className="w-16 h-16 rounded-[22px] bg-card border border-border/40 text-primary flex items-center justify-center font-display font-black text-3xl group-hover:scale-110 transition-transform duration-700 shadow-inner">
-                            {proj.name.substring(0, 1).toUpperCase()}
+                <div className="flex h-full flex-col rounded-3xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                  <div className="mb-5 flex items-start justify-between gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 font-display text-xl font-black text-primary">
+                      {proj.name.substring(0, 1).toUpperCase()}
+                    </div>
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                      {proj.taskCount || 0} {(proj.taskCount || 0) === 1 ? 'task' : 'tasks'}
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-black tracking-tight text-foreground group-hover:text-primary">{proj.name}</h3>
+                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                    {proj.description || 'Add a goal, scope, or quick summary so the team knows what this project is about.'}
+                  </p>
+
+                  <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users size={15} className="text-primary" />
+                    <span>{proj.memberCount || 0} {(proj.memberCount || 0) === 1 ? 'member' : 'members'}</span>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-4 text-sm">
+                    <div className="flex -space-x-2">
+                      {proj.previewMembers?.slice(0, 4).map((pm: any) => (
+                        <div
+                          key={pm.id}
+                          className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-background bg-muted text-[11px] font-bold text-primary"
+                          title={`${pm.user?.firstName} ${pm.user?.lastName}`}
+                        >
+                          {pm.user?.avatarUrl ? (
+                            <img src={pm.user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            (pm.user?.firstName?.[0] || 'U').toUpperCase()
+                          )}
                         </div>
-                        <div className="absolute top-4 right-6 px-3 py-1 rounded-full bg-muted border border-border/40 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 shadow-sm">
-                            Blueprint
+                      ))}
+                      {(proj.memberCount || 0) > 4 && (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-bold text-primary-foreground">
+                          +{(proj.memberCount || 0) - 4}
                         </div>
+                      )}
                     </div>
 
-                    <div className="p-8 flex flex-col flex-1 justify-between bg-card/10">
-                        <div className="space-y-3">
-                            <h3 className="font-display group-hover:text-primary transition-colors text-2xl font-black tracking-tight leading-none text-foreground">
-                                {proj.name}
-                            </h3>
-                            <p className="text-muted-foreground text-[13px] font-serif italic leading-relaxed opacity-60 line-clamp-2">
-                                {proj.description || 'Drafting technical workflows...'}
-                            </p>
-                        </div>
-
-                        <div className="flex justify-between items-end pt-6 border-t border-border/40">
-                             <div className="space-y-3 flex-1">
-                                <div className="flex items-center gap-1">
-                                    <Users size={12} className="text-primary/60" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Assembly</p>
-                                </div>
-                                <div className="flex -space-x-3 mt-2 pr-4">
-                                    {proj.previewMembers?.slice(0, 4).map((pm: any) => (
-                                      <div key={pm.id} className="w-9 h-9 rounded-xl ring-4 ring-background bg-muted border border-border/40 flex items-center justify-center text-[11px] font-black text-primary overflow-hidden shadow-xl" title={`${pm.user?.firstName} ${pm.user?.lastName}`}>
-                                         {pm.user?.avatarUrl ? <img src={pm.user.avatarUrl} alt="" className="w-full h-full object-cover" /> : (pm.user?.firstName?.[0] || 'U').toUpperCase()}
-                                      </div>
-                                    ))}
-                                    {(proj.memberCount || 0) > 4 && (
-                                      <div className="w-9 h-9 rounded-xl ring-4 ring-background bg-primary text-white border border-primary/20 flex items-center justify-center text-[10px] font-black shadow-xl z-10">
-                                        +{(proj.memberCount || 0) - 4}
-                                      </div>
-                                    )}
-                                </div>
-                             </div>
-
-                             <div className="text-right pl-4">
-                                <div className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest mb-2 flex items-center justify-end gap-1.5">
-                                    <LayoutGrid size={11} /> TASKS
-                                </div>
-                                <div className="text-xl font-black text-primary px-4 py-1 rounded-[14px] bg-primary/10 border border-primary/20 inline-flex items-center justify-center min-w-[50px] shadow-lg">
-                                    {proj.taskCount || 0}
-                                </div>
-                             </div>
-                        </div>
-                    </div>
-                    
-                    {/* View Project Hover Button */}
-                    <div className="absolute inset-x-0 bottom-0 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
-                        Enter Workspace <ArrowRight size={14} />
-                    </div>
+                    <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                      Open <ArrowRight size={16} />
+                    </span>
+                  </div>
                 </div>
-              </motion.div>
+              </motion.button>
             ))}
-          </motion.div>
+          </div>
         )}
 
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title="Create New Project"
-          description="Establish isolated tasks mapping against specialized features."
+          title="Create project"
+          description="Add a new project to this workspace."
         >
-          <form onSubmit={handleCreate} className="space-y-6 pt-4">
-            {error && <div className="p-4 bg-destructive/10 text-destructive text-sm rounded-2xl border border-destructive/20 font-medium">{error}</div>}
-            <Input 
-              label="Blueprint Host Designation"
+          <form onSubmit={handleCreate} className="space-y-5 pt-2">
+            {error && <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
+            <Input
+              label="Project name"
               value={newProjectName}
-              onChange={e => setNewProjectName(e.target.value)}
-              placeholder="e.g., Q3 Web Redesign"
+              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder="e.g. Q3 web redesign"
               required
               autoFocus
-              className="h-14 rounded-2xl text-lg bg-muted/20"
               disabled={isCreating}
             />
             <div className="space-y-2">
-              <label className="block text-xs font-black text-muted-foreground/60 uppercase tracking-widest pl-1">Strategic Description</label>
+              <label htmlFor="newProjectDescription" className="block text-sm font-medium text-foreground">
+                Description
+              </label>
               <textarea
-                className="w-full px-5 py-4 border border-border/40 rounded-2xl text-[15px] bg-muted/20 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-300 min-h-[120px] resize-none font-serif italic text-muted-foreground/80 placeholder:text-muted-foreground/30"
+                id="newProjectDescription"
+                className="min-h-[110px] w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 value={newProjectDesc}
-                onChange={e => setNewProjectDesc(e.target.value)}
-                placeholder="What is the goal of this initiative?"
+                onChange={(e) => setNewProjectDesc(e.target.value)}
+                placeholder="What is this project trying to achieve?"
                 disabled={isCreating}
               />
             </div>
-            <div className="flex justify-end gap-3 pt-8 border-t border-border/40">
-              <Button type="button" variant="tertiary" size="lg" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="primary" size="lg" loading={isCreating} disabled={!newProjectName.trim()} className="px-10 h-14 rounded-2xl">
-                Launch Project
+            <div className="flex justify-end gap-3 border-t border-border/70 pt-5">
+              <Button type="button" variant="tertiary" onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={isCreating} disabled={!newProjectName.trim()}>
+                Create project
               </Button>
             </div>
           </form>
