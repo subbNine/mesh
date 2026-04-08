@@ -1000,6 +1000,37 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     return '';
   }, [activeTool]);
 
+  const getRenderedElement = useCallback((el: CanvasElement) => {
+    const renderedEl = { ...el };
+
+    if (el.parentId) {
+      const parent = elements.find((item) => item.id === el.parentId);
+      if (parent) {
+        const parentWidth = parent.width || 1;
+        const parentHeight = parent.height || 1;
+        renderedEl.x = parent.x + (el.relX || 0) * parentWidth;
+        renderedEl.y = parent.y + (el.relY || 0) * parentHeight;
+        renderedEl.width = (el.relW || 1) * parentWidth;
+        renderedEl.height = (el.relH || 1) * parentHeight;
+
+        if (typeof el.anchorRelX === 'number') {
+          renderedEl.anchorX = parent.x + el.anchorRelX * parentWidth;
+        }
+        if (typeof el.anchorRelY === 'number') {
+          renderedEl.anchorY = parent.y + el.anchorRelY * parentHeight;
+        }
+      }
+    }
+
+    const dragPreview = dragPreviewById[el.id];
+    if (dragPreview) {
+      renderedEl.x = dragPreview.x;
+      renderedEl.y = dragPreview.y;
+    }
+
+    return renderedEl;
+  }, [elements, dragPreviewById]);
+
   return (
     <div className={`w-full h-full relative overflow-hidden ${containerCursor}`}
       style={{
@@ -1038,28 +1069,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
       >
         <Layer ref={layerRef}>
           {elements.map(el => {
-            let renderedEl = { ...el };
-            if (el.parentId) {
-              const parent = elements.find(p => p.id === el.parentId);
-              if (parent) {
-                renderedEl.x = parent.x + (el.relX || 0) * (parent.width || 0);
-                renderedEl.y = parent.y + (el.relY || 0) * (parent.height || 0);
-                renderedEl.width = (el.relW || 1) * (parent.width || 1);
-                renderedEl.height = (el.relH || 1) * (parent.height || 1);
-                if (typeof el.anchorRelX === 'number') {
-                  renderedEl.anchorX = parent.x + el.anchorRelX * (parent.width || 1);
-                }
-                if (typeof el.anchorRelY === 'number') {
-                  renderedEl.anchorY = parent.y + el.anchorRelY * (parent.height || 1);
-                }
-              }
-            }
-
-            const dragPreview = dragPreviewById[el.id];
-            if (dragPreview) {
-              renderedEl.x = dragPreview.x;
-              renderedEl.y = dragPreview.y;
-            }
+            const renderedEl = getRenderedElement(el);
 
             return (
               <CanvasElementView
@@ -1103,28 +1113,34 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
         </Layer>
       </Stage>
 
-      {elements.filter(el => (el.type === 'text' || el.type === 'callout') && editingId === el.id).map(el => (
-        <RichTextOverlay
-          key={el.id}
-          el={{
-            id: el.id,
-            x: el.x,
-            y: el.y,
-            width: el.width || 200,
-            height: el.height || 60,
-            rotation: el.rotation,
-            content: el.content,
-            backgroundColor: el.backgroundColor
-          }}
-          stageProps={stageProps}
-          isEditing={editingId === el.id}
-          onBeginEdit={() => setEditingId(el.id)}
-          onEndEdit={() => setEditingId(null)}
-          ydoc={ydoc}
-          isSelected={selectedId === el.id}
-          variant={el.type === 'callout' ? 'callout' : 'text'}
-        />
-      ))}
+      {elements
+        .filter(el => (el.type === 'text' || el.type === 'callout') && editingId === el.id)
+        .map(el => {
+          const renderedEl = getRenderedElement(el);
+
+          return (
+            <RichTextOverlay
+              key={el.id}
+              el={{
+                id: el.id,
+                x: renderedEl.x,
+                y: renderedEl.y,
+                width: renderedEl.width || 200,
+                height: renderedEl.height || 60,
+                rotation: renderedEl.rotation,
+                content: renderedEl.content,
+                backgroundColor: renderedEl.backgroundColor
+              }}
+              stageProps={stageProps}
+              isEditing={editingId === el.id}
+              onBeginEdit={() => setEditingId(el.id)}
+              onEndEdit={() => setEditingId(null)}
+              ydoc={ydoc}
+              isSelected={selectedId === el.id}
+              variant={el.type === 'callout' ? 'callout' : 'text'}
+            />
+          );
+        })}
 
       {draftCommentPos && (
         <CommentCompose

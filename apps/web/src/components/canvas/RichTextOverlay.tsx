@@ -228,6 +228,38 @@ export function RichTextOverlay({
     borderRadius: isCallout ? '18px' : '2px',
     border: isCallout ? `1.5px solid ${isSelected ? '#0ea5e9' : '#d4a017'}` : undefined,
     boxShadow: isCallout ? '0 12px 30px rgba(245, 158, 11, 0.18)' : undefined,
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  };
+
+  const editorShellStyle: React.CSSProperties = {
+    ...baseContentStyle,
+    position: 'relative',
+    border: '2px solid #0ca3ba',
+    borderRadius: isCallout ? '18px' : '4px',
+    background: el.backgroundColor || (isCallout ? '#fff2b3' : 'rgba(255,255,255,0.97)'),
+    boxShadow: '0 0 0 4px rgba(12,163,186,0.12)',
+  };
+
+  const editorContentStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: isCallout ? '2px' : '0',
+    padding: isCallout ? '12px 14px' : '8px',
+    margin: 0,
+    outline: 'none',
+    border: 'none',
+    borderRadius: isCallout ? '16px' : '2px',
+    boxSizing: 'border-box',
+    background: 'transparent',
+    color: '#1a1a1a',
+    caretColor: '#0ca3ba',
+    display: 'block',
+    width: isCallout ? 'calc(100% - 4px)' : '100%',
+    height: isCallout ? 'calc(100% - 4px)' : '100%',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    wordBreak: 'break-word',
+    whiteSpace: 'pre-wrap',
   };
 
   if (!isEditing) {
@@ -263,8 +295,12 @@ export function RichTextOverlay({
           )}
 
           <div
-            className="absolute inset-0 p-2 overflow-hidden break-words"
-            style={{ color: '#1a1a1a' }}
+            className="absolute inset-0 overflow-hidden break-words"
+            style={{
+              color: '#1a1a1a',
+              padding: isCallout ? '12px 14px' : '8px',
+              boxSizing: 'border-box',
+            }}
             dangerouslySetInnerHTML={{ __html: localText || placeholderHtml }}
           />
         </div>
@@ -367,33 +403,19 @@ export function RichTextOverlay({
         })}
       </div>
 
-      <div
-        ref={contentEditableRef}
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        onKeyUp={updateFormatState}
-        onMouseUp={updateFormatState}
-        spellCheck
-        style={{
-          ...baseContentStyle,
-          padding: '8px',
-          margin: 0,
-          outline: 'none',
-          border: '2px solid #0ca3ba',
-          borderRadius: '4px',
-          boxSizing: 'border-box',
-          background: 'rgba(255,255,255,0.97)',
-          color: '#1a1a1a',
-          boxShadow: '0 0 0 4px rgba(12,163,186,0.12)',
-          caretColor: '#0ca3ba',
-          display: 'block',
-          overflowY: 'auto',
-          wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap',
-        }}
-      />
+      <div style={editorShellStyle}>
+        <div
+          ref={contentEditableRef}
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          onKeyUp={updateFormatState}
+          onMouseUp={updateFormatState}
+          spellCheck
+          style={editorContentStyle}
+        />
+      </div>
     </div>
   );
 }
