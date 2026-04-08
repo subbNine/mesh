@@ -219,17 +219,6 @@ const CanvasElementView = React.memo(({
           shadowOpacity={isCallout ? 0.12 : 0}
         />
 
-        {isCallout && (
-          <Line
-            points={[tailBaseX - 12, height - 3, tailBaseX, height + 14, tailBaseX + 12, height - 3]}
-            closed
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={isSelected ? 2 : 1.25}
-            listening={false}
-          />
-        )}
-
         {!isEditing && (
           <Text
             x={isCallout ? 12 : 8}
@@ -371,6 +360,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const [draftCommentPos, setDraftCommentPos] = useState<any | null>(null);
   const [stageProps, setStageProps] = useState({ scale: 1, x: 0, y: 0 });
   const [drawingPoints, setDrawingPoints] = useState<number[] | null>(null);
+  const [dragPreviewById, setDragPreviewById] = useState<Record<string, { x: number; y: number }>>({});
 
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
   const globalZoom = useCanvasStore((state: any) => state.zoom);
@@ -817,6 +807,15 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     const id = e.target.id();
     const x = e.target.x();
     const y = e.target.y();
+    const draggedElement = elements.find((el) => el.id === id);
+
+    if (draggedElement?.type === 'callout') {
+      setDragPreviewById((prev) => {
+        const current = prev[id];
+        if (current?.x === x && current?.y === y) return prev;
+        return { ...prev, [id]: { x, y } };
+      });
+    }
 
     // Immediately update child elements' positions if this is a parent
     const parentElement = elements.find(el => el.id === id);
@@ -864,6 +863,13 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     const id = e.target.id();
     const x = e.target.x();
     const y = e.target.y();
+
+    setDragPreviewById((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
 
     // Clear pending update timeout
     if (dragUpdateTimeoutRef.current) {
@@ -1048,6 +1054,13 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
                 }
               }
             }
+
+            const dragPreview = dragPreviewById[el.id];
+            if (dragPreview) {
+              renderedEl.x = dragPreview.x;
+              renderedEl.y = dragPreview.y;
+            }
+
             return (
               <CanvasElementView
                 key={el.id} el={renderedEl}
