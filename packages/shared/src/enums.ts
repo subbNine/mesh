@@ -45,5 +45,6 @@ export type ActivityEventType = typeof ActivityEventType[keyof typeof ActivityEv
 export const CanvasElementType = {
   Text: 'text',
   Image: 'image',
+  Callout: 'callout',
 } as const;
 export type CanvasElementType = typeof CanvasElementType[keyof typeof CanvasElementType];

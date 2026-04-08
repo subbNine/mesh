@@ -19,6 +19,7 @@ interface RichTextOverlayProps {
   onEndEdit: () => void;
   ydoc: Y.Doc;
   isSelected: boolean;
+  variant?: 'text' | 'callout';
 }
 
 function saveContent(ydoc: Y.Doc, id: string, content: string) {
@@ -36,11 +37,16 @@ export function RichTextOverlay({
   onEndEdit,
   ydoc,
   isSelected,
+  variant = 'text',
 }: RichTextOverlayProps) {
   const contentEditableRef = useRef<HTMLDivElement>(null);
   const [localText, setLocalText] = useState(el.content ?? '');
   const lastHtml = useRef(el.content ?? '');
   const justCommitted = useRef(false);
+  const isCallout = variant === 'callout';
+  const placeholderHtml = isCallout
+    ? '<span style="color: #92400e; font-style: italic;">Add callout</span>'
+    : '<span style="color: #adb5bd; font-style: italic;">Text block</span>';
   
   const [formatState, setFormatState] = useState({
     bold: false,
@@ -64,7 +70,7 @@ export function RichTextOverlay({
     if (isEditing && contentEditableRef.current) {
       const div = contentEditableRef.current;
       
-      div.innerHTML = el.content ?? '<span style="color: #adb5bd; font-style: italic;">Text block</span>';
+      div.innerHTML = el.content ?? placeholderHtml;
       
       div.focus();
       
@@ -211,14 +217,17 @@ export function RichTextOverlay({
   const rotation = el.rotation || 0;
 
   const baseContentStyle: React.CSSProperties = {
-    fontSize: '20px',
+    fontSize: isCallout ? '18px' : '20px',
     lineHeight: 1.45,
     fontFamily: 'inherit',
     transform: `scale(${stageProps.scale}) rotate(${rotation}deg)`,
     transformOrigin: 'top left',
     width: el.width,
     height: el.height,
-    backgroundColor: el.backgroundColor || '#ffffff',
+    backgroundColor: el.backgroundColor || (isCallout ? '#fff2b3' : '#ffffff'),
+    borderRadius: isCallout ? '18px' : '2px',
+    border: isCallout ? `1.5px solid ${isSelected ? '#0ea5e9' : '#d4a017'}` : undefined,
+    boxShadow: isCallout ? '0 12px 30px rgba(245, 158, 11, 0.18)' : undefined,
   };
 
   if (!isEditing) {
@@ -256,7 +265,7 @@ export function RichTextOverlay({
           <div
             className="absolute inset-0 p-2 overflow-hidden break-words"
             style={{ color: '#1a1a1a' }}
-            dangerouslySetInnerHTML={{ __html: localText || `<span style="color: #adb5bd; font-style: italic;">Text block</span>` }}
+            dangerouslySetInnerHTML={{ __html: localText || placeholderHtml }}
           />
         </div>
       </div>

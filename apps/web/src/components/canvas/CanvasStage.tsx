@@ -9,6 +9,7 @@ import { useTextTool } from './useTextTool';
 import { api } from '../../lib/api';
 import type { IUser } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
+import { useToast } from '../../store/toast.store';
 import { CommentCompose } from '../comments/CommentCompose';
 import { getUserColor } from '../../lib/user-color';
 
@@ -25,6 +26,7 @@ interface CanvasElement {
   rotation?: number;
   content?: string;
   backgroundColor?: string;
+  opacity?: number;
   zIndex: number;
   createdBy: string;
   createdAt: string;
@@ -36,6 +38,10 @@ interface CanvasElement {
   relY?: number;
   relW?: number;
   relH?: number;
+  anchorRelX?: number;
+  anchorRelY?: number;
+  anchorX?: number;
+  anchorY?: number;
 }
 
 interface CanvasComment {
@@ -148,12 +154,18 @@ const CanvasElementView = React.memo(({
 }) => {
   const isSelectTool = activeTool === 'select';
 
-  if (el.type === 'text') {
-    const width = el.width || 200;
-    const height = el.height || 60;
+  if (el.type === 'text' || el.type === 'callout') {
+    const isCallout = el.type === 'callout';
+    const width = el.width || (isCallout ? 220 : 200);
+    const height = el.height || (isCallout ? 88 : 60);
     const textValue = htmlToPlainText(el.content);
     const hasContent = textValue.length > 0;
     const { fontStyle, textDecoration, align } = getTextFormatting(el.content);
+    const fillColor = el.backgroundColor || (isCallout ? '#fff2b3' : '#ffffff');
+    const strokeColor = isSelected ? '#0ea5e9' : isCallout ? '#d4a017' : 'transparent';
+    const localAnchorX = typeof el.anchorX === 'number' ? el.anchorX - el.x : width * 0.5;
+    const localAnchorY = typeof el.anchorY === 'number' ? el.anchorY - el.y : height + 18;
+    const tailBaseX = Math.min(Math.max(localAnchorX, 24), Math.max(width - 24, 24));
 
     return (
       <Group
@@ -174,24 +186,59 @@ const CanvasElementView = React.memo(({
         }}
         onDblClick={() => isSelectTool && onEdit(el.id)}
       >
+        {isCallout && (
+          <>
+            <Line
+              points={[tailBaseX, height - 2, localAnchorX, localAnchorY]}
+              stroke={strokeColor}
+              strokeWidth={2}
+              lineCap="round"
+              listening={false}
+            />
+            <Circle
+              x={localAnchorX}
+              y={localAnchorY}
+              radius={4}
+              fill={isSelected ? '#0ea5e9' : '#f59e0b'}
+              stroke="#ffffff"
+              strokeWidth={1.5}
+              listening={false}
+            />
+          </>
+        )}
+
         <Rect
           width={width}
           height={height}
-          fill={el.backgroundColor || '#ffffff'}
-          stroke={isSelected ? '#3b82f6' : 'transparent'}
-          strokeWidth={isSelected ? 1.5 : 1}
-          cornerRadius={2}
+          fill={fillColor}
+          stroke={strokeColor}
+          strokeWidth={isCallout ? (isSelected ? 2 : 1.25) : (isSelected ? 1.5 : 1)}
+          cornerRadius={isCallout ? 18 : 2}
+          shadowColor={isCallout ? '#f59e0b' : undefined}
+          shadowBlur={isCallout ? (isSelected ? 12 : 6) : 0}
+          shadowOpacity={isCallout ? 0.12 : 0}
         />
+
+        {isCallout && (
+          <Line
+            points={[tailBaseX - 12, height - 3, tailBaseX, height + 14, tailBaseX + 12, height - 3]}
+            closed
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={isSelected ? 2 : 1.25}
+            listening={false}
+          />
+        )}
 
         {!isEditing && (
           <Text
-            x={8}
-            y={8}
-            width={Math.max(width - 16, 24)}
-            height={Math.max(height - 16, 20)}
-            text={hasContent ? textValue : 'Text block'}
-            fill={hasContent ? '#1a1a1a' : '#adb5bd'}
-            fontSize={20}
+            x={isCallout ? 12 : 8}
+            y={isCallout ? 10 : 8}
+            width={Math.max(width - (isCallout ? 24 : 16), 24)}
+            height={Math.max(height - (isCallout ? 20 : 16), 20)}
+            text={hasContent ? textValue : isCallout ? 'Add callout' : 'Text block'}
+            fill={hasContent ? '#1a1a1a' : isCallout ? '#92400e' : '#adb5bd'}
+            fontSize={isCallout ? 18 : 20}
             lineHeight={1.45}
             fontStyle={hasContent ? fontStyle : 'italic'}
             textDecoration={hasContent ? textDecoration : undefined}
@@ -328,6 +375,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
   const globalZoom = useCanvasStore((state: any) => state.zoom);
   const inkColor = useCanvasStore((state: any) => state.inkColor);
+  const { info } = useToast();
 
   // Sync global zoom store with local stageProps scale
   useEffect(() => {
@@ -458,7 +506,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
       };
 
       const rootId = resolveRootId(elementId);
-      selectionId = rootId;
+      selectionId = elementId;
 
       const collectGroupIds = (id: string, acc = new Set<string>()) => {
         if (acc.has(id)) return acc;
@@ -507,6 +555,35 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     setEditingId(selectionId);
   }, [bringElementGroupToFront]);
 
+  const resolveRootElement = useCallback((element: CanvasElement) => {
+    let current: CanvasElement | undefined = element;
+
+    while (current?.parentId) {
+      const parent = elements.find((item) => item.id === current?.parentId);
+      if (!parent) break;
+      current = parent;
+    }
+
+    return current ?? element;
+  }, [elements]);
+
+  const getDropTargetElement = useCallback((target: any) => {
+    let node = target;
+
+    while (node) {
+      const nodeId = typeof node.id === 'function' ? node.id() : node?.attrs?.id;
+      if (nodeId) {
+        const match = elements.find((item) => item.id === nodeId);
+        if (match && match.type !== 'callout') {
+          return resolveRootElement(match);
+        }
+      }
+      node = typeof node.getParent === 'function' ? node.getParent() : null;
+    }
+
+    return null;
+  }, [elements, resolveRootElement]);
+
   const handlePointerDown = (e: KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -518,9 +595,51 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
       textTool.handleMouseDown(e, stage);
     } else if (activeTool === 'pencil') {
       setDrawingPoints([pos.x, pos.y]);
+    } else if (activeTool === 'callout') {
+      const targetElement = getDropTargetElement(e.target);
+      if (!targetElement) {
+        info('Drop the callout onto an existing canvas item to attach it.');
+        return;
+      }
+
+      const parentWidth = targetElement.width || 240;
+      const parentHeight = targetElement.height || 160;
+      const width = Math.min(280, Math.max(parentWidth * 0.5, 180));
+      const height = Math.min(120, Math.max(parentHeight * 0.3, 78));
+      const bubbleX = pos.x + 24;
+      const bubbleY = pos.y - height - 20;
+      const id = crypto.randomUUID();
+
+      ydoc.transact(() => {
+        const arr = ydoc.getArray<Y.Map<any>>('elements');
+        const element = new Y.Map();
+        element.set('id', id);
+        element.set('type', 'callout');
+        element.set('content', '');
+        element.set('x', bubbleX);
+        element.set('y', bubbleY);
+        element.set('width', width);
+        element.set('height', height);
+        element.set('zIndex', arr.length);
+        element.set('createdBy', currentUser.id);
+        element.set('createdAt', new Date().toISOString());
+        element.set('backgroundColor', '#fff2b3');
+        element.set('parentId', targetElement.id);
+        element.set('relX', (bubbleX - targetElement.x) / (parentWidth || 1));
+        element.set('relY', (bubbleY - targetElement.y) / (parentHeight || 1));
+        element.set('relW', width / (parentWidth || 1));
+        element.set('relH', height / (parentHeight || 1));
+        element.set('anchorRelX', (pos.x - targetElement.x) / (parentWidth || 1));
+        element.set('anchorRelY', (pos.y - targetElement.y) / (parentHeight || 1));
+        arr.push([element]);
+      });
+
+      setSelectedId(id);
+      setEditingId(id);
+      onToolChange?.('select');
+      triggerSnapshot();
     } else if (activeTool === 'comment') {
-      const hit = stage.getIntersection(stage.getPointerPosition());
-      const el = hit?.attrs.id && elements.find(item => item.id === hit.attrs.id);
+      const el = getDropTargetElement(e.target);
       if (el) {
         setDraftCommentPos({
           canvasX: pos.x, canvasY: pos.y, elementId: el.id, relX: pos.x - el.x, relY: pos.y - el.y
@@ -668,8 +787,26 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
       const arr = ydoc.getArray<Y.Map<any>>('elements');
       const map = arr.toArray().find(m => m.get('id') === selectedId);
       if (map) {
-        map.set('x', node.x()); map.set('y', node.y());
-        map.set('width', node.width()); map.set('height', node.height());
+        const parentId = map.get('parentId');
+        if (parentId) {
+          const parent = elements.find((item) => item.id === parentId);
+          if (parent) {
+            map.set('relX', (node.x() - parent.x) / (parent.width || 1));
+            map.set('relY', (node.y() - parent.y) / (parent.height || 1));
+            map.set('relW', node.width() / (parent.width || 1));
+            map.set('relH', node.height() / (parent.height || 1));
+          } else {
+            map.set('x', node.x());
+            map.set('y', node.y());
+            map.set('width', node.width());
+            map.set('height', node.height());
+          }
+        } else {
+          map.set('x', node.x());
+          map.set('y', node.y());
+          map.set('width', node.width());
+          map.set('height', node.height());
+        }
         map.set('rotation', node.rotation());
       }
     });
@@ -775,6 +912,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
       else if (key === 'i') { e.preventDefault(); onToolChange?.('image'); }
       else if (key === 'c') { e.preventDefault(); onToolChange?.('comment'); }
       else if (key === 'p') { e.preventDefault(); onToolChange?.('pencil'); }
+      else if (key === 'a') { e.preventDefault(); onToolChange?.('callout'); }
       else if (key === 'escape') {
         e.preventDefault();
         onToolChange?.('select');
@@ -801,30 +939,28 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
             const targetIndex = arr.toArray().findIndex(m => m.get('id') === selectedId);
             if (targetIndex > -1) {
               const target = arr.get(targetIndex);
-              // Unbind children before deleting the parent
-              if (target.get('type') === 'image') {
+              const childMaps = arr.toArray().filter((m) => m.get('parentId') === selectedId);
+              if (childMaps.length > 0) {
                 const parentX = target.get('x');
                 const parentY = target.get('y');
                 const parentW = target.get('width') || 1;
                 const parentH = target.get('height') || 1;
-                
-                arr.toArray().forEach((m) => {
-                  if (m.get('parentId') === selectedId) {
-                    const absX = parentX + (m.get('relX') || 0) * parentW;
-                    const absY = parentY + (m.get('relY') || 0) * parentH;
-                    const absW = (m.get('relW') || 1) * parentW;
-                    const absH = (m.get('relH') || 1) * parentH;
-                    
-                    m.set('x', absX);
-                    m.set('y', absY);
-                    m.set('width', absW);
-                    m.set('height', absH);
-                    m.set('parentId', undefined);
-                    m.set('relX', undefined);
-                    m.set('relY', undefined);
-                    m.set('relW', undefined);
-                    m.set('relH', undefined);
-                  }
+
+                childMaps.forEach((m) => {
+                  const absX = parentX + (m.get('relX') || 0) * parentW;
+                  const absY = parentY + (m.get('relY') || 0) * parentH;
+                  const absW = (m.get('relW') || 1) * parentW;
+                  const absH = (m.get('relH') || 1) * parentH;
+
+                  m.set('x', absX);
+                  m.set('y', absY);
+                  m.set('width', absW);
+                  m.set('height', absH);
+                  m.set('parentId', undefined);
+                  m.set('relX', undefined);
+                  m.set('relY', undefined);
+                  m.set('relW', undefined);
+                  m.set('relH', undefined);
                 });
               }
               arr.delete(targetIndex, 1);
@@ -853,6 +989,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
 
   const containerCursor = useMemo(() => {
     if (activeTool === 'text') return 'cursor-crosshair';
+    if (activeTool === 'callout') return 'cursor-copy';
     if (activeTool === 'comment') return 'cursor-cell';
     return '';
   }, [activeTool]);
@@ -903,6 +1040,12 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
                 renderedEl.y = parent.y + (el.relY || 0) * (parent.height || 0);
                 renderedEl.width = (el.relW || 1) * (parent.width || 1);
                 renderedEl.height = (el.relH || 1) * (parent.height || 1);
+                if (typeof el.anchorRelX === 'number') {
+                  renderedEl.anchorX = parent.x + el.anchorRelX * (parent.width || 1);
+                }
+                if (typeof el.anchorRelY === 'number') {
+                  renderedEl.anchorY = parent.y + el.anchorRelY * (parent.height || 1);
+                }
               }
             }
             return (
@@ -947,7 +1090,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
         </Layer>
       </Stage>
 
-      {elements.filter(el => el.type === 'text' && editingId === el.id).map(el => (
+      {elements.filter(el => (el.type === 'text' || el.type === 'callout') && editingId === el.id).map(el => (
         <RichTextOverlay
           key={el.id}
           el={{
@@ -966,6 +1109,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
           onEndEdit={() => setEditingId(null)}
           ydoc={ydoc}
           isSelected={selectedId === el.id}
+          variant={el.type === 'callout' ? 'callout' : 'text'}
         />
       ))}
 

@@ -6,6 +6,7 @@ import {
   Type,
   Image as ImageIcon,
   MessageSquare,
+  MessageCircleMore,
   ZoomIn,
   ZoomOut,
   Pencil,
@@ -137,11 +138,12 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   };
 
   const tools = [
-    { id: 'select',  icon: MousePointer2, label: 'Select' },
-    { id: 'pencil',  icon: Pencil,         label: 'Draw' },
-    { id: 'text',    icon: Type,           label: 'Text' },
-    { id: 'image',   icon: ImageIcon,     label: 'Asset' },
-    { id: 'comment', icon: MessageSquare, label: 'Comment' },
+    { id: 'select',  icon: MousePointer2,    label: 'Select' },
+    { id: 'pencil',  icon: Pencil,           label: 'Draw' },
+    { id: 'text',    icon: Type,             label: 'Text' },
+    { id: 'callout', icon: MessageCircleMore, label: 'Callout' },
+    { id: 'image',   icon: ImageIcon,        label: 'Asset' },
+    { id: 'comment', icon: MessageSquare,    label: 'Comment' },
   ];
 
   return (

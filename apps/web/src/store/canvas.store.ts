@@ -11,8 +11,10 @@ function loadInkColor() {
   }
 }
 
+export type CanvasTool = 'select' | 'text' | 'image' | 'comment' | 'pencil' | 'callout';
+
 interface CanvasState {
-  activeTool: 'select' | 'text' | 'image' | 'comment' | 'pencil';
+  activeTool: CanvasTool;
   selectedElementId: string | null;
   isCommentPaneOpen: boolean;
   activeCommentId: string | null;
@@ -20,7 +22,7 @@ interface CanvasState {
   sidebarMode: 'navigation' | 'thumbnails';
   inkColor: string;
 
-  setActiveTool: (tool: 'select' | 'text' | 'image' | 'comment' | 'pencil') => void;
+  setActiveTool: (tool: CanvasTool) => void;
   setSelectedElement: (id: string | null) => void;
   setCommentPaneOpen: (open: boolean) => void;
   toggleCommentPane: () => void;
