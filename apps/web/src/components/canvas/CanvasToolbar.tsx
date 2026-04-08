@@ -1,20 +1,22 @@
 import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import * as Y from 'yjs';
-import { 
-  MousePointer2, 
-  Type, 
-  Image as ImageIcon, 
-  MessageSquare, 
-  ZoomIn, 
-  ZoomOut, 
-  Pencil, 
+import {
+  MousePointer2,
+  Type,
+  Image as ImageIcon,
+  MessageSquare,
+  ZoomIn,
+  ZoomOut,
+  Pencil,
   Maximize,
-  ChevronUp
+  ChevronUp,
+  Droplets,
 } from 'lucide-react';
 import type { IUser } from '@mesh/shared';
 import { api } from '../../lib/api';
 import { useToast } from '../../store/toast.store';
+import { useCanvasStore } from '../../store/canvas.store';
 
 interface CanvasToolbarProps {
   taskId: string;
@@ -45,6 +47,10 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { success, error } = useToast();
+  const inkColor = useCanvasStore((state) => state.inkColor);
+  const setInkColor = useCanvasStore((state) => state.setInkColor);
+
+  const inkColors = ['#111827', '#ffffff', '#38bdf8', '#34d399', '#f59e0b', '#f43f5e', '#a78bfa'];
 
   const handleToolClick = (tool: string) => {
     onToolChange(tool);
@@ -139,7 +145,41 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   ];
 
   return (
-    <div className="select-none flex flex-col items-center">
+    <div className="select-none flex flex-col items-center gap-2">
+      {activeTool === 'pencil' && (
+        <motion.div
+          initial={{ y: 12, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="glass rounded-2xl px-3 py-2 flex items-center gap-2 backdrop-blur-3xl border border-border/60 shadow-xl shadow-primary/5"
+        >
+          <div className="flex items-center gap-1 pr-1 text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">
+            <Droplets size={11} /> Ink
+          </div>
+
+          {inkColors.map((color) => {
+            const isSelected = inkColor === color;
+            return (
+              <button
+                key={color}
+                type="button"
+                onClick={() => setInkColor(color)}
+                className={`relative h-7 w-7 rounded-full border transition-all ${
+                  isSelected
+                    ? 'scale-110 border-primary shadow-lg shadow-primary/20'
+                    : 'border-border/60 hover:scale-105 hover:border-foreground/40'
+                }`}
+                style={{ backgroundColor: color }}
+                title={`Set ink color to ${color}`}
+              >
+                {isSelected && (
+                  <span className={`absolute inset-1 rounded-full border ${color === '#ffffff' ? 'border-zinc-400/70' : 'border-white/80'}`} />
+                )}
+              </button>
+            );
+          })}
+        </motion.div>
+      )}
+
       {/* Unified Tool and Zoom Dock */}
       <motion.div
         initial={{ y: 40, opacity: 0 }}
@@ -163,6 +203,13 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                   onClick={() => handleToolClick(tool.id)}
                   >
                   <tool.icon size={16} className={isActive ? 'animate-in zoom-in-75 duration-300' : ''} />
+
+                  {tool.id === 'pencil' && (
+                    <span
+                      className="absolute bottom-1 right-1 h-2.5 w-2.5 rounded-full border border-white/80 shadow-sm"
+                      style={{ backgroundColor: inkColor }}
+                    />
+                  )}
 
                   {isActive && (
                       <motion.div

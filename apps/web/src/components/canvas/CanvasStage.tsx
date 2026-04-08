@@ -66,6 +66,32 @@ interface CanvasStageProps {
 
 const imagePreviewCache = new Map<string, HTMLImageElement>();
 
+function htmlToPlainText(content?: string) {
+  if (!content) return '';
+
+  if (globalThis.document) {
+    const div = globalThis.document.createElement('div');
+    div.innerHTML = content;
+    return (div.innerText || div.textContent || '').trim();
+  }
+
+  return content.replaceAll(/<[^>]+>/g, ' ').replaceAll(/\s+/g, ' ').trim();
+}
+
+function getTextFormatting(content = '') {
+  const source = content;
+  const bold = /<(strong|b)(\s|>)/i.test(source);
+  const italic = /<(em|i)(\s|>)/i.test(source);
+  const underline = /<u(\s|>)/i.test(source);
+  const alignMatch = /text-align\s*:\s*(left|center|right)/i.exec(source);
+
+  return {
+    fontStyle: [bold && 'bold', italic && 'italic'].filter(Boolean).join(' ') || 'normal',
+    textDecoration: underline ? 'underline' : undefined,
+    align: (alignMatch?.[1]?.toLowerCase() as 'left' | 'center' | 'right' | undefined) || 'left',
+  };
+}
+
 const URLImage = React.memo(({ src, width, height, isSelected, ...props }: any) => {
   const [img, setImg] = useState<HTMLImageElement | null>(imagePreviewCache.get(src) || null);
   const [error, setError] = useState(false);
@@ -123,17 +149,20 @@ const CanvasElementView = React.memo(({
   const isSelectTool = activeTool === 'select';
 
   if (el.type === 'text') {
+    const width = el.width || 200;
+    const height = el.height || 60;
+    const textValue = htmlToPlainText(el.content);
+    const hasContent = textValue.length > 0;
+    const { fontStyle, textDecoration, align } = getTextFormatting(el.content);
+
     return (
-      <Rect
+      <Group
         id={el.id}
         x={el.x}
         y={el.y}
-        width={el.width || 200}
-        height={el.height || 60}
+        width={width}
+        height={height}
         rotation={el.rotation || 0}
-        fill="transparent"
-        stroke={isSelected ? "#3b82f6" : "transparent"}
-        strokeWidth={1}
         draggable={isSelectTool && !isEditing}
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
@@ -144,7 +173,35 @@ const CanvasElementView = React.memo(({
           }
         }}
         onDblClick={() => isSelectTool && onEdit(el.id)}
-      />
+      >
+        <Rect
+          width={width}
+          height={height}
+          fill={el.backgroundColor || '#ffffff'}
+          stroke={isSelected ? '#3b82f6' : 'transparent'}
+          strokeWidth={isSelected ? 1.5 : 1}
+          cornerRadius={2}
+        />
+
+        {!isEditing && (
+          <Text
+            x={8}
+            y={8}
+            width={Math.max(width - 16, 24)}
+            height={Math.max(height - 16, 20)}
+            text={hasContent ? textValue : 'Text block'}
+            fill={hasContent ? '#1a1a1a' : '#adb5bd'}
+            fontSize={20}
+            lineHeight={1.45}
+            fontStyle={hasContent ? fontStyle : 'italic'}
+            textDecoration={hasContent ? textDecoration : undefined}
+            align={align}
+            verticalAlign="top"
+            wrap="word"
+            listening={false}
+          />
+        )}
+      </Group>
     );
   }
 
@@ -270,6 +327,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
 
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
   const globalZoom = useCanvasStore((state: any) => state.zoom);
+  const inkColor = useCanvasStore((state: any) => state.inkColor);
 
   // Sync global zoom store with local stageProps scale
   useEffect(() => {
@@ -428,7 +486,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
       // 2. Generate PNG Data URL
       const tempLine = new Konva.Line({
         points: points.map((p, i) => i % 2 === 0 ? p - minX + padding : p - minY + padding),
-        stroke: '#000',
+        stroke: inkColor,
         strokeWidth: 2,
         tension: 0.5,
         lineCap: 'round',
@@ -806,13 +864,13 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
         </Layer>
         <Layer listening={false}>
           {remoteUsers.map((u, i) => <RemoteCursor key={u.userId || i} state={u} />)}
-          {drawingPoints && <Line points={drawingPoints} stroke="#000" strokeWidth={2} tension={0.5} lineCap="round" />}
+          {drawingPoints && <Line points={drawingPoints} stroke={inkColor} strokeWidth={2} tension={0.5} lineCap="round" />}
         </Layer>
       </Stage>
 
-      {elements.filter(el => el.type === 'text').map(el => (
+      {elements.filter(el => el.type === 'text' && editingId === el.id).map(el => (
         <RichTextOverlay
-          key={el.id} 
+          key={el.id}
           el={{
             id: el.id,
             x: el.x,
@@ -822,12 +880,12 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
             rotation: el.rotation,
             content: el.content,
             backgroundColor: el.backgroundColor
-          }} 
+          }}
           stageProps={stageProps}
-          isEditing={editingId === el.id} 
+          isEditing={editingId === el.id}
           onBeginEdit={() => setEditingId(el.id)}
-          onEndEdit={() => setEditingId(null)} 
-          ydoc={ydoc} 
+          onEndEdit={() => setEditingId(null)}
+          ydoc={ydoc}
           isSelected={selectedId === el.id}
         />
       ))}
