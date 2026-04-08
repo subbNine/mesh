@@ -430,6 +430,83 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     }
   }, [selectedId, elements]);
 
+  const bringElementGroupToFront = useCallback((elementId: string) => {
+    let selectionId = elementId;
+
+    ydoc.transact(() => {
+      const arr = ydoc.getArray<Y.Map<any>>('elements');
+      const maps = arr.toArray();
+      const byId = new Map<string, Y.Map<any>>();
+
+      maps.forEach((map) => {
+        const id = map.get('id');
+        if (id) {
+          byId.set(id, map);
+        }
+      });
+
+      const resolveRootId = (id: string) => {
+        let current = byId.get(id);
+        let rootId = id;
+
+        while (current?.get('parentId')) {
+          rootId = current.get('parentId');
+          current = byId.get(rootId);
+        }
+
+        return rootId;
+      };
+
+      const rootId = resolveRootId(elementId);
+      selectionId = rootId;
+
+      const collectGroupIds = (id: string, acc = new Set<string>()) => {
+        if (acc.has(id)) return acc;
+        acc.add(id);
+
+        maps.forEach((map) => {
+          if (map.get('parentId') === id) {
+            const childId = map.get('id');
+            if (childId) {
+              collectGroupIds(childId, acc);
+            }
+          }
+        });
+
+        return acc;
+      };
+
+      const groupIds = collectGroupIds(rootId);
+      const groupedMaps = maps
+        .filter((map) => groupIds.has(map.get('id')))
+        .sort((a, b) => (Number(a.get('zIndex')) || 0) - (Number(b.get('zIndex')) || 0));
+
+      const maxOtherZIndex = maps.reduce((max, map) => {
+        const id = map.get('id');
+        if (groupIds.has(id)) return max;
+        return Math.max(max, Number(map.get('zIndex')) || 0);
+      }, -1);
+
+      let nextZIndex = maxOtherZIndex + 1;
+      groupedMaps.forEach((map) => {
+        map.set('zIndex', nextZIndex++);
+      });
+    });
+
+    return selectionId;
+  }, [ydoc]);
+
+  const handleSelectElement = useCallback((elementId: string) => {
+    const selectionId = bringElementGroupToFront(elementId);
+    setSelectedId(selectionId);
+  }, [bringElementGroupToFront]);
+
+  const handleEditElement = useCallback((elementId: string) => {
+    const selectionId = bringElementGroupToFront(elementId);
+    setSelectedId(selectionId);
+    setEditingId(selectionId);
+  }, [bringElementGroupToFront]);
+
   const handlePointerDown = (e: KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -766,7 +843,9 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const textTool = useTextTool({
     ydoc, userId: currentUser.id,
     onBoxCreated: (box) => {
-      setSelectedId(box.id); setEditingId(box.id); triggerSnapshot();
+      setSelectedId(box.id);
+      setEditingId(box.id);
+      triggerSnapshot();
     },
     onToolExit: toolExit
   });
@@ -831,7 +910,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
                 key={el.id} el={renderedEl}
                 isSelected={selectedId === el.id} isEditing={editingId === el.id}
                 activeTool={activeTool} handleDragMove={handleDragMove} handleDragEnd={handleDragEnd}
-                onSelect={setSelectedId} onEdit={setEditingId}
+                onSelect={handleSelectElement} onEdit={handleEditElement}
               />
             );
           })}
