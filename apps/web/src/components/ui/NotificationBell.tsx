@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { Bell, Check, UserPlus, MessageSquare, ClipboardList, AtSign, CheckCircle2 } from 'lucide-react';
+import { AtSign, Bell, Check, CheckCircle2, ClipboardList, Link2, MessageSquare, UserPlus } from 'lucide-react';
 import { useNotificationStore } from '../../store/notifications.store';
+import { api } from '../../lib/api';
 import { formatRelativeTime } from '../../lib/date-utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { INotification } from '@mesh/shared';
 
 const NotificationSkeleton = () => (
@@ -21,6 +22,7 @@ export function NotificationBell() {
   const { notifications, unreadCount, fetchNotifications, fetchUnreadCount, markRead, markAllRead } = useNotificationStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { workspaceId = '' } = useParams<{ workspaceId: string }>();
 
   useEffect(() => {
     const init = async () => {
@@ -46,10 +48,20 @@ export function NotificationBell() {
       await markRead(n.id);
     }
     setIsOpen(false);
-    if (n.resourceType === 'task' && n.resourceId) {
-      navigate(`/tasks/${n.resourceId}/canvas`);
-    } else if (n.resourceType === 'project' && n.resourceId) {
-      navigate(`/projects/${n.resourceId}`);
+
+    if (n.resourceType === 'task' && n.resourceId && workspaceId) {
+      try {
+        const { data } = await api.get(`/tasks/${n.resourceId}`);
+        navigate(`/w/${workspaceId}/p/${data.projectId}/tasks/${n.resourceId}/canvas`);
+      } catch (error) {
+        console.error('Failed to resolve notification task route', error);
+        navigate(`/w/${workspaceId}/projects`);
+      }
+      return;
+    }
+
+    if (n.resourceType === 'project' && n.resourceId && workspaceId) {
+      navigate(`/w/${workspaceId}/p/${n.resourceId}`);
     }
   };
 
@@ -80,6 +92,16 @@ export function NotificationBell() {
             <span className="font-bold text-foreground">{actorName}</span> added you to a project.
           </p>
         );
+      case 'task_unblocked': {
+        const taskTitle = typeof n.data?.taskTitle === 'string' ? n.data.taskTitle : 'Your task';
+        const blockingTaskTitle = typeof n.data?.blockingTaskTitle === 'string' ? n.data.blockingTaskTitle : 'A blocking task';
+
+        return (
+          <p className="text-sm">
+            <span className="font-bold text-foreground">{actorName}</span> marked <span className="font-semibold text-foreground">{blockingTaskTitle}</span> done. <span className="font-semibold text-foreground">{taskTitle}</span> is now unblocked.
+          </p>
+        );
+      }
       default:
         return <p className="text-sm">New notification.</p>;
     }
@@ -91,6 +113,7 @@ export function NotificationBell() {
       case 'mentioned': return <AtSign className="w-4 h-4 text-purple-500" />;
       case 'commented': return <MessageSquare className="w-4 h-4 text-emerald-500" />;
       case 'added_to_project': return <UserPlus className="w-4 h-4 text-orange-500" />;
+      case 'task_unblocked': return <Link2 className="w-4 h-4 text-amber-500" />;
       default: return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
   };

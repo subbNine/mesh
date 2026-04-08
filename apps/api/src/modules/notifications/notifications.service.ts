@@ -116,4 +116,20 @@ export class NotificationsService {
       resourceType: 'task',
     });
   }
+
+  async createTaskUnblockedNotification(
+    taskId: string,
+    recipientId: string,
+    actorId: string,
+    data?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.create({
+      recipientId,
+      actorId,
+      type: NotificationType.TaskUnblocked,
+      resourceId: taskId,
+      resourceType: 'task',
+      data,
+    });
+  }
 }

@@ -32,10 +32,18 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
   return (
     <dialog
       ref={dialogRef}
+      data-card-interactive="true"
       className="m-auto w-full max-w-lg rounded-2xl border border-border/80 bg-card p-0 text-foreground shadow-[0_30px_80px_-30px_rgba(15,23,42,0.45)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-sm"
       onCancel={handleClose}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (event.target === dialogRef.current) {
+          handleClose();
+        }
+      }}
+      onMouseDown={(event) => event.stopPropagation()}
     >
-      <div className="relative p-6 sm:p-7">
+      <div className="relative p-6 sm:p-7" onClick={(event) => event.stopPropagation()}>
         <button
           onClick={handleClose}
           className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import type { ITaskDependency } from '@mesh/shared';
 import { Project } from '../../projects/entities/projects.entity';
 import { User } from '../../users/entities/users.entity';
 
@@ -48,4 +49,9 @@ export class Task {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  blockedBy?: ITaskDependency[];
+  blocks?: ITaskDependency[];
+  isBlocked?: boolean;
+  dependencyCount?: number;
 }

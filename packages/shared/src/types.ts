@@ -50,6 +50,31 @@ export interface IProjectMember {
   user: IUser;
 }
 
+export interface ITaskDependencyTaskRef {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  snapshotUrl: string | null;
+  assignee: IUser | null;
+}
+
+export interface ITaskDependency {
+  id: string;
+  blockingTaskId: string;
+  blockingTask: ITaskDependencyTaskRef;
+  blockedTaskId: string;
+  blockedTask: ITaskDependencyTaskRef;
+  createdBy: string;
+  createdAt: ISODateValue;
+}
+
+export interface ITaskDependenciesResponse {
+  blockedBy: ITaskDependency[];
+  blocks: ITaskDependency[];
+  isBlocked: boolean;
+  dependencyCount: number;
+}
+
 export interface ITask {
   id: string;
   projectId: string;
@@ -61,6 +86,10 @@ export interface ITask {
   snapshotUrl: string | null;
   dueDate?: ISODateValue | null;
   projectName?: string;
+  blockedBy?: ITaskDependency[];
+  blocks?: ITaskDependency[];
+  isBlocked?: boolean;
+  dependencyCount?: number;
   createdBy: string;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -157,6 +186,7 @@ export interface INotification {
   type: NotificationType;
   resourceId: string | null;
   resourceType: 'task' | 'project' | null;
+  data?: Record<string, unknown> | null;
   readAt: string | Date | null;
   createdAt: string | Date;
 }

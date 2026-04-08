@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useParams } from 'react-router-dom';
 import { type ITask } from "@mesh/shared";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
-import { Pin, PinOff, User, Trash2, CalendarDays } from "lucide-react";
+import { CalendarDays, Link2, Lock, Pin, PinOff, Trash2, User } from "lucide-react";
+import { DependencyModal } from '../dependencies/DependencyModal';
+import { DependencyPopup } from '../dependencies/DependencyPopup';
+import { getTaskDependencyState } from '../../lib/dependency-utils';
 import { useTaskStore } from "../../store/task.store";
 import { useAuthStore } from "../../store/auth.store";
 import { useProjectStore } from "../../store/project.store";
@@ -12,6 +16,8 @@ interface TaskCardProps {
   onClick: () => void;
   className?: string;
 }
+
+const INTERACTIVE_CARD_SELECTOR = 'button, input, select, textarea, a, dialog, [data-card-interactive="true"]';
 
 const statusConfig: Record<
   string,
@@ -44,9 +50,13 @@ const statusConfig: Record<
 };
 
 export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
+  const { workspaceId = '' } = useParams<{ workspaceId: string }>();
   const [isPinned, setIsPinned] = useState(false);
+  const [isDependencyPopupOpen, setIsDependencyPopupOpen] = useState(false);
+  const [isDependencyModalOpen, setIsDependencyModalOpen] = useState(false);
   const deleteTask = useTaskStore((state) => state.deleteTask);
   const updateTask = useTaskStore((state) => state.updateTask);
+  const dependencySnapshot = useTaskStore((state) => state.dependenciesByTaskId[task.id]);
   const user = useAuthStore((state: any) => state.user);
   const members = useProjectStore((state) => state.members);
   const currentProject = useProjectStore((state) => state.currentProject);
@@ -125,6 +135,26 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
   };
 
   const config = statusConfig[task.status] || statusConfig.todo;
+  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest(INTERACTIVE_CARD_SELECTOR)) {
+      return;
+    }
+    onClick();
+  };
+
+  const dependencyState = getTaskDependencyState({
+    ...task,
+    blockedBy: dependencySnapshot?.blockedBy ?? task.blockedBy,
+    blocks: dependencySnapshot?.blocks ?? task.blocks,
+    isBlocked: dependencySnapshot?.isBlocked ?? task.isBlocked,
+    dependencyCount: dependencySnapshot?.dependencyCount ?? task.dependencyCount,
+  });
+  const dependencyToneClass = dependencyState.isBlocked
+    ? dependencyState.severity === 'critical'
+      ? 'border-red-200 bg-red-50 text-red-700'
+      : 'border-amber-200 bg-amber-50 text-amber-700'
+    : 'border-sky-200 bg-sky-50 text-sky-700';
 
   return (
     <motion.div
@@ -132,8 +162,8 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      onClick={onClick}
-      className={`relative group flex flex-col bg-card border border-border/60 rounded-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer overflow-hidden ${className}`}
+      onClick={handleCardClick}
+      className={`relative group flex flex-col bg-card border border-border/60 rounded-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer overflow-visible ${className}`}
     >
       {/* Blueprint Thumbnail */}
       <div className="h-[120px] w-full bg-muted/30 border-b border-border/40 relative overflow-hidden flex items-center justify-center">
@@ -158,6 +188,21 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
 
         {/* Overlay Badges */}
         <div className="absolute top-2 left-2 flex gap-1.5">
+          {dependencyState.dependencyCount > 0 && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsDependencyPopupOpen((prev) => !prev);
+              }}
+              className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest backdrop-blur-md transition-colors ${dependencyToneClass}`}
+              title={dependencyState.summaryLabel}
+            >
+              {dependencyState.isBlocked ? <Lock size={10} /> : <Link2 size={10} />}
+              {dependencyState.isBlocked ? 'Blocked' : 'Linked'}
+            </button>
+          )}
+
           <span
             className={`flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md backdrop-blur-md border ${config.border} ${config.color}`}
           >
@@ -192,6 +237,19 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
         </div>
       </div>
 
+      {workspaceId && (
+        <DependencyPopup
+          isOpen={isDependencyPopupOpen}
+          onClose={() => setIsDependencyPopupOpen(false)}
+          onManage={() => {
+            setIsDependencyPopupOpen(false);
+            setIsDependencyModalOpen(true);
+          }}
+          task={task}
+          workspaceId={workspaceId}
+        />
+      )}
+
       <div className="sm:p-3 p-2.5 flex flex-col flex-1 space-y-2">
         <div className="space-y-0.5">
           <h4 className="font-display font-black text-sm text-foreground tracking-tight leading-tight group-hover:text-primary transition-colors line-clamp-2">
@@ -209,17 +267,33 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
                 addSuffix: true,
               })}
             </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDueDateOpen((prev) => !prev);
-              }}
-              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
-              title="Set due date"
-            >
-              <CalendarDays size={12} />
-              {dueDate ? format(dueDate, "MMM d") : "Add due date"}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsDependencyPopupOpen(false);
+                  setIsDependencyModalOpen(true);
+                }}
+                className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${dependencyState.isBlocked ? 'text-amber-700 hover:bg-amber-50' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                title="Manage dependencies"
+              >
+                {dependencyState.isBlocked ? <Lock size={12} /> : <Link2 size={12} />}
+                {dependencyState.dependencyCount > 0 ? 'Deps' : 'Link'}
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDueDateOpen((prev) => !prev);
+                }}
+                className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
+                title="Set due date"
+              >
+                <CalendarDays size={12} />
+                {dueDate ? format(dueDate, "MMM d") : "Add due date"}
+              </button>
+            </div>
           </div>
 
           {dueDate && (
@@ -300,6 +374,11 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
           </div>
         </div>
       </div>
+      <DependencyModal
+        isOpen={isDependencyModalOpen}
+        onClose={() => setIsDependencyModalOpen(false)}
+        task={task}
+      />
     </motion.div>
   );
 }

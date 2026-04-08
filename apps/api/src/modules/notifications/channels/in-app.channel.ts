@@ -20,6 +20,7 @@ export class InAppChannel implements INotificationChannel {
       type: payload.type,
       resourceId: payload.resourceId,
       resourceType: payload.resourceType,
+      data: payload.data ?? null,
     });
 
     const saved = await this.notificationRepo.save(notification);

@@ -25,6 +25,7 @@ export const NotificationType = {
   AddedToProject: 'added_to_project',
   DueSoon: 'due_soon',
   DueToday: 'due_today',
+  TaskUnblocked: 'task_unblocked',
 } as const;
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
 

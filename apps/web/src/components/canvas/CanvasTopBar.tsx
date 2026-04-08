@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
+import { getTaskDependencyState } from '../../lib/dependency-utils';
 import type { ITask } from '@mesh/shared';
 import { format } from 'date-fns';
 import { useCanvasStore } from '../../store/canvas.store';
+import { useTaskStore } from '../../store/task.store';
 import { useProjectStore } from '../../store/project.store';
-import { ArrowLeft, MessageSquare, MoreHorizontal, ChevronDown, Check, UserPlus, Layers, CalendarDays } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ChevronDown, Layers, Link2, Lock, MessageSquare, MoreHorizontal, UserPlus } from 'lucide-react';
+import { DependencyDropdown } from '../dependencies/DependencyDropdown';
+import { DependencyModal } from '../dependencies/DependencyModal';
 import { NotificationBell } from '../ui/NotificationBell';
 import { useAuthStore } from '../../store/auth.store';
 import { getUserColor } from '../../lib/user-color';
@@ -26,8 +30,10 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, 
 
 export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBarProps) {
   const navigate = useNavigate();
+  const { workspaceId = '' } = useParams<{ workspaceId: string }>();
   const currentUser = useAuthStore(state => state.user);
   const members = useProjectStore(state => state.members);
+  const dependencySnapshot = useTaskStore((state) => state.dependenciesByTaskId[task.id]);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -35,10 +41,15 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [isDueDateOpen, setIsDueDateOpen] = useState(false);
+  const [isDependenciesOpen, setIsDependenciesOpen] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
+  const [isDependencyModalOpen, setIsDependencyModalOpen] = useState(false);
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const assigneeMenuRef = useRef<HTMLDivElement>(null);
   const dueDateMenuRef = useRef<HTMLDivElement>(null);
+  const dependenciesMenuRef = useRef<HTMLDivElement>(null);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleCommentPane = useCanvasStore(state => state.toggleCommentPane);
   const isCommentPaneOpen = useCanvasStore(state => state.isCommentPaneOpen);
@@ -48,6 +59,8 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
       if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) setIsStatusOpen(false);
       if (assigneeMenuRef.current && !assigneeMenuRef.current.contains(e.target as Node)) setIsAssigneeOpen(false);
       if (dueDateMenuRef.current && !dueDateMenuRef.current.contains(e.target as Node)) setIsDueDateOpen(false);
+      if (dependenciesMenuRef.current && !dependenciesMenuRef.current.contains(e.target as Node)) setIsDependenciesOpen(false);
+      if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) setIsOverflowOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -86,6 +99,13 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
   const extraAvatars = awarenessUsers.length > 5 ? awarenessUsers.length - 5 : 0;
   const statusKey = task.status?.toLowerCase() ?? 'todo';
   const config = STATUS_CONFIG[statusKey] || STATUS_CONFIG.todo;
+  const dependencyState = getTaskDependencyState({
+    ...task,
+    blockedBy: dependencySnapshot?.blockedBy ?? task.blockedBy,
+    blocks: dependencySnapshot?.blocks ?? task.blocks,
+    isBlocked: dependencySnapshot?.isBlocked ?? task.isBlocked,
+    dependencyCount: dependencySnapshot?.dependencyCount ?? task.dependencyCount,
+  });
 
   const currentAssignee = members.find(m => m.userId === task.assigneeId)?.user;
 
@@ -164,6 +184,30 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
                         )}
                     </AnimatePresence>
                 </div>
+
+                {dependencyState.dependencyCount > 0 && workspaceId && (
+                  <div className="relative" ref={dependenciesMenuRef}>
+                    <button
+                      onClick={() => setIsDependenciesOpen((prev) => !prev)}
+                      className={`flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-widest transition-all hover:shadow-sm ${dependencyState.isBlocked ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}
+                    >
+                      {dependencyState.isBlocked ? <Lock size={10} /> : <Link2 size={10} />}
+                      <span className="max-w-[180px] truncate">{dependencyState.summaryLabel}</span>
+                      <ChevronDown size={9} className="opacity-40" />
+                    </button>
+
+                    <DependencyDropdown
+                      isOpen={isDependenciesOpen}
+                      onClose={() => setIsDependenciesOpen(false)}
+                      onManage={() => {
+                        setIsDependenciesOpen(false);
+                        setIsDependencyModalOpen(true);
+                      }}
+                      task={task}
+                      workspaceId={workspaceId}
+                    />
+                  </div>
+                )}
             </div>
         </div>
       </div>
@@ -355,10 +399,44 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
 
         <NotificationBell />
 
-        <button className="w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-all border border-transparent hover:border-border/40 flex items-center justify-center">
-          <MoreHorizontal size={16} />
-        </button>
+        <div className="relative" ref={overflowMenuRef}>
+          <button
+            onClick={() => setIsOverflowOpen((prev) => !prev)}
+            className="w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-all border border-transparent hover:border-border/40 flex items-center justify-center"
+          >
+            <MoreHorizontal size={16} />
+          </button>
+
+          <AnimatePresence>
+            {isOverflowOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-border/80 bg-card/95 p-1.5 shadow-2xl z-50"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOverflowOpen(false);
+                    setIsDependencyModalOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted/60"
+                >
+                  <Link2 size={14} className="text-primary" />
+                  Manage dependencies
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
+
+      <DependencyModal
+        isOpen={isDependencyModalOpen}
+        onClose={() => setIsDependencyModalOpen(false)}
+        task={task}
+      />
     </div>
   );
 }

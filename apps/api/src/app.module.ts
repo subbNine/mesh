@@ -19,6 +19,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { DocsModule } from './modules/docs/docs.module';
 import { ProjectFilesModule } from './modules/project-files/project-files.module';
+import { DependenciesModule } from './modules/dependencies/dependencies.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { ProjectFilesModule } from './modules/project-files/project-files.module
     ActivityModule,
     DocsModule,
     ProjectFilesModule,
+    DependenciesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

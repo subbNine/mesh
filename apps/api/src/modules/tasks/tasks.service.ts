@@ -6,10 +6,11 @@ import { ProjectsService } from '../projects/projects.service';
 import { CanvasService } from '../canvas/canvas.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityService } from '../activity/activity.service';
+import { DependenciesService } from '../dependencies/dependencies.service';
 import { Pagination, PaginatedResult, PaginatedResultType } from '../../common/utils/pagination.util';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { ProjectMemberRole } from '@mesh/shared';
+import { ProjectMemberRole, TaskStatus } from '@mesh/shared';
 
 @Injectable()
 export class TasksService {
@@ -21,6 +22,7 @@ export class TasksService {
     private readonly canvasService: CanvasService,
     private readonly notificationsService: NotificationsService,
     private readonly activityService: ActivityService,
+    private readonly dependenciesService: DependenciesService,
   ) { }
 
   async create(projectId: string, userId: string, dto: CreateTaskDto): Promise<Task> {
@@ -36,23 +38,18 @@ export class TasksService {
     // Bootstrap local dependent properties (e.g., canvas instances mapping securely to the nested task bindings)
     await this.canvasService.createEmpty(saved.id);
 
-    const hydratedTask = await this.taskRepo.findOne({
-      where: { id: saved.id },
-      relations: ['assignee', 'creator'],
-    });
+    const hydratedTask = await this.findOne(saved.id, userId);
 
-    if (hydratedTask) {
-      await this.activityService.recordTaskCreated(hydratedTask, userId)
-        .catch((error) => console.error('Failed to record task.created activity event', error));
-    }
+    await this.activityService.recordTaskCreated(hydratedTask, userId)
+      .catch((error) => console.error('Failed to record task.created activity event', error));
 
-    return hydratedTask as Task;
+    return hydratedTask;
   }
 
   async findAll(
     projectId: string,
     userId: string,
-    filters?: { status?: string; assigneeId?: string; page?: number; perPage?: number }
+    filters?: { status?: string; assigneeId?: string; search?: string; page?: number; perPage?: number }
   ): Promise<PaginatedResultType<Task>> {
     await this.projectsService.checkAccess(projectId, userId);
 
@@ -75,11 +72,18 @@ export class TasksService {
       }
     }
 
+    if (filters?.search?.trim()) {
+      query.andWhere('(task.title ILIKE :search OR task.description ILIKE :search)', {
+        search: `%${filters.search.trim()}%`,
+      });
+    }
+
     query.orderBy('task.createdAt', 'DESC');
     query.skip(pagination.skip).take(pagination.perPage);
 
     const [tasks, total] = await query.getManyAndCount();
-    return PaginatedResult.create(tasks, total, pagination);
+    const decoratedTasks = await this.dependenciesService.attachDependencyState(tasks);
+    return PaginatedResult.create(decoratedTasks, total, pagination);
   }
 
   async findOne(taskId: string, userId: string): Promise<Task> {
@@ -90,9 +94,9 @@ export class TasksService {
 
     if (!task) throw new NotFoundException('Task bound to parameters not located');
 
-    // Assure hierarchical verification implicitly scaling generic methods mapping access globally
     await this.projectsService.checkAccess(task.projectId, userId);
-    return task;
+    const [decoratedTask] = await this.dependenciesService.attachDependencyState([task]);
+    return decoratedTask;
   }
 
   async update(taskId: string, userId: string, dto: UpdateTaskDto): Promise<Task> {
@@ -128,6 +132,11 @@ export class TasksService {
     if (statusChanged) {
       await this.activityService.recordTaskStatusChanged(saved, userId, previousStatus, saved.status)
         .catch((error) => console.error('Failed to record task.status_changed activity event', error));
+
+      if (saved.status === TaskStatus.Done) {
+        await this.dependenciesService.handleTaskCompleted(saved, userId)
+          .catch((error) => console.error('Failed to resolve dependency unblock notifications', error));
+      }
     }
 
     if (isChangingAssignee) {
@@ -140,10 +149,7 @@ export class TasksService {
         .catch((error) => console.error('Failed to record task.due_date_set activity event', error));
     }
 
-    return this.taskRepo.findOne({
-      where: { id: saved.id },
-      relations: ['assignee', 'creator'],
-    }) as Promise<Task>;
+    return this.findOne(saved.id, userId);
   }
 
   async updateSnapshot(taskId: string, snapshotUrl: string): Promise<void> {

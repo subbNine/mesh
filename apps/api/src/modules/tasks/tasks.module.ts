@@ -7,6 +7,7 @@ import { ProjectsModule } from '../projects/projects.module';
 import { CanvasModule } from '../canvas/canvas.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ActivityModule } from '../activity/activity.module';
+import { DependenciesModule } from '../dependencies/dependencies.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ActivityModule } from '../activity/activity.module';
     forwardRef(() => CanvasModule),
     NotificationsModule,
     ActivityModule,
+    DependenciesModule,
   ],
   controllers: [TasksController],
   providers: [TasksService],

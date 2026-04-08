@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { type TaskStatus, type ITask, type IMyAssignmentsResponse } from '@mesh/shared';
+import { type TaskStatus, type ITask, type IMyAssignmentsResponse, type ITaskDependenciesResponse } from '@mesh/shared';
 import { api } from '../lib/api';
 import { useToastStore } from './toast.store';
 
@@ -17,6 +17,7 @@ const emptyAssignments: IMyAssignmentsResponse = {
   other: [],
 };
 
+
 const mapAssignments = (
   groups: IMyAssignmentsResponse,
   taskId: string,
@@ -28,10 +29,23 @@ const mapAssignments = (
   other: groups.other.map((task) => (task.id === taskId ? updater(task) : task)),
 });
 
+const mergeDependencyState = (task: ITask, dependencies?: ITaskDependenciesResponse): ITask => {
+  if (!dependencies) return task;
+
+  return {
+    ...task,
+    blockedBy: dependencies.blockedBy,
+    blocks: dependencies.blocks,
+    isBlocked: dependencies.isBlocked,
+    dependencyCount: dependencies.dependencyCount,
+  };
+};
+
 interface TaskState {
   tasks: ITask[];
   currentTask: ITask | null;
   isLoading: boolean;
+  dependenciesByTaskId: Record<string, ITaskDependenciesResponse>;
   paginationMetadata: {
     total: number;
     page: number;
@@ -46,6 +60,9 @@ interface TaskState {
   fetchMyAssignments: (filters: MyAssignmentsFilters) => Promise<void>;
   createTask: (projectId: string, dto: Partial<ITask>) => Promise<ITask>;
   updateTask: (taskId: string, dto: Partial<ITask>) => Promise<void>;
+  fetchDependencies: (taskId: string) => Promise<ITaskDependenciesResponse>;
+  createDependency: (taskId: string, dto: { blocksTaskId?: string; dependsOnTaskId?: string }) => Promise<void>;
+  deleteDependency: (dependencyId: string) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   setCurrentTask: (task: ITask | null) => void;
   setRowOrder: (order: TaskStatus[]) => void;
@@ -57,6 +74,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   currentTask: null,
   isLoading: false,
+  dependenciesByTaskId: {},
   paginationMetadata: null,
   assignments: emptyAssignments,
   rowOrder: ['todo', 'inprogress', 'review', 'done'],
@@ -132,6 +150,50 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       console.error('Failed to update task:', err);
       useToastStore.getState().addToast('error', 'Failed to update task');
       set({ tasks: previousTasks, assignments: previousAssignments, currentTask: previousCurrentTask });
+    }
+  },
+
+  fetchDependencies: async (taskId) => {
+    const { data } = await api.get(`/tasks/${taskId}/dependencies`);
+
+    set((state) => ({
+      dependenciesByTaskId: {
+        ...state.dependenciesByTaskId,
+        [taskId]: data,
+      },
+      tasks: state.tasks.map((task) => (task.id === taskId ? mergeDependencyState(task, data) : task)),
+      currentTask: state.currentTask?.id === taskId ? mergeDependencyState(state.currentTask, data) : state.currentTask,
+      assignments: mapAssignments(state.assignments, taskId, (task) => mergeDependencyState(task, data)),
+    }));
+
+    return data;
+  },
+
+  createDependency: async (taskId, dto) => {
+    try {
+      const { data } = await api.post(`/tasks/${taskId}/dependencies`, dto);
+      const impactedTaskIds = Array.from(new Set([taskId, data.blockingTaskId, data.blockedTaskId].filter(Boolean)));
+      await Promise.allSettled(impactedTaskIds.map((id) => get().fetchDependencies(id)));
+      useToastStore.getState().addToast('success', 'Dependency added');
+    } catch (err: any) {
+      console.error('Failed to create dependency:', err);
+      const message = err?.response?.data?.message || 'Failed to add dependency';
+      useToastStore.getState().addToast('error', Array.isArray(message) ? message[0] : message);
+      throw err;
+    }
+  },
+
+  deleteDependency: async (dependencyId) => {
+    try {
+      const { data } = await api.delete(`/dependencies/${dependencyId}`);
+      const impactedTaskIds = Array.from(new Set([data.blockingTaskId, data.blockedTaskId].filter(Boolean)));
+      await Promise.allSettled(impactedTaskIds.map((id) => get().fetchDependencies(id)));
+      useToastStore.getState().addToast('success', 'Dependency removed');
+    } catch (err: any) {
+      console.error('Failed to delete dependency:', err);
+      const message = err?.response?.data?.message || 'Failed to remove dependency';
+      useToastStore.getState().addToast('error', Array.isArray(message) ? message[0] : message);
+      throw err;
     }
   },
 
