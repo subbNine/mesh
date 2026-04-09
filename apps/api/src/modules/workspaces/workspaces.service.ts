@@ -8,6 +8,7 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { WorkspaceMemberRole } from '@mesh/shared';
+import { InvitationsService } from '../auth/invitations.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -18,6 +19,7 @@ export class WorkspacesService {
     private readonly memberRepo: Repository<WorkspaceMember>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly invitationsService: InvitationsService,
   ) {}
 
   async create(userId: string, dto: CreateWorkspaceDto): Promise<Workspace> {
@@ -84,7 +86,7 @@ export class WorkspacesService {
     return workspace;
   }
 
-  async inviteMember(workspaceId: string, inviterId: string, dto: InviteMemberDto): Promise<WorkspaceMember> {
+  async inviteMember(workspaceId: string, inviterId: string, dto: InviteMemberDto) {
     const inviterMember = await this.memberRepo.findOne({
       where: { workspaceId, userId: inviterId },
     });
@@ -93,41 +95,12 @@ export class WorkspacesService {
       throw new ForbiddenException('Only workspace owners can invite members');
     }
 
-    const targetUser = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException('User with this email not found');
-    }
-
-    const existingMember = await this.memberRepo.findOne({
-      where: { workspaceId, userId: targetUser.id },
-    });
-
-    if (existingMember) {
-      throw new ConflictException('User is already a member of this workspace');
-    }
-
-    const newMember = this.memberRepo.create({
+    return this.invitationsService.createWorkspaceInvite(
       workspaceId,
-      userId: targetUser.id,
-      role: dto.role || WorkspaceMemberRole.Member,
-    });
-
-    const saved = await this.memberRepo.save(newMember);
-
-    // Return with user info
-    const fullMember = await this.memberRepo.findOne({
-      where: { id: saved.id },
-      relations: ['user'],
-    });
-
-    if (!fullMember) {
-        throw new NotFoundException('Failed to retrieve newly created member');
-    }
-
-    return fullMember;
+      inviterId,
+      dto.email,
+      dto.role || WorkspaceMemberRole.Member,
+    );
   }
 
   async removeMember(workspaceId: string, removerId: string, targetUserId: string): Promise<void> {

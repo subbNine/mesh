@@ -8,6 +8,7 @@ import { ProjectExclusion } from './entities/project_exclusions.entity';
 import { WorkspaceMember } from '../workspaces/entities/workspace_members.entity';
 import { Task } from '../tasks/entities/tasks.entity';
 import { ActivityModule } from '../activity/activity.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ActivityModule } from '../activity/activity.module';
       Task,
     ]),
     ActivityModule,
+    AuthModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],

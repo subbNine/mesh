@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -11,25 +11,52 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
+import { api } from '../../lib/api';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+
+type InvitePreview = {
+  email: string;
+  scope: 'workspace' | 'project';
+  role: string;
+  workspaceName: string;
+  projectName?: string | null;
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite') ?? '';
+
+  useEffect(() => {
+    if (!inviteToken) {
+      return;
+    }
+
+    api.get('/auth/invitations/preview', { params: { token: inviteToken } })
+      .then(({ data }) => {
+        setInvitePreview(data);
+        setEmail(data.email);
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.message || 'This invite link is invalid or has expired.');
+      });
+  }, [inviteToken]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setIsLoggingIn(true);
     try {
-      await login(email, password);
-      navigate('/workspaces', { replace: true });
+      const result = await login(email, password, inviteToken || undefined);
+      navigate(result?.redirectTo || '/workspaces', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to sign in');
     } finally {
@@ -86,9 +113,20 @@ export default function LoginPage() {
                 <p className="text-sm font-semibold text-primary">Sign in</p>
                 <h2 className="mt-1 text-3xl font-black tracking-tight text-foreground">Access your workspace</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Use the email and password you registered with.
+                  {invitePreview
+                    ? `Sign in with ${invitePreview.email} to accept this ${invitePreview.scope} invite.`
+                    : 'Use the email and password you registered with.'}
                 </p>
               </div>
+
+              {invitePreview && (
+                <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Invitation ready</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    You were invited to join {invitePreview.projectName || invitePreview.workspaceName} as {invitePreview.role}.
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <motion.div
@@ -110,6 +148,7 @@ export default function LoginPage() {
                   placeholder="you@company.com"
                   icon={<Mail size={16} />}
                   required
+                  disabled={Boolean(invitePreview?.email)}
                 />
 
                 <Input
@@ -130,7 +169,11 @@ export default function LoginPage() {
 
               <div className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
                 New to Mesh?{' '}
-                <button type="button" className="font-semibold text-primary hover:underline" onClick={() => navigate('/register')}>
+                <button
+                  type="button"
+                  className="font-semibold text-primary hover:underline"
+                  onClick={() => navigate(inviteToken ? `/register?invite=${encodeURIComponent(inviteToken)}` : '/register')}
+                >
                   Create an account
                 </button>
               </div>

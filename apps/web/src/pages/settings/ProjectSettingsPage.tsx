@@ -59,7 +59,7 @@ export default function ProjectSettingsPage() {
 
   // Modals
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteUserId, setInviteUserId] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [isInviting, setIsInviting] = useState(false);
 
@@ -105,17 +105,17 @@ export default function ProjectSettingsPage() {
 
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteUserId) return;
+    if (!inviteEmail.trim()) return;
     setError('');
     
     try {
       setIsInviting(true);
-      await addMember(projectId!, inviteUserId, inviteRole);
-      setInviteUserId('');
+      await addMember(projectId!, { email: inviteEmail.trim(), role: inviteRole });
+      setInviteEmail('');
       setInviteRole('member');
       setIsInviteModalOpen(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add project member');
+      setError(err.response?.data?.message || 'Failed to send project invite');
     } finally {
       setIsInviting(false);
     }
@@ -360,7 +360,7 @@ export default function ProjectSettingsPage() {
                   </div>
                   {isProjAdmin && (
                     <Button variant="secondary" size="lg" onClick={() => setIsInviteModalOpen(true)} className="rounded-[18px] gap-3 px-6 shadow-xl border-border/40">
-                      <Users size={16} /> Assign Identity
+                      <Users size={16} /> Invite by Email
                     </Button>
                   )}
                 </div>
@@ -548,29 +548,29 @@ export default function ProjectSettingsPage() {
       <Modal
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
-        title="Assign Explicit Identity"
+        title="Invite Project Collaborator"
       >
         <form onSubmit={handleInviteSubmit} className="space-y-8 p-6">
           <div className="p-5 bg-primary/5 rounded-[24px] border border-primary/20 flex items-start gap-4 mb-4">
             <Users className="w-6 h-6 text-primary mt-1" />
-            <p className="text-xs text-muted-foreground/80 leading-relaxed italic font-serif">Mapping workspace entities to specific project clearance levels. Higher roles provide administrative configuration access.</p>
+            <p className="text-xs text-muted-foreground/80 leading-relaxed italic font-serif">Send an email invite to anyone. If they do not have an account yet, Mesh will take them through sign-up before granting project access.</p>
           </div>
 
           <div className="space-y-3">
-            <label htmlFor="invite-user" className="text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] ml-1">Target Identity</label>
-            <select 
-              id="invite-user"
-              className="w-full px-5 py-4 border border-border/40 rounded-2xl text-[15px] bg-muted/20 text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-12 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%233b82f6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:24px_24px] bg-[position:right_12px_center] bg-no-repeat"
-              value={inviteUserId}
-              onChange={(e) => setInviteUserId(e.target.value)}
+            <label htmlFor="invite-email" className="text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] ml-1">Recipient Email</label>
+            <Input
+              id="invite-email"
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="teammate@example.com"
               required
-            >
-              <option value="" disabled className="bg-background">Select Identification...</option>
-              {potentialInvites.map(wpm => (
-                 <option key={wpm.userId} value={wpm.userId} className="bg-background">{wpm.user?.firstName} {wpm.user?.lastName}</option>
-              ))}
-            </select>
-            {potentialInvites.length === 0 && <p className="text-[10px] text-muted-foreground/40 italic mt-1 ml-1">Universal workspace coverage — no unassigned members available.</p>}
+            />
+            <p className="text-[10px] text-muted-foreground/50 italic ml-1">
+              {potentialInvites.length > 0
+                ? `${potentialInvites.length} workspace member${potentialInvites.length === 1 ? '' : 's'} can also be invited through email.`
+                : 'You can invite collaborators both inside and outside your workspace by email.'}
+            </p>
           </div>
           
           <div className="space-y-4">
@@ -595,7 +595,7 @@ export default function ProjectSettingsPage() {
                 <div className={`w-10 h-10 rounded-xl mb-4 flex items-center justify-center transition-colors ${inviteRole === 'admin' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-muted/40 text-muted-foreground/40'}`}>
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <div className="font-black text-[13px] text-foreground uppercase tracking-widest mb-1">Archon</div>
+                <div className="font-black text-[13px] text-foreground uppercase tracking-widest mb-1">Admin</div>
                 <div className="text-[11px] text-muted-foreground font-serif italic">Full config permission.</div>
               </button>
             </div>
@@ -603,7 +603,7 @@ export default function ProjectSettingsPage() {
 
           <div className="flex justify-end gap-3 pt-8 border-t border-border/40">
             <Button type="button" variant="tertiary" onClick={() => setIsInviteModalOpen(false)} className="rounded-full px-8">Discard</Button>
-            <Button type="submit" variant="primary" loading={isInviting} disabled={!inviteUserId} className="rounded-full px-10 shadow-2xl shadow-primary/20">Secure Role</Button>
+            <Button type="submit" variant="primary" loading={isInviting} disabled={!inviteEmail.trim()} className="rounded-full px-10 shadow-2xl shadow-primary/20">Send Invite</Button>
           </div>
         </form>
       </Modal>

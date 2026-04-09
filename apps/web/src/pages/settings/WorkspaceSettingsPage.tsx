@@ -245,7 +245,7 @@ export default function WorkspaceSettingsPage() {
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
         title="Invite Member"
-        description="Invite a new user to collaborate in this workspace."
+        description="Send an email invite to a teammate or external collaborator."
       >
         <form onSubmit={handleInviteSubmit} className="space-y-4">
           {error && <div className="p-3 bg-destructive/10 text-destructive text-sm rounded">{error}</div>}
@@ -259,6 +259,9 @@ export default function WorkspaceSettingsPage() {
             required
             autoFocus
           />
+          <p className="text-xs text-muted-foreground">
+            If they are new to Mesh, the invite link will guide them through sign-up before joining this workspace.
+          </p>
           
           <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground">Role</label>

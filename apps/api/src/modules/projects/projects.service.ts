@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/projects.entity';
@@ -12,6 +12,7 @@ import { AddProjectMemberDto } from './dto/add-project-member.dto';
 import { ExcludeWorkspaceMemberDto } from './dto/exclude-workspace-member.dto';
 import { ActivityService } from '../activity/activity.service';
 import { ProjectMemberRole } from '@mesh/shared';
+import { InvitationsService } from '../auth/invitations.service';
 
 @Injectable()
 export class ProjectsService {
@@ -27,6 +28,7 @@ export class ProjectsService {
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
     private readonly activityService: ActivityService,
+    private readonly invitationsService: InvitationsService,
   ) {}
 
   /**
@@ -150,9 +152,22 @@ export class ProjectsService {
     await this.projectRepo.remove(project);
   }
 
-  async addMember(projectId: string, requesterId: string, dto: AddProjectMemberDto): Promise<ProjectMember> {
+  async addMember(projectId: string, requesterId: string, dto: AddProjectMemberDto): Promise<ProjectMember | Record<string, unknown>> {
     const { project, role } = await this.checkAccess(projectId, requesterId);
     if (role !== ProjectMemberRole.Admin) throw new ForbiddenException('Only project admins can alter member bindings');
+
+    if (dto.email) {
+      return this.invitationsService.createProjectInvite(
+        projectId,
+        requesterId,
+        dto.email,
+        dto.role || ProjectMemberRole.Member,
+      );
+    }
+
+    if (!dto.userId) {
+      throw new BadRequestException('Provide a userId or email to add someone to this project.');
+    }
 
     const existing = await this.projectMemberRepo.findOne({ where: { projectId, userId: dto.userId } });
     if (existing) throw new ConflictException('User is already configured implicitly inside member table');

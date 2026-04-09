@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   CheckCircle2,
@@ -11,9 +11,19 @@ import {
   User,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
+import { api } from '../../lib/api';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+
+type InvitePreview = {
+  email: string;
+  scope: 'workspace' | 'project';
+  role: string;
+  workspaceName: string;
+  projectName?: string | null;
+  hasExistingAccount: boolean;
+};
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState('');
@@ -22,17 +32,59 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
+  const [isInviteLoading, setIsInviteLoading] = useState(false);
 
   const register = useAuthStore((state) => state.register);
+  const currentUser = useAuthStore((state) => state.user);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite') ?? '';
+
+  useEffect(() => {
+    if (!inviteToken) {
+      return;
+    }
+
+    setIsInviteLoading(true);
+    api.get('/auth/invitations/preview', { params: { token: inviteToken } })
+      .then(({ data }) => {
+        setInvitePreview(data);
+        setEmail(data.email);
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.message || 'This invite link is invalid or has expired.');
+      })
+      .finally(() => setIsInviteLoading(false));
+  }, [inviteToken]);
+
+  useEffect(() => {
+    if (!inviteToken || !currentUser) {
+      return;
+    }
+
+    api.post('/auth/invitations/accept', { token: inviteToken })
+      .then(({ data }) => {
+        navigate(data.redirectTo || '/workspaces', { replace: true });
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.message || 'Failed to accept this invite.');
+      });
+  }, [inviteToken, currentUser, navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setIsRegistering(true);
     try {
-      await register({ firstName, lastName, email, password });
-      navigate('/workspaces', { replace: true });
+      const result = await register({
+        firstName,
+        lastName,
+        email,
+        password,
+        inviteToken: inviteToken || undefined,
+      });
+      navigate(result?.redirectTo || '/workspaces', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create your account');
     } finally {
@@ -89,9 +141,24 @@ export default function RegisterPage() {
                 <p className="text-sm font-semibold text-primary">Create account</p>
                 <h2 className="mt-1 text-3xl font-black tracking-tight text-foreground">Join Mesh</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Set up your personal account and head straight into your workspace.
+                  {invitePreview
+                    ? `Create your account with ${invitePreview.email} to accept this ${invitePreview.scope} invite.`
+                    : 'Set up your personal account and head straight into your workspace.'}
                 </p>
               </div>
+
+              {(isInviteLoading || invitePreview) && (
+                <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">
+                    {isInviteLoading ? 'Checking invite…' : 'Invitation ready'}
+                  </p>
+                  {invitePreview && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      You were invited to join {invitePreview.projectName || invitePreview.workspaceName} as {invitePreview.role}.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <motion.div
@@ -134,6 +201,7 @@ export default function RegisterPage() {
                   placeholder="you@company.com"
                   icon={<Mail size={16} />}
                   required
+                  disabled={Boolean(invitePreview?.email)}
                 />
 
                 <Input
@@ -154,7 +222,11 @@ export default function RegisterPage() {
 
               <div className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
                 Already have an account?{' '}
-                <button type="button" className="font-semibold text-primary hover:underline" onClick={() => navigate('/login')}>
+                <button
+                  type="button"
+                  className="font-semibold text-primary hover:underline"
+                  onClick={() => navigate(inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : '/login')}
+                >
                   Sign in
                 </button>
               </div>

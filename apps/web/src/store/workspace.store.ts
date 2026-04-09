@@ -66,7 +66,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, _get) => ({
   inviteMember: async (workspaceId: string, email: string, role?: string) => {
     try {
       const response = await api.post(`/workspaces/${workspaceId}/members/invite`, { email, role });
-      set(state => ({ members: [...state.members, response.data] }));
+      return response.data;
     } catch (error: any) {
       console.error('Invite member error:', error);
       throw error;

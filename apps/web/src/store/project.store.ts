@@ -41,7 +41,7 @@ interface ProjectState {
   deleteProject: (projectId: string) => Promise<void>;
   
   fetchMembers: (projectId: string) => Promise<void>;
-  addMember: (projectId: string, userId: string, role?: string) => Promise<void>;
+  addMember: (projectId: string, payload: { userId?: string; email?: string; role?: string }) => Promise<any>;
   removeMember: (projectId: string, userId: string) => Promise<void>;
   excludeWorkspaceMember: (projectId: string, userId: string) => Promise<void>;
   removeExclusion: (projectId: string, userId: string) => Promise<void>;
@@ -95,12 +95,17 @@ export const useProjectStore = create<ProjectState>((set) => ({
     set({ members: data.active, exclusions: data.excluded });
   },
 
-  addMember: async (projectId: string, userId: string, role?: string) => {
-    const { data } = await api.post(`/projects/${projectId}/members`, { userId, role });
-    set((state) => ({
-      members: [...state.members, data],
-      exclusions: state.exclusions.filter(e => e.userId !== userId)
-    }));
+  addMember: async (projectId: string, payload: { userId?: string; email?: string; role?: string }) => {
+    const { data } = await api.post(`/projects/${projectId}/members`, payload);
+
+    if (data?.userId && data?.user) {
+      set((state) => ({
+        members: [...state.members, data],
+        exclusions: state.exclusions.filter((entry) => entry.userId !== payload.userId)
+      }));
+    }
+
+    return data;
   },
 
   removeMember: async (projectId: string, userId: string) => {

@@ -7,10 +7,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/entities/users.entity';
+import { InvitationsService } from './invitations.service';
+import { Workspace } from '../workspaces/entities/workspaces.entity';
+import { WorkspaceMember } from '../workspaces/entities/workspace_members.entity';
+import { Project } from '../projects/entities/projects.entity';
+import { ProjectMember } from '../projects/entities/project_members.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Workspace, WorkspaceMember, Project, ProjectMember]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -22,7 +27,7 @@ import { User } from '../users/entities/users.entity';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [JwtModule],
+  providers: [AuthService, JwtStrategy, InvitationsService],
+  exports: [JwtModule, InvitationsService],
 })
 export class AuthModule { }
