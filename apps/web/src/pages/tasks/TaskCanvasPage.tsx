@@ -14,7 +14,9 @@ import { getUserColor } from '../../lib/user-color';
 import { CanvasTopBar } from '../../components/canvas/CanvasTopBar';
 import { CanvasToolbar } from '../../components/canvas/CanvasToolbar';
 import { CanvasStage } from '../../components/canvas/CanvasStage';
+import { ScratchpadPanel } from '../../components/scratchpad/ScratchpadPanel';
 import { CommentPane } from '../../components/comments/CommentPane';
+import { useScratchpadStore } from '../../store/scratchpad.store';
 
 const saveCanvasState = async (doc: Y.Doc, taskId: string) => {
   try {
@@ -47,7 +49,10 @@ export default function TaskCanvasPage() {
   const [awarenessUsers, setAwarenessUsers] = useState<any[]>([]);
 
   const currentUser = useAuthStore(state => state.user);
-  
+  const isScratchpadOpen = useScratchpadStore((state) => state.isOpen);
+  const setScratchpadOpen = useScratchpadStore((state) => state.setOpen);
+  const fetchScratchpad = useScratchpadStore((state) => state.fetchScratchpad);
+
   const {
     activeTool,
     setActiveTool,
@@ -65,6 +70,16 @@ export default function TaskCanvasPage() {
       setCommentPaneOpen(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      void fetchScratchpad();
+    }
+
+    return () => {
+      setScratchpadOpen(false);
+    };
+  }, [currentUser, fetchScratchpad, setScratchpadOpen]);
 
   const handleAwarenessChange = useCallback((aw: Awareness) => {
     const uniqueUsers = new Map<string, any>();
@@ -247,8 +262,15 @@ export default function TaskCanvasPage() {
             task={task}
             awarenessUsers={awarenessUsers}
             onTaskUpdate={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
+            isScratchpadOpen={isScratchpadOpen}
+            onToggleScratchpad={() => setScratchpadOpen(!isScratchpadOpen)}
         />
       </div>
+
+      <ScratchpadPanel
+        isOpen={isScratchpadOpen}
+        onClose={() => setScratchpadOpen(false)}
+      />
 
       <div className="flex-1 relative flex overflow-hidden z-10">
         {/* Main Workspace Stage */}

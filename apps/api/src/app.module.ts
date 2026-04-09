@@ -20,6 +20,7 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { DocsModule } from './modules/docs/docs.module';
 import { ProjectFilesModule } from './modules/project-files/project-files.module';
 import { DependenciesModule } from './modules/dependencies/dependencies.module';
+import { ScratchpadModule } from './modules/scratchpad/scratchpad.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { DependenciesModule } from './modules/dependencies/dependencies.module';
     DocsModule,
     ProjectFilesModule,
     DependenciesModule,
+    ScratchpadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

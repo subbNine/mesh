@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
+import { ScratchpadPanel } from '../../components/scratchpad/ScratchpadPanel';
 import { MyWorkTaskRow } from '../../components/tasks/MyWorkTaskRow';
+import { extractScratchpadText } from '../../lib/scratchpad-utils';
 import { useTaskStore } from '../../store/task.store';
 import { useProjectStore } from '../../store/project.store';
+import { useScratchpadStore } from '../../store/scratchpad.store';
 import { useWorkspaceStore } from '../../store/workspace.store';
 import { type TaskStatus } from '@mesh/shared';
 import {
@@ -12,6 +16,7 @@ import {
   Inbox,
   ListFilter,
   Sparkles,
+  StickyNote,
   TriangleAlert,
 } from 'lucide-react';
 
@@ -57,6 +62,11 @@ export default function MyWorkPage() {
   const updateTask = useTaskStore((state) => state.updateTask);
   const isLoading = useTaskStore((state) => state.isLoading);
 
+  const scratchpad = useScratchpadStore((state) => state.scratchpad);
+  const isScratchpadOpen = useScratchpadStore((state) => state.isOpen);
+  const setScratchpadOpen = useScratchpadStore((state) => state.setOpen);
+  const fetchScratchpad = useScratchpadStore((state) => state.fetchScratchpad);
+
   const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
   const [showCompleted, setShowCompleted] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
@@ -75,6 +85,14 @@ export default function MyWorkPage() {
       fetchProjects(activeWorkspaceId).catch(console.error);
     }
   }, [activeWorkspaceId, projects.length, fetchProjects]);
+
+  useEffect(() => {
+    void fetchScratchpad();
+
+    return () => {
+      setScratchpadOpen(false);
+    };
+  }, [fetchScratchpad, setScratchpadOpen]);
 
   const loadAssignments = useCallback(async () => {
     if (!activeWorkspaceId) {
@@ -108,6 +126,11 @@ export default function MyWorkPage() {
     ],
     [assignments],
   );
+
+  const scratchpadPreview = useMemo(() => {
+    const preview = extractScratchpadText(scratchpad?.content);
+    return preview || 'Capture open loops, rough plans, and ideas that should follow you across every task.';
+  }, [scratchpad?.content]);
 
   const toggleProject = (projectId: string) => {
     setSelectedProjectIds((current) =>
@@ -254,6 +277,39 @@ export default function MyWorkPage() {
           </div>
         </header>
 
+        <section className="overflow-hidden rounded-[32px] border border-amber-200/60 bg-[radial-gradient(circle_at_top_left,_rgba(255,244,214,0.92),_rgba(255,251,239,0.92)_45%,_rgba(255,247,226,0.9)_100%)] p-5 shadow-2xl shadow-amber-500/10 dark:border-amber-200/10 dark:bg-[radial-gradient(circle_at_top_left,_rgba(37,31,21,0.96),_rgba(21,24,33,0.96)_55%,_rgba(17,19,27,0.98)_100%)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/70 bg-white/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-900 dark:border-amber-200/20 dark:bg-slate-900/70 dark:text-amber-100">
+                <StickyNote size={12} />
+                Personal scratchpad
+              </div>
+              <div>
+                <h2 className="font-display text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">
+                  One place to think while you work
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm font-serif italic leading-7 text-slate-700 dark:text-slate-300">
+                  {scratchpadPreview}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex min-w-[240px] flex-col gap-3 rounded-[24px] border border-amber-300/60 bg-white/70 p-4 shadow-lg shadow-amber-500/5 dark:border-slate-700 dark:bg-slate-900/70">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                Private · auto-saved · always yours
+              </span>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {scratchpad
+                  ? `Updated ${formatDistanceToNow(new Date(scratchpad.updatedAt), { addSuffix: true })}`
+                  : 'Opens instantly from any task canvas or from here.'}
+              </p>
+              <Button size="sm" onClick={() => setScratchpadOpen(true)} className="w-full justify-center">
+                Open scratchpad
+              </Button>
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-[28px] border border-border/50 bg-card/50 p-4 backdrop-blur-xl">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
@@ -354,6 +410,11 @@ export default function MyWorkPage() {
           Done tasks stay tucked into <span className="font-semibold text-foreground">Everything else</span> when completion is visible.
         </div>
       </div>
+
+      <ScratchpadPanel
+        isOpen={isScratchpadOpen}
+        onClose={() => setScratchpadOpen(false)}
+      />
     </div>
   );
 }

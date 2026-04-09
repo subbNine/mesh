@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { useCanvasStore } from '../../store/canvas.store';
 import { useTaskStore } from '../../store/task.store';
 import { useProjectStore } from '../../store/project.store';
-import { ArrowLeft, CalendarDays, Check, ChevronDown, Layers, Link2, Lock, MessageSquare, MoreHorizontal, UserPlus } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ChevronDown, Layers, Link2, Lock, MessageSquare, MoreHorizontal, StickyNote, UserPlus } from 'lucide-react';
 import { DependencyDropdown } from '../dependencies/DependencyDropdown';
 import { DependencyModal } from '../dependencies/DependencyModal';
 import { NotificationBell } from '../ui/NotificationBell';
@@ -19,6 +19,8 @@ type CanvasTopBarProps = Readonly<{
   task: ITask;
   awarenessUsers: any[];
   onTaskUpdate: (updates: Partial<ITask>) => void;
+  isScratchpadOpen: boolean;
+  onToggleScratchpad: () => void;
 }>;
 
 const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, border: string }> = {
@@ -28,7 +30,13 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, 
   done: { label: 'Done', color: 'text-emerald-700', bg: 'bg-emerald-100', border: 'border-emerald-200' },
 };
 
-export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBarProps) {
+export function CanvasTopBar({
+  task,
+  awarenessUsers,
+  onTaskUpdate,
+  isScratchpadOpen,
+  onToggleScratchpad,
+}: CanvasTopBarProps) {
   const navigate = useNavigate();
   const { workspaceId = '' } = useParams<{ workspaceId: string }>();
   const currentUser = useAuthStore(state => state.user);
@@ -385,6 +393,17 @@ export function CanvasTopBar({ task, awarenessUsers, onTaskUpdate }: CanvasTopBa
         </div>
 
         <div className="w-px h-6 bg-border/40 mx-1 hidden md:block" />
+
+        <button
+          onClick={onToggleScratchpad}
+          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isScratchpadOpen
+            ? 'border-amber-300 bg-amber-100 text-amber-900 shadow-lg shadow-amber-500/10 dark:border-amber-200/20 dark:bg-amber-500/10 dark:text-amber-100'
+            : 'border-amber-200/60 bg-[#fff8e7] text-[#8a6530] hover:-translate-y-0.5 hover:shadow-md dark:border-amber-200/10 dark:bg-slate-900/60 dark:text-amber-100'}`}
+          title="Open your scratchpad"
+        >
+          <StickyNote size={14} />
+          <span className="hidden xl:inline">Scratchpad</span>
+        </button>
 
         <button
           onClick={toggleCommentPane}

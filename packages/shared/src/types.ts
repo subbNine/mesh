@@ -75,6 +75,14 @@ export interface ITaskDependenciesResponse {
   dependencyCount: number;
 }
 
+export interface IScratchpad {
+  id: string;
+  userId: string;
+  content: Record<string, unknown> | null;
+  createdAt: ISODateValue;
+  updatedAt: ISODateValue;
+}
+
 export interface ITask {
   id: string;
   projectId: string;
