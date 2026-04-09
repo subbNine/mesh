@@ -132,6 +132,16 @@ export default function MyWorkPage() {
     return preview || 'Capture open loops, rough plans, and ideas that should follow you across every task.';
   }, [scratchpad?.content]);
 
+  const scratchpadExcerpt = useMemo(() => {
+    const compactPreview = scratchpadPreview.replace(/\s+/g, ' ').trim();
+
+    if (compactPreview.length <= 320) {
+      return compactPreview;
+    }
+
+    return `${compactPreview.slice(0, 320).trimEnd()}…`;
+  }, [scratchpadPreview]);
+
   const toggleProject = (projectId: string) => {
     setSelectedProjectIds((current) =>
       current.includes(projectId)
@@ -288,9 +298,18 @@ export default function MyWorkPage() {
                 <h2 className="font-display text-2xl font-black tracking-tight text-slate-900 dark:text-slate-50">
                   One place to think while you work
                 </h2>
-                <p className="mt-2 max-w-3xl text-sm font-serif italic leading-7 text-slate-700 dark:text-slate-300">
-                  {scratchpadPreview}
-                </p>
+                <div className="mt-2 max-w-3xl">
+                  <p className="line-clamp-5 text-sm font-serif italic leading-7 text-slate-700 dark:text-slate-300">
+                    {scratchpadExcerpt}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setScratchpadOpen(true)}
+                    className="mt-3 text-[11px] font-black uppercase tracking-[0.2em] text-amber-700 transition-colors hover:text-amber-900 dark:text-amber-200 dark:hover:text-amber-100"
+                  >
+                    Expand scratchpad
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -304,7 +323,7 @@ export default function MyWorkPage() {
                   : 'Opens instantly from any task canvas or from here.'}
               </p>
               <Button size="sm" onClick={() => setScratchpadOpen(true)} className="w-full justify-center">
-                Open scratchpad
+                Expand scratchpad
               </Button>
             </div>
           </div>
