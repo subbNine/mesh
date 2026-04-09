@@ -1,12 +1,104 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
-import { ArrowRight, BriefcaseBusiness, Layers, LogOut, Plus, User, Users } from 'lucide-react';
-import { useWorkspaceStore } from '../../store/workspace.store';
-import { useAuthStore } from '../../store/auth.store';
+import {
+  ArrowRight,
+  AtSign,
+  BriefcaseBusiness,
+  CalendarDays,
+  Layers,
+  LogOut,
+  Pin,
+  Plus,
+  StickyNote,
+  User,
+  Users,
+} from 'lucide-react';
+import type { INotification, ITask } from '@mesh/shared';
+
+import { api } from '../../lib/api';
+import { ScratchpadPanel } from '../../components/scratchpad/ScratchpadPanel';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { extractScratchpadText } from '../../lib/scratchpad-utils';
+import { useAuthStore } from '../../store/auth.store';
+import { useNotificationStore } from '../../store/notifications.store';
+import { useScratchpadStore } from '../../store/scratchpad.store';
+import { useWorkspaceStore } from '../../store/workspace.store';
+
+const PINNED_KEY = 'mesh_pinned_tasks';
+
+type DashboardTask = ITask & {
+  workspaceId?: string;
+  projectName?: string;
+};
+
+function loadPinnedIds(): string[] {
+  try {
+    return JSON.parse(globalThis.localStorage.getItem(PINNED_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+function getStatusTone(status: string) {
+  switch (status) {
+    case 'done':
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    case 'review':
+      return 'border-sky-200 bg-sky-50 text-sky-700';
+    case 'inprogress':
+      return 'border-primary/20 bg-primary/10 text-primary';
+    default:
+      return 'border-zinc-200 bg-zinc-100 text-zinc-700';
+  }
+}
+
+function renderMentionSummary(notification: INotification) {
+  const actorName = notification.actor
+    ? `${notification.actor.firstName} ${notification.actor.lastName}`
+    : 'Someone';
+  const sourceType = typeof notification.data?.sourceType === 'string' ? notification.data.sourceType : 'comment';
+
+  return sourceType === 'canvas_element'
+    ? `${actorName} mentioned you in a canvas note`
+    : `${actorName} mentioned you in a comment`;
+}
+
+function DashboardCard({
+  title,
+  meta,
+  icon,
+  className = '',
+  children,
+}: Readonly<{
+  title: string;
+  meta: string;
+  icon: ReactNode;
+  className?: string;
+  children: ReactNode;
+}>) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rounded-[28px] border border-border/60 bg-card/70 p-4 shadow-sm backdrop-blur-xl sm:p-5 ${className}`}
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+            {icon}
+            {title}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{meta}</p>
+        </div>
+      </div>
+      {children}
+    </motion.section>
+  );
+}
 
 export default function WorkspaceSelectorPage() {
   const navigate = useNavigate();
@@ -17,6 +109,19 @@ export default function WorkspaceSelectorPage() {
   const isLoading = useWorkspaceStore((state) => state.isLoading);
   const logout = useAuthStore((state: any) => state.logout);
 
+  const notifications = useNotificationStore((state) => state.notifications);
+  const fetchNotifications = useNotificationStore((state) => state.fetchNotifications);
+  const markRead = useNotificationStore((state) => state.markRead);
+  const scratchpad = useScratchpadStore((state) => state.scratchpad);
+  const isScratchpadOpen = useScratchpadStore((state) => state.isOpen);
+  const setScratchpadOpen = useScratchpadStore((state) => state.setOpen);
+  const fetchScratchpad = useScratchpadStore((state) => state.fetchScratchpad);
+
+  const [pinnedTasks, setPinnedTasks] = useState<DashboardTask[]>([]);
+  const [dueThisWeekTasks, setDueThisWeekTasks] = useState<DashboardTask[]>([]);
+  const [projectIndex, setProjectIndex] = useState<Record<string, { workspaceId: string; name: string }>>({});
+  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +129,9 @@ export default function WorkspaceSelectorPage() {
 
   useEffect(() => {
     fetchWorkspaces().catch(console.error);
-  }, [fetchWorkspaces]);
+    fetchNotifications().catch(console.error);
+    void fetchScratchpad();
+  }, [fetchNotifications, fetchScratchpad, fetchWorkspaces]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,10 +156,155 @@ export default function WorkspaceSelectorPage() {
     navigate(`/w/${workspace.id}/projects`);
   };
 
+  const handleOpenTask = async (task: { id: string; projectId?: string; workspaceId?: string }) => {
+    let nextProjectId = task.projectId;
+    let nextWorkspaceId = task.workspaceId ?? (nextProjectId ? projectIndex[nextProjectId]?.workspaceId : undefined);
+
+    if (!nextProjectId) {
+      try {
+        const { data } = await api.get(`/tasks/${task.id}`);
+        nextProjectId = data.projectId;
+        nextWorkspaceId = projectIndex[data.projectId]?.workspaceId;
+      } catch (error) {
+        console.error('Failed to resolve task route', error);
+        return;
+      }
+    }
+
+    if (!nextProjectId || !nextWorkspaceId) {
+      return;
+    }
+
+    navigate(`/w/${nextWorkspaceId}/p/${nextProjectId}/tasks/${task.id}/canvas`);
+  };
+
+  const handleMentionClick = async (notification: INotification) => {
+    if (!notification.resourceId) {
+      return;
+    }
+
+    if (!notification.readAt) {
+      await markRead(notification.id);
+    }
+
+    await handleOpenTask({ id: notification.resourceId });
+  };
+
   const totalMembers = useMemo(
     () => workspaces.reduce((sum: number, ws: any) => sum + (ws.memberCount || 1), 0),
     [workspaces],
   );
+
+  const mentionNotifications = useMemo(
+    () => notifications.filter((notification) => notification.type === 'mentioned').slice(0, 10),
+    [notifications],
+  );
+
+  const scratchpadPreview = useMemo(() => {
+    const preview = extractScratchpadText(scratchpad?.content);
+    return preview || 'Capture rough notes, fleeting ideas, and open loops that should follow you across every task.';
+  }, [scratchpad?.content]);
+
+  useEffect(() => {
+    if (workspaces.length === 0) {
+      setPinnedTasks([]);
+      setDueThisWeekTasks([]);
+      setProjectIndex({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadDashboardData = async () => {
+      setIsDashboardLoading(true);
+
+      try {
+        const projectEntries = await Promise.all(
+          workspaces.map(async (workspace: any) => {
+            try {
+              const { data } = await api.get(`/workspaces/${workspace.id}/projects`);
+              return data.map((project: { id: string; name: string }) => [
+                project.id,
+                { workspaceId: workspace.id, name: project.name },
+              ] as const);
+            } catch (error) {
+              console.error('Failed to fetch workspace projects', error);
+              return [];
+            }
+          }),
+        );
+
+        const nextProjectIndex = Object.fromEntries(projectEntries.flat());
+        const pinnedIds = loadPinnedIds();
+
+        const pinnedResults: DashboardTask[] = [];
+        for (const id of pinnedIds) {
+          try {
+            const { data } = await api.get(`/tasks/${id}`);
+            const projectMeta = nextProjectIndex[data.projectId];
+            pinnedResults.push({
+              ...data,
+              projectName: data.projectName ?? projectMeta?.name,
+              workspaceId: projectMeta?.workspaceId,
+            });
+          } catch {
+            // Ignore stale pins.
+          }
+        }
+
+        const dueResults = (
+          await Promise.all(
+            workspaces.map(async (workspace: any) => {
+              try {
+                const { data } = await api.get('/users/me/assignments', {
+                  params: { workspaceId: workspace.id },
+                });
+
+                const tasks = [...(data.dueToday ?? []), ...(data.dueThisWeek ?? [])] as DashboardTask[];
+                return tasks.map((task) => ({
+                  ...task,
+                  workspaceId: workspace.id,
+                  projectName: task.projectName ?? nextProjectIndex[task.projectId]?.name,
+                }));
+              } catch (error) {
+                console.error('Failed to fetch due-this-week tasks', error);
+                return [] as DashboardTask[];
+              }
+            }),
+          )
+        )
+          .flat()
+          .reduce<DashboardTask[]>((acc, task) => {
+            if (acc.some((existing) => existing.id === task.id)) {
+              return acc;
+            }
+            return [...acc, task];
+          }, [])
+          .sort((a, b) => {
+            const aTime = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const bTime = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            return aTime - bTime;
+          })
+          .slice(0, 10);
+
+        if (!cancelled) {
+          setProjectIndex(nextProjectIndex);
+          setPinnedTasks(pinnedResults);
+          setDueThisWeekTasks(dueResults);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsDashboardLoading(false);
+        }
+      }
+    };
+
+    void loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaces]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -121,6 +373,156 @@ export default function WorkspaceSelectorPage() {
           </motion.div>
         </header>
 
+        <div className="mb-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <DashboardCard
+            title="Scratchpad"
+            meta="Private, persistent, and instantly available from anywhere"
+            icon={<StickyNote size={12} />}
+            className="overflow-hidden border-amber-200/60 bg-[radial-gradient(circle_at_top_left,_rgba(255,248,231,0.95),_rgba(255,252,244,0.96)_55%,_rgba(255,247,226,0.94)_100%)] dark:border-amber-200/10 dark:bg-[radial-gradient(circle_at_top_left,_rgba(38,31,21,0.96),_rgba(21,24,33,0.96)_60%,_rgba(17,19,27,0.98)_100%)]"
+          >
+            <div className="space-y-4">
+              <p className="line-clamp-5 text-sm leading-7 text-slate-700 dark:text-slate-200">
+                {scratchpadPreview}
+              </p>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-amber-300/50 bg-white/70 px-4 py-3 dark:border-amber-200/10 dark:bg-slate-900/70">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                    Personal thinking space
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {scratchpad
+                      ? `Updated ${formatDistanceToNow(new Date(scratchpad.updatedAt), { addSuffix: true })}`
+                      : 'Ready whenever you want to jot something down.'}
+                  </div>
+                </div>
+
+                <Button size="sm" onClick={() => setScratchpadOpen(true)}>
+                  Expand
+                </Button>
+              </div>
+            </div>
+          </DashboardCard>
+
+          <div className="grid gap-4">
+            <DashboardCard
+              title="Pinned tasks"
+              meta="Quick-return items you’ve pinned from the board"
+              icon={<Pin size={12} />}
+            >
+              {isDashboardLoading ? (
+                <div className="space-y-2">
+                  {[0, 1, 2].map((item) => (
+                    <div key={item} className="h-14 animate-pulse rounded-2xl border border-border/50 bg-muted/40" />
+                  ))}
+                </div>
+              ) : pinnedTasks.length === 0 ? (
+                <div className="rounded-[22px] border border-dashed border-border/70 bg-background/40 px-4 py-5 text-sm text-muted-foreground">
+                  Pin a task from any board to keep it close at hand here.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {pinnedTasks.slice(0, 5).map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      onClick={() => void handleOpenTask(task)}
+                      className="flex w-full items-center justify-between gap-3 rounded-[20px] border border-border/60 bg-background/60 px-3 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{task.title}</p>
+                        <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                          {task.projectName || 'Project'}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${getStatusTone(task.status)}`}>
+                        {task.status}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </DashboardCard>
+
+            <DashboardCard
+              title="Last 10 mentions"
+              meta="Recent callouts that need your attention"
+              icon={<AtSign size={12} />}
+            >
+              {mentionNotifications.length === 0 ? (
+                <div className="rounded-[22px] border border-dashed border-border/70 bg-background/40 px-4 py-5 text-sm text-muted-foreground">
+                  No recent mentions yet — quiet is good.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {mentionNotifications.map((notification) => (
+                    <button
+                      key={notification.id}
+                      type="button"
+                      onClick={() => void handleMentionClick(notification)}
+                      className={`flex w-full items-start gap-3 rounded-[20px] border px-3 py-3 text-left transition-all hover:border-primary/40 hover:bg-background/60 ${notification.readAt ? 'border-border/60 bg-background/40' : 'border-primary/20 bg-primary/[0.05]'}`}
+                    >
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-card text-primary">
+                        <AtSign size={14} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm text-foreground">{renderMentionSummary(notification)}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </DashboardCard>
+          </div>
+        </div>
+
+        <DashboardCard
+          title="Tasks due this week"
+          meta="Your next deadlines across active workspaces"
+          icon={<CalendarDays size={12} />}
+          className="mb-6"
+        >
+          {isDashboardLoading ? (
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="h-20 animate-pulse rounded-2xl border border-border/50 bg-muted/40" />
+              ))}
+            </div>
+          ) : dueThisWeekTasks.length === 0 ? (
+            <div className="rounded-[22px] border border-dashed border-border/70 bg-background/40 px-4 py-5 text-sm text-muted-foreground">
+              Nothing due this week — your runway is clear.
+            </div>
+          ) : (
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {dueThisWeekTasks.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => void handleOpenTask(task)}
+                  className="rounded-[22px] border border-border/60 bg-background/50 p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{task.title}</p>
+                      <p className="mt-1 truncate text-[11px] text-muted-foreground">{task.projectName || 'Project'}</p>
+                    </div>
+                    <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${getStatusTone(task.status)}`}>
+                      {task.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-200/70 bg-amber-50/80 px-2.5 py-1 text-[10px] font-semibold text-amber-800">
+                    <CalendarDays size={11} />
+                    {task.dueDate ? format(new Date(task.dueDate), 'EEE, MMM d') : 'No due date'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </DashboardCard>
+
         {isLoading && workspaces.length === 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {['ws-a', 'ws-b', 'ws-c', 'ws-d', 'ws-e', 'ws-f'].map((key) => (
@@ -184,6 +586,11 @@ export default function WorkspaceSelectorPage() {
             ))}
           </div>
         )}
+
+        <ScratchpadPanel
+          isOpen={isScratchpadOpen}
+          onClose={() => setScratchpadOpen(false)}
+        />
 
         <Modal
           isOpen={isModalOpen}
