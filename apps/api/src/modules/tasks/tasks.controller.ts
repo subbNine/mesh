@@ -28,10 +28,8 @@ export class TasksController {
     @Param('projectId') projectId: string,
     @CurrentUser() user: IUser,
     @Query() query: BaseQueryDto,
-    @Query('status') status?: string,
-    @Query('assigneeId') assigneeId?: string,
   ) {
-    return this.tasksService.findAll(projectId, user.id, { ...query, status, assigneeId });
+    return this.tasksService.findAll(projectId, user.id, query);
   }
 
   @UseGuards(JwtAuthGuard)

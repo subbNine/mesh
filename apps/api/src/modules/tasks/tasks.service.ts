@@ -71,7 +71,16 @@ export class TasksService {
   async findAll(
     projectId: string,
     userId: string,
-    filters?: { status?: string; assigneeId?: string; search?: string; page?: number; perPage?: number },
+    filters?: {
+      status?: string;
+      assigneeId?: string;
+      search?: string;
+      dueDate?: string;
+      dependsOn?: string | boolean;
+      blocks?: string | boolean;
+      page?: number;
+      perPage?: number;
+    },
   ): Promise<PaginatedResultType<Task>> {
     await this.projectsService.checkAccess(projectId, userId);
 
@@ -85,12 +94,25 @@ export class TasksService {
     }
 
     if (filters?.assigneeId) {
-      const normalizedAssigneeId = filters.assigneeId === 'me' ? userId : filters.assigneeId;
+      const requestedAssigneeIds = Array.from(
+        new Set(
+          filters.assigneeId
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .map((value) => (value === 'me' ? userId : value)),
+        ),
+      );
 
-      if (normalizedAssigneeId === 'unassigned') {
+      const includeUnassigned = requestedAssigneeIds.includes('unassigned');
+      const assigneeIds = requestedAssigneeIds.filter((value) => value !== 'unassigned');
+
+      if (includeUnassigned && assigneeIds.length > 0) {
+        query.andWhere('(taskAssignees.id IS NULL OR taskAssignees.userId IN (:...assigneeIds))', { assigneeIds });
+      } else if (includeUnassigned) {
         query.andWhere('taskAssignees.id IS NULL');
-      } else {
-        query.andWhere('taskAssignees.userId = :assigneeId', { assigneeId: normalizedAssigneeId });
+      } else if (assigneeIds.length > 0) {
+        query.andWhere('taskAssignees.userId IN (:...assigneeIds)', { assigneeIds });
       }
     }
 
@@ -98,6 +120,22 @@ export class TasksService {
       query.andWhere('(task.title ILIKE :search OR task.description ILIKE :search)', {
         search: `%${filters.search.trim()}%`,
       });
+    }
+
+    if (filters?.dueDate) {
+      query.andWhere('DATE(task."dueDate") = :dueDate', { dueDate: filters.dueDate });
+    }
+
+    if (filters?.dependsOn === true || filters?.dependsOn === 'true') {
+      query.andWhere(
+        'EXISTS (SELECT 1 FROM task_dependencies dependency_in WHERE dependency_in."blockedTaskId" = task.id)',
+      );
+    }
+
+    if (filters?.blocks === true || filters?.blocks === 'true') {
+      query.andWhere(
+        'EXISTS (SELECT 1 FROM task_dependencies dependency_out WHERE dependency_out."blockingTaskId" = task.id)',
+      );
     }
 
     query.orderBy('task.createdAt', 'DESC');

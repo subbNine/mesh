@@ -28,7 +28,12 @@ import { CSS } from '@dnd-kit/utilities';
 interface TaskGridProps {
   projectId: string;
   activeTab: 'all' | TaskStatus;
-  filters: { assigneeId?: string };
+  filters: {
+    assigneeId?: string;
+    dueDate?: string;
+    dependsOn?: boolean;
+    blocks?: boolean;
+  };
 }
 
 const statusLabels: Record<string, string> = {
@@ -71,7 +76,7 @@ export function TaskGrid({ projectId, activeTab, filters }: Readonly<TaskGridPro
   useEffect(() => {
     // Reset page when project or filters change
     setPage(1);
-  }, [projectId, activeTab, filters.assigneeId]);
+  }, [projectId, activeTab, filters.assigneeId, filters.dueDate, filters.dependsOn, filters.blocks]);
 
   useEffect(() => {
     fetchTasks(projectId, { 

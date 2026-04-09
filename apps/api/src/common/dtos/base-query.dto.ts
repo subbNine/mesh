@@ -45,4 +45,26 @@ export class BaseQueryDto {
     @IsOptional()
     @IsBoolean()
     metadata?: boolean;
+
+    @IsOptional()
+    @IsString()
+    status?: string;
+
+    @IsOptional()
+    @IsString()
+    assigneeId?: string;
+
+    @IsDateString()
+    @IsOptional()
+    dueDate?: string;
+
+    @Transform(({ value }) => optionalBooleanMapper.get(String(value).toLowerCase()))
+    @IsOptional()
+    @IsBoolean()
+    dependsOn?: boolean;
+
+    @Transform(({ value }) => optionalBooleanMapper.get(String(value).toLowerCase()))
+    @IsOptional()
+    @IsBoolean()
+    blocks?: boolean;
 }

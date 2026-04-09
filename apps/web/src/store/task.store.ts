@@ -61,7 +61,15 @@ interface TaskState {
   rowOrder: TaskStatus[];
   rowLimit: number;
   
-  fetchTasks: (projectId: string, filters?: { status?: TaskStatus; assigneeId?: string; page?: number; perPage?: number }) => Promise<void>;
+  fetchTasks: (projectId: string, filters?: {
+    status?: TaskStatus;
+    assigneeId?: string;
+    dueDate?: string;
+    dependsOn?: boolean;
+    blocks?: boolean;
+    page?: number;
+    perPage?: number;
+  }) => Promise<void>;
   fetchMyAssignments: (filters: MyAssignmentsFilters) => Promise<void>;
   createTask: (projectId: string, dto: TaskWritePayload) => Promise<ITask>;
   updateTask: (taskId: string, dto: TaskWritePayload) => Promise<void>;

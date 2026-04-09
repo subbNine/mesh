@@ -13,8 +13,7 @@ import {
   Settings, 
   Filter, 
   Users, 
-  Layout, 
-  ChevronDown 
+  Layout 
 } from 'lucide-react';
 
 export default function ProjectDetailPage() {
@@ -34,7 +33,12 @@ export default function ProjectDetailPage() {
   const [editDesc, setEditDesc] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const [filterAssignee, setFilterAssignee] = useState<string>('');
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+  const [assigneeSearch, setAssigneeSearch] = useState('');
+  const [filterDueDate, setFilterDueDate] = useState('');
+  const [filterDependsOn, setFilterDependsOn] = useState(false);
+  const [filterBlocks, setFilterBlocks] = useState(false);
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'all');
 
   const tabs = [
@@ -84,9 +88,64 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const todayDateValue = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const toggleAssigneeFilter = (assigneeId: string) => {
+    setSelectedAssigneeIds((current) =>
+      current.includes(assigneeId)
+        ? current.filter((id) => id !== assigneeId)
+        : [...current, assigneeId],
+    );
+  };
+
+  const filteredMembers = useMemo(() => {
+    const query = assigneeSearch.trim().toLowerCase();
+
+    return [...members]
+      .sort((a, b) => {
+        if (a.userId === user?.id) return -1;
+        if (b.userId === user?.id) return 1;
+        return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+      })
+      .filter((member) => {
+        if (!query) return true;
+        const haystack = `${member.user.firstName} ${member.user.lastName} ${member.user.email}`.toLowerCase();
+        return haystack.includes(query);
+      });
+  }, [assigneeSearch, members, user?.id]);
+
+  const selectedAssigneeLabel = useMemo(() => {
+    if (selectedAssigneeIds.length === 0) return 'All assignees';
+
+    const labels = selectedAssigneeIds.map((assigneeId) => {
+      if (assigneeId === 'unassigned') return 'Unassigned';
+      const member = members.find((entry) => entry.userId === assigneeId);
+      if (!member) return 'Unknown';
+      return assigneeId === user?.id ? 'You' : `${member.user.firstName} ${member.user.lastName}`;
+    });
+
+    return labels.length <= 2 ? labels.join(', ') : `${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
+  }, [members, selectedAssigneeIds, user?.id]);
+
+  const activeFilterCount = useMemo(
+    () => [selectedAssigneeIds.length > 0, Boolean(filterDueDate), filterDependsOn, filterBlocks].filter(Boolean).length,
+    [selectedAssigneeIds.length, filterDueDate, filterDependsOn, filterBlocks],
+  );
+
   const taskFilters = useMemo(() => ({
-    assigneeId: filterAssignee || undefined
-  }), [filterAssignee]);
+    assigneeId: selectedAssigneeIds.length > 0 ? selectedAssigneeIds.join(',') : undefined,
+    dueDate: filterDueDate || undefined,
+    dependsOn: filterDependsOn || undefined,
+    blocks: filterBlocks || undefined,
+  }), [selectedAssigneeIds, filterDueDate, filterDependsOn, filterBlocks]);
+
+  const clearTaskFilters = () => {
+    setSelectedAssigneeIds([]);
+    setAssigneeSearch('');
+    setFilterDueDate('');
+    setFilterDependsOn(false);
+    setFilterBlocks(false);
+  };
 
   if (!currentProject) return null;
 
@@ -213,33 +272,137 @@ export default function ProjectDetailPage() {
               Shared docs, files, and folders for this project
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto justify-between md:justify-end">
-               <div className="relative group">
-                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none">
-                      <Users size={14} />
+            <div className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto justify-between md:justify-end flex-wrap">
+               {selectedAssigneeIds.length > 0 && (
+                  <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-primary">
+                    {selectedAssigneeLabel}
                   </div>
-                  <select
-                      className="pl-8 pr-8 py-1.5 border border-border/60 rounded-lg text-[9px] font-black uppercase tracking-widest bg-card/30 text-foreground focus:outline-none focus:ring-1.5 focus:ring-primary/40 appearance-none transition-all hover:bg-card/50"
-                      value={filterAssignee}
-                      onChange={(e) => setFilterAssignee(e.target.value)}
-                  >
-                      <option value="">All Engineers</option>
-                      <option value="me">Assigned to Me</option>
-                      {members.map((member) => (
-                        <option key={member.userId} value={member.userId}>
-                          {member.user.firstName} {member.user.lastName}
-                        </option>
-                      ))}
-                  </select>
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                      <ChevronDown size={12} />
-                  </div>
-               </div>
+               )}
 
-               <div className="relative group">
-                  <Button variant="outline" size="sm" className="h-8 px-3 border-dashed border-1.5 text-[9px]">
-                     <Filter size={12} className="mr-1.5" /> Filter
+               <div className="relative">
+                  <Button
+                    type="button"
+                    onClick={() => setIsFilterMenuOpen((open) => !open)}
+                    variant="outline"
+                    size="sm"
+                    icon={<Filter size={12} />}
+                    className={`h-8 px-3 border-dashed text-[10px] whitespace-nowrap ${activeFilterCount ? 'border-primary/40 bg-primary/5 text-primary' : ''}`}
+                  >
+                    {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
                   </Button>
+
+                  {isFilterMenuOpen && (
+                    <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[min(24rem,calc(100vw-24px))] rounded-2xl border border-border/70 bg-popover/95 p-4 shadow-2xl backdrop-blur-xl">
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Assignees</p>
+                          <div className="mt-2 rounded-xl border border-border/60 bg-background/80 px-3 py-2">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Users size={13} />
+                              <input
+                                value={assigneeSearch}
+                                onChange={(e) => setAssigneeSearch(e.target.value)}
+                                placeholder="Search teammates"
+                                className="w-full bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleAssigneeFilter('unassigned')}
+                              className={`rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${selectedAssigneeIds.includes('unassigned') ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                            >
+                              Unassigned
+                            </button>
+                          </div>
+
+                          <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1">
+                            {filteredMembers.map((member) => {
+                              const isSelected = selectedAssigneeIds.includes(member.userId);
+                              const displayName = member.userId === user?.id ? 'You' : `${member.user.firstName} ${member.user.lastName}`;
+
+                              return (
+                                <button
+                                  key={member.userId}
+                                  type="button"
+                                  onClick={() => toggleAssigneeFilter(member.userId)}
+                                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted/70 text-foreground'}`}
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-semibold">{displayName}</p>
+                                    <p className="truncate text-[10px] text-muted-foreground">{member.user.email}</p>
+                                  </div>
+                                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                    {isSelected ? 'Selected' : 'Select'}
+                                  </span>
+                                </button>
+                              );
+                            })}
+
+                            {filteredMembers.length === 0 && (
+                              <div className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground">
+                                No teammates match that search.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Due date</p>
+                          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                            <input
+                              type="date"
+                              value={filterDueDate}
+                              onChange={(e) => setFilterDueDate(e.target.value)}
+                              className="w-full rounded-xl border border-border/60 bg-background/80 px-3 py-2 text-xs text-foreground outline-none transition-all focus:border-primary/40 focus:ring-1.5 focus:ring-primary/30"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setFilterDueDate((value) => value === todayDateValue ? '' : todayDateValue)}
+                              className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${filterDueDate === todayDateValue ? 'bg-primary text-primary-foreground' : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                            >
+                              Due today
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Dependency state</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setFilterDependsOn((value) => !value)}
+                              className={`rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${filterDependsOn ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                            >
+                              Depends on
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFilterBlocks((value) => !value)}
+                              className={`rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${filterBlocks ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                            >
+                              Blocks
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                          <button
+                            type="button"
+                            onClick={clearTaskFilters}
+                            className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            Clear all
+                          </button>
+                          <Button type="button" variant="secondary" size="sm" onClick={() => setIsFilterMenuOpen(false)} className="h-8 px-3">
+                            Done
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                </div>
             </div>
           )}

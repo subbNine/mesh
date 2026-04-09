@@ -165,6 +165,26 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
 
   const config = statusConfig[task.status] || statusConfig.todo;
   const taskAssignees = task.assignees?.length ? task.assignees : task.assignee ? [task.assignee] : [];
+  const assigneeSummary = useMemo(() => {
+    if (taskAssignees.length === 0) {
+      return 'Unassigned';
+    }
+
+    const labels = taskAssignees.map((assignee) => {
+      if (assignee.id === user?.id) {
+        return 'You';
+      }
+
+      const fullName = [assignee.firstName, assignee.lastName].filter(Boolean).join(' ').trim();
+      return fullName || 'Assigned teammate';
+    });
+
+    if (labels.length <= 2) {
+      return labels.join(', ');
+    }
+
+    return `${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
+  }, [taskAssignees, user?.id]);
 
   const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.defaultPrevented || isInteractiveCardTarget(event.target)) {
@@ -459,13 +479,14 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AssigneeStack assignees={taskAssignees} maxVisible={3} />
-              <span className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/70">
-                {taskAssignees.length === 0
-                  ? 'Unassigned'
-                  : taskAssignees.length === 1
-                    ? 'Assigned'
-                    : `${taskAssignees.length} assigned`}
-              </span>
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase tracking-[0.18em] text-muted-foreground/55">
+                  Assigned to
+                </span>
+                <span className="text-[10px] font-black text-foreground/80">
+                  {assigneeSummary}
+                </span>
+              </div>
             </div>
           </div>
         </div>
