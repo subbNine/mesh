@@ -135,7 +135,7 @@ export default function ProjectsPage() {
                 className="group text-left"
                 onClick={() => navigate(`/w/${workspaceId}/p/${proj.id}`)}
               >
-                <div className="flex h-full flex-col rounded-3xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                <div className="flex h-full flex-col rounded-3xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md" style={{cursor: 'pointer'}}>
                   <div className="mb-5 flex items-start justify-between gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 font-display text-xl font-black text-primary">
                       {proj.name.substring(0, 1).toUpperCase()}

@@ -205,6 +205,77 @@ export default function WorkspaceSelectorPage() {
     return preview || 'Capture rough notes, fleeting ideas, and open loops that should follow you across every task.';
   }, [scratchpad?.content]);
 
+  const workspaceListSection = isLoading && workspaces.length === 0 ? (
+    <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {['ws-a', 'ws-b', 'ws-c', 'ws-d', 'ws-e', 'ws-f'].map((key) => (
+        <div key={key} className="h-48 animate-pulse rounded-3xl border border-border/60 bg-card/60" />
+      ))}
+    </div>
+  ) : workspaces.length === 0 ? (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-6 rounded-3xl border border-dashed border-border/80 bg-card/50 px-6 py-16 text-center shadow-sm"
+    >
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <BriefcaseBusiness size={28} />
+      </div>
+      <h2 className="mt-4 text-2xl font-black tracking-tight text-foreground">No workspaces yet</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+        Create your first workspace to start organizing projects and collaborating with your team.
+      </p>
+      <div className="mt-6">
+        <Button onClick={() => setIsModalOpen(true)} size="lg" icon={<Plus size={18} />}>
+          Create workspace
+        </Button>
+      </div>
+    </motion.div>
+  ) : (
+    <section className="mb-6 space-y-4">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary/80">Your workspaces</p>
+        <h2 className="mt-1 text-2xl font-black tracking-tight text-foreground">Jump back into an active space</h2>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {workspaces.map((ws: any, idx: number) => (
+          <motion.button
+            key={ws.id}
+            type="button"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.04 }}
+            onClick={() => handleSelectWorkspace(ws)}
+            className="group text-left"
+          >
+            <div className="h-full rounded-3xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md" style={{cursor: 'pointer'}}>
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 font-display text-xl font-black text-primary">
+                  {ws.name.substring(0, 1).toUpperCase()}
+                </div>
+                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                  {ws.memberCount || 1} {(ws.memberCount || 1) === 1 ? 'member' : 'members'}
+                </span>
+              </div>
+
+              <h3 className="text-xl font-black tracking-tight text-foreground group-hover:text-primary">{ws.name}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Created {new Date(ws.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+              </p>
+
+              <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-4 text-sm">
+                <span className="text-muted-foreground">Open workspace</span>
+                <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                  Continue <ArrowRight size={16} />
+                </span>
+              </div>
+            </div>
+          </motion.button>
+        ))}
+      </div>
+    </section>
+  );
+
   useEffect(() => {
     if (workspaces.length === 0) {
       setPinnedTasks([]);
@@ -373,6 +444,8 @@ export default function WorkspaceSelectorPage() {
           </motion.div>
         </header>
 
+        {workspaceListSection}
+
         <div className="mb-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
           <DashboardCard
             title="Scratchpad"
@@ -522,70 +595,6 @@ export default function WorkspaceSelectorPage() {
             </div>
           )}
         </DashboardCard>
-
-        {isLoading && workspaces.length === 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {['ws-a', 'ws-b', 'ws-c', 'ws-d', 'ws-e', 'ws-f'].map((key) => (
-              <div key={key} className="h-48 animate-pulse rounded-3xl border border-border/60 bg-card/60" />
-            ))}
-          </div>
-        ) : workspaces.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-3xl border border-dashed border-border/80 bg-card/50 px-6 py-16 text-center shadow-sm"
-          >
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <BriefcaseBusiness size={28} />
-            </div>
-            <h2 className="mt-4 text-2xl font-black tracking-tight text-foreground">No workspaces yet</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-              Create your first workspace to start organizing projects and collaborating with your team.
-            </p>
-            <div className="mt-6">
-              <Button onClick={() => setIsModalOpen(true)} size="lg" icon={<Plus size={18} />}>
-                Create workspace
-              </Button>
-            </div>
-          </motion.div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {workspaces.map((ws: any, idx: number) => (
-              <motion.button
-                key={ws.id}
-                type="button"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04 }}
-                onClick={() => handleSelectWorkspace(ws)}
-                className="group text-left"
-              >
-                <div className="h-full rounded-3xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                  <div className="mb-5 flex items-start justify-between gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 font-display text-xl font-black text-primary">
-                      {ws.name.substring(0, 1).toUpperCase()}
-                    </div>
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                      {ws.memberCount || 1} {(ws.memberCount || 1) === 1 ? 'member' : 'members'}
-                    </span>
-                  </div>
-
-                  <h3 className="text-xl font-black tracking-tight text-foreground group-hover:text-primary">{ws.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Created {new Date(ws.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-                  </p>
-
-                  <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-4 text-sm">
-                    <span className="text-muted-foreground">Open workspace</span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                      Continue <ArrowRight size={16} />
-                    </span>
-                  </div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        )}
 
         <ScratchpadPanel
           isOpen={isScratchpadOpen}
