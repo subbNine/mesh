@@ -8,9 +8,10 @@ import { format } from 'date-fns';
 import { useCanvasStore } from '../../store/canvas.store';
 import { useTaskStore } from '../../store/task.store';
 import { useProjectStore } from '../../store/project.store';
-import { ArrowLeft, CalendarDays, Check, ChevronDown, Layers, Link2, Lock, MessageSquare, MoreHorizontal, StickyNote, UserPlus } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ChevronDown, Layers, Link2, ListChecks, Lock, MessageSquare, MoreHorizontal, StickyNote, UserPlus } from 'lucide-react';
 import { DependencyDropdown } from '../dependencies/DependencyDropdown';
 import { DependencyModal } from '../dependencies/DependencyModal';
+import { SubtaskPanel } from '../subtasks/SubtaskPanel';
 import { AssigneeStack } from '../tasks/AssigneeStack';
 import { NotificationBell } from '../ui/NotificationBell';
 import { useAuthStore } from '../../store/auth.store';
@@ -43,6 +44,7 @@ export function CanvasTopBar({
   const currentUser = useAuthStore(state => state.user);
   const members = useProjectStore(state => state.members);
   const dependencySnapshot = useTaskStore((state) => state.dependenciesByTaskId[task.id]);
+  const subtaskSnapshot = useTaskStore((state) => state.subtasksByTaskId[task.id]);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -51,6 +53,7 @@ export function CanvasTopBar({
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [isDueDateOpen, setIsDueDateOpen] = useState(false);
   const [isDependenciesOpen, setIsDependenciesOpen] = useState(false);
+  const [isSubtasksOpen, setIsSubtasksOpen] = useState(false);
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [isDependencyModalOpen, setIsDependencyModalOpen] = useState(false);
 
@@ -58,6 +61,7 @@ export function CanvasTopBar({
   const assigneeMenuRef = useRef<HTMLDivElement>(null);
   const dueDateMenuRef = useRef<HTMLDivElement>(null);
   const dependenciesMenuRef = useRef<HTMLDivElement>(null);
+  const subtasksMenuRef = useRef<HTMLDivElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleCommentPane = useCanvasStore(state => state.toggleCommentPane);
@@ -69,6 +73,7 @@ export function CanvasTopBar({
       if (assigneeMenuRef.current && !assigneeMenuRef.current.contains(e.target as Node)) setIsAssigneeOpen(false);
       if (dueDateMenuRef.current && !dueDateMenuRef.current.contains(e.target as Node)) setIsDueDateOpen(false);
       if (dependenciesMenuRef.current && !dependenciesMenuRef.current.contains(e.target as Node)) setIsDependenciesOpen(false);
+      if (subtasksMenuRef.current && !subtasksMenuRef.current.contains(e.target as Node)) setIsSubtasksOpen(false);
       if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) setIsOverflowOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -150,6 +155,16 @@ export function CanvasTopBar({
     : selectedAssignees.length === 1
       ? `${selectedAssignees[0].firstName} ${selectedAssignees[0].lastName}`
       : `${selectedAssignees[0].firstName} +${selectedAssignees.length - 1}`;
+  const subtaskCount = subtaskSnapshot ? subtaskSnapshot.length : task.subtaskCount ?? 0;
+  const completedSubtaskCount = subtaskSnapshot
+    ? subtaskSnapshot.filter((subtask) => subtask.isCompleted).length
+    : task.completedSubtaskCount ?? 0;
+  const subtaskProgressPercent = subtaskCount === 0 ? 0 : Math.round((completedSubtaskCount / subtaskCount) * 100);
+  const subtaskToneClass = subtaskProgressPercent >= 100
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    : subtaskProgressPercent >= 50
+      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      : 'border-border/60 bg-muted/40 text-muted-foreground';
 
   return (
     <div className="h-14 px-4 flex items-center justify-between border-b border-border/40 bg-card/60 backdrop-blur-3xl shadow-sm relative z-30">
@@ -430,6 +445,28 @@ export function CanvasTopBar({
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        <div className="relative" ref={subtasksMenuRef}>
+          <button
+            onClick={() => setIsSubtasksOpen((prev) => !prev)}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm ${subtaskToneClass}`}
+            title="Open subtasks checklist"
+          >
+            <ListChecks size={14} />
+            <div className="hidden min-w-[84px] md:block">
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] leading-none">Subtasks</div>
+              <div className="mt-1 text-[10px] font-black leading-none">
+                {subtaskCount === 0 ? 'Add checklist' : `${completedSubtaskCount} / ${subtaskCount}`}
+              </div>
+            </div>
+          </button>
+
+          <SubtaskPanel
+            task={task}
+            isOpen={isSubtasksOpen}
+            onClose={() => setIsSubtasksOpen(false)}
+          />
         </div>
 
         {/* Mobile Collaborator Indicator */}

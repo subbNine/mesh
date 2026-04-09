@@ -60,4 +60,6 @@ export class Task {
   blocks?: ITaskDependency[];
   isBlocked?: boolean;
   dependencyCount?: number;
+  subtaskCount?: number;
+  completedSubtaskCount?: number;
 }

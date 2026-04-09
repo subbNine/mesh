@@ -20,6 +20,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskAssignee } from './entities/task-assignees.entity';
 import { Task } from './entities/tasks.entity';
+import { Subtask } from '../subtasks/entities/subtasks.entity';
 
 @Injectable()
 export class TasksService {
@@ -28,6 +29,8 @@ export class TasksService {
     private readonly taskRepo: Repository<Task>,
     @InjectRepository(TaskAssignee)
     private readonly taskAssigneeRepo: Repository<TaskAssignee>,
+    @InjectRepository(Subtask)
+    private readonly subtaskRepo: Repository<Subtask>,
     private readonly projectsService: ProjectsService,
     @Inject(forwardRef(() => CanvasService))
     private readonly canvasService: CanvasService,
@@ -143,7 +146,8 @@ export class TasksService {
 
     const [tasks, total] = await query.getManyAndCount();
     const hydratedTasks = this.hydrateAssigneesForTasks(tasks);
-    const decoratedTasks = await this.dependenciesService.attachDependencyState(hydratedTasks);
+    const tasksWithSubtasks = await this.attachSubtaskStats(hydratedTasks);
+    const decoratedTasks = await this.dependenciesService.attachDependencyState(tasksWithSubtasks);
 
     return PaginatedResult.create(decoratedTasks, total, pagination);
   }
@@ -159,9 +163,11 @@ export class TasksService {
 
     await this.projectsService.checkAccess(task.projectId, userId);
 
-    const [decoratedTask] = await this.dependenciesService.attachDependencyState([
+    const [taskWithSubtasks] = await this.attachSubtaskStats([
       this.hydrateAssignees(task),
     ]);
+
+    const [decoratedTask] = await this.dependenciesService.attachDependencyState([taskWithSubtasks]);
 
     return decoratedTask;
   }
@@ -298,6 +304,38 @@ export class TasksService {
 
   private hydrateAssigneesForTasks(tasks: Task[]): Task[] {
     return tasks.map((task) => this.hydrateAssignees(task));
+  }
+
+  private async attachSubtaskStats(tasks: Task[]): Promise<Task[]> {
+    if (tasks.length === 0) {
+      return tasks;
+    }
+
+    const taskIds = tasks.map((task) => task.id);
+    const rows = await this.subtaskRepo.createQueryBuilder('subtask')
+      .select('subtask.taskId', 'taskId')
+      .addSelect('COUNT(*)::int', 'subtaskCount')
+      .addSelect('COALESCE(SUM(CASE WHEN subtask.isCompleted THEN 1 ELSE 0 END), 0)::int', 'completedSubtaskCount')
+      .where('subtask.taskId IN (:...taskIds)', { taskIds })
+      .groupBy('subtask.taskId')
+      .getRawMany<{ taskId: string; subtaskCount: string; completedSubtaskCount: string }>();
+
+    const statsByTaskId = new Map(
+      rows.map((row) => [
+        row.taskId,
+        {
+          subtaskCount: Number(row.subtaskCount ?? 0),
+          completedSubtaskCount: Number(row.completedSubtaskCount ?? 0),
+        },
+      ]),
+    );
+
+    return tasks.map((task) => {
+      const stats = statsByTaskId.get(task.id);
+      task.subtaskCount = stats?.subtaskCount ?? 0;
+      task.completedSubtaskCount = stats?.completedSubtaskCount ?? 0;
+      return task;
+    });
   }
 
   private normalizeAssigneeIds(assigneeIds?: string[] | null, assigneeId?: string | null): string[] {

@@ -99,9 +99,22 @@ export interface ITask {
   blocks?: ITaskDependency[];
   isBlocked?: boolean;
   dependencyCount?: number;
+  subtaskCount?: number;
+  completedSubtaskCount?: number;
   createdBy: string;
   createdAt: string | Date;
   updatedAt: string | Date;
+}
+
+export interface ISubtask {
+  id: string;
+  taskId: string;
+  title: string;
+  isCompleted: boolean;
+  position: number;
+  createdBy: string;
+  createdAt: ISODateValue;
+  completedAt: ISODateValue | null;
 }
 
 export interface IMyAssignmentsResponse {

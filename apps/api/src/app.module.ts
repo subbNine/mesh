@@ -21,6 +21,7 @@ import { DocsModule } from './modules/docs/docs.module';
 import { ProjectFilesModule } from './modules/project-files/project-files.module';
 import { DependenciesModule } from './modules/dependencies/dependencies.module';
 import { ScratchpadModule } from './modules/scratchpad/scratchpad.module';
+import { SubtasksModule } from './modules/subtasks/subtasks.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ScratchpadModule } from './modules/scratchpad/scratchpad.module';
     ProjectFilesModule,
     DependenciesModule,
     ScratchpadModule,
+    SubtasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

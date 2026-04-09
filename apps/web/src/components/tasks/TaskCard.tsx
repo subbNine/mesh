@@ -165,6 +165,14 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
 
   const config = statusConfig[task.status] || statusConfig.todo;
   const taskAssignees = task.assignees?.length ? task.assignees : task.assignee ? [task.assignee] : [];
+  const subtaskCount = task.subtaskCount ?? 0;
+  const completedSubtaskCount = task.completedSubtaskCount ?? 0;
+  const subtaskProgressPercent = subtaskCount === 0 ? 0 : Math.round((completedSubtaskCount / subtaskCount) * 100);
+  const subtaskBarClass = subtaskProgressPercent >= 100
+    ? 'from-emerald-500 to-emerald-400'
+    : subtaskProgressPercent >= 50
+      ? 'from-amber-500 to-amber-400'
+      : 'from-zinc-400 to-zinc-300';
   const assigneeSummary = useMemo(() => {
     if (taskAssignees.length === 0) {
       return 'Unassigned';
@@ -489,6 +497,21 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
               </div>
             </div>
           </div>
+
+          {subtaskCount > 0 && (
+            <div className="space-y-1.5 rounded-xl border border-border/50 bg-muted/20 px-2.5 py-2">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em]">
+                <span className="text-muted-foreground">Checklist</span>
+                <span className="text-foreground">{completedSubtaskCount} / {subtaskCount}</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted/70">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${subtaskBarClass}`}
+                  style={{ width: `${subtaskProgressPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <DependencyModal

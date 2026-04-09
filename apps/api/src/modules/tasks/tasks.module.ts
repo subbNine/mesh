@@ -9,10 +9,11 @@ import { CanvasModule } from '../canvas/canvas.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ActivityModule } from '../activity/activity.module';
 import { DependenciesModule } from '../dependencies/dependencies.module';
+import { Subtask } from '../subtasks/entities/subtasks.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, TaskAssignee]),
+    TypeOrmModule.forFeature([Task, TaskAssignee, Subtask]),
     ProjectsModule,
     forwardRef(() => CanvasModule),
     NotificationsModule,

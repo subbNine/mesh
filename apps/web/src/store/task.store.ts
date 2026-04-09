@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { type TaskStatus, type ITask, type IMyAssignmentsResponse, type ITaskDependenciesResponse } from '@mesh/shared';
+import { type TaskStatus, type ITask, type IMyAssignmentsResponse, type ITaskDependenciesResponse, type ISubtask } from '@mesh/shared';
 import { api } from '../lib/api';
 import { useToastStore } from './toast.store';
 
@@ -46,11 +46,18 @@ const mergeDependencyState = (task: ITask, dependencies?: ITaskDependenciesRespo
   };
 };
 
+const applySubtaskSummary = (task: ITask, subtasks: ISubtask[]): ITask => ({
+  ...task,
+  subtaskCount: subtasks.length,
+  completedSubtaskCount: subtasks.filter((subtask) => subtask.isCompleted).length,
+});
+
 interface TaskState {
   tasks: ITask[];
   currentTask: ITask | null;
   isLoading: boolean;
   dependenciesByTaskId: Record<string, ITaskDependenciesResponse>;
+  subtasksByTaskId: Record<string, ISubtask[]>;
   paginationMetadata: {
     total: number;
     page: number;
@@ -75,6 +82,11 @@ interface TaskState {
   updateTask: (taskId: string, dto: TaskWritePayload) => Promise<void>;
   addAssignee: (taskId: string, userId: string) => Promise<void>;
   removeAssignee: (taskId: string, userId: string) => Promise<void>;
+  fetchSubtasks: (taskId: string) => Promise<ISubtask[]>;
+  createSubtask: (taskId: string, title: string) => Promise<void>;
+  updateSubtask: (taskId: string, subtaskId: string, dto: { title?: string; isCompleted?: boolean; position?: number }) => Promise<void>;
+  deleteSubtask: (taskId: string, subtaskId: string) => Promise<void>;
+  reorderSubtasks: (taskId: string, orderedIds: string[]) => Promise<void>;
   fetchDependencies: (taskId: string) => Promise<ITaskDependenciesResponse>;
   createDependency: (taskId: string, dto: { blocksTaskId?: string; dependsOnTaskId?: string }) => Promise<void>;
   deleteDependency: (dependencyId: string) => Promise<void>;
@@ -90,6 +102,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   currentTask: null,
   isLoading: false,
   dependenciesByTaskId: {},
+  subtasksByTaskId: {},
   paginationMetadata: null,
   assignments: emptyAssignments,
   rowOrder: ['todo', 'inprogress', 'review', 'done'],
@@ -196,6 +209,83 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     } catch (err) {
       console.error('Failed to remove assignee:', err);
       useToastStore.getState().addToast('error', 'Failed to remove assignee');
+      throw err;
+    }
+  },
+
+  fetchSubtasks: async (taskId) => {
+    const { data } = await api.get(`/tasks/${taskId}/subtasks`);
+    const subtasks = [...data].sort((a: ISubtask, b: ISubtask) => a.position - b.position);
+
+    set((state) => ({
+      subtasksByTaskId: {
+        ...state.subtasksByTaskId,
+        [taskId]: subtasks,
+      },
+      tasks: state.tasks.map((task) => (task.id === taskId ? applySubtaskSummary(task, subtasks) : task)),
+      currentTask: state.currentTask?.id === taskId ? applySubtaskSummary(state.currentTask, subtasks) : state.currentTask,
+      assignments: mapAssignments(state.assignments, taskId, (task) => applySubtaskSummary(task, subtasks)),
+    }));
+
+    return subtasks;
+  },
+
+  createSubtask: async (taskId, title) => {
+    try {
+      await api.post(`/tasks/${taskId}/subtasks`, { title });
+      await get().fetchSubtasks(taskId);
+      useToastStore.getState().addToast('success', 'Subtask added');
+    } catch (err) {
+      console.error('Failed to create subtask:', err);
+      useToastStore.getState().addToast('error', 'Failed to add subtask');
+      throw err;
+    }
+  },
+
+  updateSubtask: async (taskId, subtaskId, dto) => {
+    try {
+      await api.patch(`/subtasks/${subtaskId}`, dto);
+      const subtasks = await get().fetchSubtasks(taskId);
+
+      if (dto.isCompleted && subtasks.length > 0 && subtasks.every((subtask) => subtask.isCompleted)) {
+        useToastStore.getState().addToast('info', 'All subtasks complete. Mark task as done?');
+      }
+    } catch (err) {
+      console.error('Failed to update subtask:', err);
+      useToastStore.getState().addToast('error', 'Failed to update subtask');
+      throw err;
+    }
+  },
+
+  deleteSubtask: async (taskId, subtaskId) => {
+    try {
+      await api.delete(`/subtasks/${subtaskId}`);
+      await get().fetchSubtasks(taskId);
+      useToastStore.getState().addToast('success', 'Subtask removed');
+    } catch (err) {
+      console.error('Failed to delete subtask:', err);
+      useToastStore.getState().addToast('error', 'Failed to delete subtask');
+      throw err;
+    }
+  },
+
+  reorderSubtasks: async (taskId, orderedIds) => {
+    try {
+      const { data } = await api.patch(`/tasks/${taskId}/subtasks/reorder`, { orderedIds });
+      const subtasks = [...data].sort((a: ISubtask, b: ISubtask) => a.position - b.position);
+
+      set((state) => ({
+        subtasksByTaskId: {
+          ...state.subtasksByTaskId,
+          [taskId]: subtasks,
+        },
+        tasks: state.tasks.map((task) => (task.id === taskId ? applySubtaskSummary(task, subtasks) : task)),
+        currentTask: state.currentTask?.id === taskId ? applySubtaskSummary(state.currentTask, subtasks) : state.currentTask,
+        assignments: mapAssignments(state.assignments, taskId, (task) => applySubtaskSummary(task, subtasks)),
+      }));
+    } catch (err) {
+      console.error('Failed to reorder subtasks:', err);
+      useToastStore.getState().addToast('error', 'Failed to reorder subtasks');
       throw err;
     }
   },
