@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany, type Relation } from 'typeorm';
 import type { ITaskDependency } from '@mesh/shared';
 import { Project } from '../../projects/entities/projects.entity';
 import { User } from '../../users/entities/users.entity';
+import { TaskAssignee } from './task-assignees.entity';
 
 @Entity('tasks')
 export class Task {
@@ -13,7 +14,7 @@ export class Task {
 
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'projectId' })
-  project: Project;
+  project: Relation<Project>;
 
   @Column()
   title: string;
@@ -29,7 +30,12 @@ export class Task {
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'assigneeId' })
-  assignee: User;
+  assignee: Relation<User> | null;
+
+  @OneToMany(() => TaskAssignee, (taskAssignee) => taskAssignee.task)
+  taskAssignees?: Relation<TaskAssignee[]>;
+
+  assignees?: User[];
 
   @Column({ nullable: true })
   snapshotUrl: string;
@@ -42,7 +48,7 @@ export class Task {
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'createdBy' })
-  creator: User;
+  creator: Relation<User>;
 
   @CreateDateColumn()
   createdAt: Date;

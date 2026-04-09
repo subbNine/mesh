@@ -3,10 +3,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useParams } from 'react-router-dom';
 import { type ITask } from "@mesh/shared";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
-import { CalendarDays, Check, ChevronDown, Link2, Lock, Pin, PinOff, Trash2, User } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, Link2, Lock, Pin, PinOff, Trash2 } from "lucide-react";
 import { DependencyModal } from '../dependencies/DependencyModal';
 import { DependencyPopup } from '../dependencies/DependencyPopup';
 import { getTaskDependencyState } from '../../lib/dependency-utils';
+import { AssigneeStack } from './AssigneeStack';
 import { useTaskStore } from "../../store/task.store";
 import { useAuthStore } from "../../store/auth.store";
 import { useProjectStore } from "../../store/project.store";
@@ -105,10 +106,6 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
     return isAdmin;
   }, [user, task.createdBy, members, currentProject]);
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
-  };
-
   const handlePinToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     const pin = (globalThis as any).__meshPinTask;
@@ -167,6 +164,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
   };
 
   const config = statusConfig[task.status] || statusConfig.todo;
+  const taskAssignees = task.assignees?.length ? task.assignees : task.assignee ? [task.assignee] : [];
 
   const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.defaultPrevented || isInteractiveCardTarget(event.target)) {
@@ -459,32 +457,16 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
           )}
 
           <div className="flex items-center justify-between">
-            {/* User Info */}
-            {task.assignee ? (
-              <div className="flex items-center gap-1.5">
-                <div
-                  className="w-5 h-5 rounded-md bg-primary/10 border border-primary/20 flex flex-shrink-0 items-center justify-center text-primary text-[8px] font-black overflow-hidden shadow-sm"
-                  title={`${task.assignee.firstName} ${task.assignee.lastName}`}
-                >
-                  {task.assignee.avatarUrl ? (
-                    <img
-                      src={task.assignee.avatarUrl}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    getInitials(task.assignee.firstName, task.assignee.lastName)
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div
-                className="w-5 h-5 rounded-md border-2 border-dashed border-border/60 flex items-center justify-center text-muted-foreground/30"
-                title="Unassigned"
-              >
-                <User size={10} />
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <AssigneeStack assignees={taskAssignees} maxVisible={3} />
+              <span className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/70">
+                {taskAssignees.length === 0
+                  ? 'Unassigned'
+                  : taskAssignees.length === 1
+                    ? 'Assigned'
+                    : `${taskAssignees.length} assigned`}
+              </span>
+            </div>
           </div>
         </div>
       </div>

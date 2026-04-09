@@ -10,6 +10,11 @@ interface MyAssignmentsFilters {
   projectId?: string[];
 }
 
+type TaskWritePayload = Partial<ITask> & {
+  assigneeIds?: string[];
+  assigneeId?: string | null;
+};
+
 const emptyAssignments: IMyAssignmentsResponse = {
   overdue: [],
   dueToday: [],
@@ -58,8 +63,10 @@ interface TaskState {
   
   fetchTasks: (projectId: string, filters?: { status?: TaskStatus; assigneeId?: string; page?: number; perPage?: number }) => Promise<void>;
   fetchMyAssignments: (filters: MyAssignmentsFilters) => Promise<void>;
-  createTask: (projectId: string, dto: Partial<ITask>) => Promise<ITask>;
-  updateTask: (taskId: string, dto: Partial<ITask>) => Promise<void>;
+  createTask: (projectId: string, dto: TaskWritePayload) => Promise<ITask>;
+  updateTask: (taskId: string, dto: TaskWritePayload) => Promise<void>;
+  addAssignee: (taskId: string, userId: string) => Promise<void>;
+  removeAssignee: (taskId: string, userId: string) => Promise<void>;
   fetchDependencies: (taskId: string) => Promise<ITaskDependenciesResponse>;
   createDependency: (taskId: string, dto: { blocksTaskId?: string; dependsOnTaskId?: string }) => Promise<void>;
   deleteDependency: (dependencyId: string) => Promise<void>;
@@ -150,6 +157,38 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       console.error('Failed to update task:', err);
       useToastStore.getState().addToast('error', 'Failed to update task');
       set({ tasks: previousTasks, assignments: previousAssignments, currentTask: previousCurrentTask });
+    }
+  },
+
+  addAssignee: async (taskId, userId) => {
+    try {
+      const { data } = await api.post(`/tasks/${taskId}/assignees`, { userId });
+      set((state) => ({
+        tasks: state.tasks.map((task) => (task.id === taskId ? data : task)),
+        currentTask: state.currentTask?.id === taskId ? data : state.currentTask,
+        assignments: mapAssignments(state.assignments, taskId, () => data),
+      }));
+      useToastStore.getState().addToast('success', 'Assignee added');
+    } catch (err) {
+      console.error('Failed to add assignee:', err);
+      useToastStore.getState().addToast('error', 'Failed to add assignee');
+      throw err;
+    }
+  },
+
+  removeAssignee: async (taskId, userId) => {
+    try {
+      const { data } = await api.delete(`/tasks/${taskId}/assignees/${userId}`);
+      set((state) => ({
+        tasks: state.tasks.map((task) => (task.id === taskId ? data : task)),
+        currentTask: state.currentTask?.id === taskId ? data : state.currentTask,
+        assignments: mapAssignments(state.assignments, taskId, () => data),
+      }));
+      useToastStore.getState().addToast('success', 'Assignee removed');
+    } catch (err) {
+      console.error('Failed to remove assignee:', err);
+      useToastStore.getState().addToast('error', 'Failed to remove assignee');
+      throw err;
     }
   },
 

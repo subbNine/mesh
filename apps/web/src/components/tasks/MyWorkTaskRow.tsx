@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, isPast, isToday } from 'date-fns';
-import { CalendarDays, ChevronDown, User } from 'lucide-react';
+import { CalendarDays, ChevronDown } from 'lucide-react';
 import { type ITask, type TaskStatus } from '@mesh/shared';
+
+import { AssigneeStack } from './AssigneeStack';
 
 interface MyWorkTaskRowProps {
   task: ITask;
@@ -100,7 +102,7 @@ export function MyWorkTaskRow({
   const dueMeta = getDueMeta(task);
   const projectTone = getProjectTone(task.projectId);
 
-  const initials = `${task.assignee?.firstName?.[0] ?? ''}${task.assignee?.lastName?.[0] ?? ''}`.toUpperCase() || 'U';
+  const taskAssignees = task.assignees?.length ? task.assignees : task.assignee ? [task.assignee] : [];
 
   const handleStatusSelect = async (status: TaskStatus) => {
     setIsMenuOpen(false);
@@ -175,25 +177,16 @@ export function MyWorkTaskRow({
             <span>{dueMeta.label}</span>
           </div>
 
-          {task.assignee ? (
-            <div
-              className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-primary/10 text-[10px] font-black text-primary"
-              title={`${task.assignee.firstName} ${task.assignee.lastName}`}
-            >
-              {task.assignee.avatarUrl ? (
-                <img src={task.assignee.avatarUrl} alt="Assignee avatar" className="h-full w-full object-cover" />
-              ) : (
-                initials
-              )}
-            </div>
-          ) : (
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-xl border border-dashed border-border/70 text-muted-foreground"
-              title="Unassigned"
-            >
-              <User size={14} />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <AssigneeStack assignees={taskAssignees} maxVisible={3} size="md" />
+            <span className="text-[10px] font-semibold text-muted-foreground/80">
+              {taskAssignees.length === 0
+                ? 'Unassigned'
+                : taskAssignees.length === 1
+                  ? '1 assignee'
+                  : `${taskAssignees.length} assignees`}
+            </span>
+          </div>
         </div>
       </div>
     </div>

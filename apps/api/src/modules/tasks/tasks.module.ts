@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { Task } from './entities/tasks.entity';
+import { TaskAssignee } from './entities/task-assignees.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { CanvasModule } from '../canvas/canvas.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -11,7 +12,7 @@ import { DependenciesModule } from '../dependencies/dependencies.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task]),
+    TypeOrmModule.forFeature([Task, TaskAssignee]),
     ProjectsModule,
     forwardRef(() => CanvasModule),
     NotificationsModule,

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, MinLength, IsUUID, IsEnum, IsDateString } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { TaskStatus } from '@mesh/shared';
 
 export class CreateTaskDto {
@@ -18,6 +18,12 @@ export class CreateTaskDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsUUID('4', { each: true })
+  assigneeIds?: string[];
 
   @IsOptional()
   @IsDateString()

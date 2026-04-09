@@ -127,8 +127,11 @@ export class UsersService {
       .leftJoinAndSelect('task.assignee', 'assignee')
       .leftJoinAndSelect('task.creator', 'creator')
       .leftJoinAndSelect('task.project', 'project')
-      .where('task.assigneeId = :userId', { userId })
-      .andWhere('project.workspaceId = :workspaceId', { workspaceId: options.workspaceId });
+      .leftJoinAndSelect('task.taskAssignees', 'taskAssignees')
+      .leftJoinAndSelect('taskAssignees.user', 'taskAssigneeUser')
+      .where('taskAssignees.userId = :userId', { userId })
+      .andWhere('project.workspaceId = :workspaceId', { workspaceId: options.workspaceId })
+      .distinct(true);
 
     if (statuses.length > 0) {
       query.andWhere('task.status IN (:...statuses)', { statuses });
@@ -146,10 +149,25 @@ export class UsersService {
 
     const tasks = await query.getMany();
 
-    const assignments = tasks.map((task) => ({
-      ...task,
-      projectName: task.project?.name,
-    })) as ITask[];
+    const assignments = tasks.map((task) => {
+      const joinedAssignees = (task.taskAssignees ?? [])
+        .map((taskAssignee) => taskAssignee.user)
+        .filter(Boolean);
+
+      const assignees = joinedAssignees.length > 0
+        ? joinedAssignees
+        : task.assignee
+          ? [task.assignee]
+          : [];
+
+      return {
+        ...task,
+        assignees,
+        assignee: assignees[0] ?? null,
+        assigneeId: assignees[0]?.id ?? null,
+        projectName: task.project?.name,
+      };
+    }) as ITask[];
 
     const now = new Date();
     const todayStart = new Date(now);

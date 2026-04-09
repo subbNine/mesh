@@ -225,6 +225,11 @@ export default function ProjectDetailPage() {
                   >
                       <option value="">All Engineers</option>
                       <option value="me">Assigned to Me</option>
+                      {members.map((member) => (
+                        <option key={member.userId} value={member.userId}>
+                          {member.user.firstName} {member.user.lastName}
+                        </option>
+                      ))}
                   </select>
                   <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
                       <ChevronDown size={12} />

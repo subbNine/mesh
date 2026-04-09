@@ -11,6 +11,7 @@ import { useProjectStore } from '../../store/project.store';
 import { ArrowLeft, CalendarDays, Check, ChevronDown, Layers, Link2, Lock, MessageSquare, MoreHorizontal, StickyNote, UserPlus } from 'lucide-react';
 import { DependencyDropdown } from '../dependencies/DependencyDropdown';
 import { DependencyModal } from '../dependencies/DependencyModal';
+import { AssigneeStack } from '../tasks/AssigneeStack';
 import { NotificationBell } from '../ui/NotificationBell';
 import { useAuthStore } from '../../store/auth.store';
 import { getUserColor } from '../../lib/user-color';
@@ -89,11 +90,33 @@ export function CanvasTopBar({
     api.patch(`/tasks/${task.id}`, { status: newStatus }).catch(console.error);
   };
 
-  const handleAssigneeChange = (userId: string | null) => {
-    setIsAssigneeOpen(false);
-    if (userId === task.assigneeId) return;
-    onTaskUpdate({ assigneeId: userId } as any);
-    api.patch(`/tasks/${task.id}`, { assigneeId: userId }).catch(console.error);
+  const handleAssigneeSelection = (nextIds: string[]) => {
+    const nextAssignees = members
+      .filter((member) => nextIds.includes(member.userId))
+      .map((member) => member.user);
+
+    onTaskUpdate({
+      assignees: nextAssignees,
+      assignee: nextAssignees[0] ?? null,
+      assigneeId: nextIds[0] ?? null,
+    } as Partial<ITask>);
+
+    api.patch(`/tasks/${task.id}`, { assigneeIds: nextIds }).catch(console.error);
+  };
+
+  const handleAssigneeToggle = (userId: string) => {
+    const currentIds = selectedAssigneeIds;
+    const isSelected = currentIds.includes(userId);
+
+    if (!isSelected && currentIds.length >= 5) {
+      return;
+    }
+
+    const nextIds = isSelected
+      ? currentIds.filter((id) => id !== userId)
+      : [...currentIds, userId];
+
+    handleAssigneeSelection(nextIds);
   };
 
   const handleDueDateChange = (dueDate: string | null) => {
@@ -116,6 +139,17 @@ export function CanvasTopBar({
   });
 
   const currentAssignee = members.find(m => m.userId === task.assigneeId)?.user;
+  const selectedAssignees = task.assignees?.length
+    ? task.assignees
+    : currentAssignee
+      ? [currentAssignee]
+      : [];
+  const selectedAssigneeIds = selectedAssignees.map((assignee) => assignee.id);
+  const assigneeLabel = selectedAssignees.length === 0
+    ? 'Nobody'
+    : selectedAssignees.length === 1
+      ? `${selectedAssignees[0].firstName} ${selectedAssignees[0].lastName}`
+      : `${selectedAssignees[0].firstName} +${selectedAssignees.length - 1}`;
 
   return (
     <div className="h-14 px-4 flex items-center justify-between border-b border-border/40 bg-card/60 backdrop-blur-3xl shadow-sm relative z-30">
@@ -272,24 +306,11 @@ export function CanvasTopBar({
                 onClick={() => setIsAssigneeOpen(!isAssigneeOpen)}
                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all hover:bg-muted/50 border border-transparent hover:border-border/40 group"
             >
-                <div className="flex items-center -space-x-1">
-                    {currentAssignee ? (
-                    <div
-                        className="w-7 h-7 rounded-md flex items-center justify-center text-[9px] font-black text-white border-2 border-card shadow-sm"
-                        style={{ backgroundColor: getUserColor(currentAssignee.id) }}
-                    >
-                        {currentAssignee.firstName[0]}{currentAssignee.lastName[0]}
-                    </div>
-                    ) : (
-                    <div className="w-7 h-7 rounded-md bg-muted border-2 border-dashed border-border/40 flex items-center justify-center text-muted-foreground">
-                        <UserPlus size={12} />
-                    </div>
-                    )}
-                </div>
+                <AssigneeStack assignees={selectedAssignees} maxVisible={3} size="md" />
                 <div className="flex flex-col items-start pr-1 hidden md:flex">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 leading-none mb-0.5">Assigned to</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 leading-none mb-0.5">Assigned team</span>
                     <span className="text-[10px] font-black tracking-tight text-foreground/80 group-hover:text-primary transition-colors leading-none">
-                        {currentAssignee ? `${currentAssignee.firstName} ${currentAssignee.lastName}` : 'Nobody'}
+                        {assigneeLabel}
                     </span>
                 </div>
             </button>
@@ -300,41 +321,66 @@ export function CanvasTopBar({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full right-0 mt-1.5 w-56 bg-card/60 backdrop-blur-3xl rounded-lg shadow-lg border border-border/80 p-1.5 z-50 overflow-hidden"
+                    className="absolute top-full right-0 mt-1.5 w-72 bg-card/80 backdrop-blur-3xl rounded-xl shadow-lg border border-border/80 p-1.5 z-50 overflow-hidden"
                 >
-                    <div className="px-2.5 py-1.5 mb-0.5 text-[8px] font-black text-muted-foreground/60 uppercase tracking-[0.15em] border-b border-border/40">Blueprint Access</div>
+                    <div className="flex items-center justify-between gap-2 border-b border-border/40 px-2.5 py-2">
+                      <div>
+                        <div className="text-[8px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">Task crew</div>
+                        <div className="text-[11px] text-muted-foreground">Pick up to five collaborators</div>
+                      </div>
+                      <span className="rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-primary">
+                        {selectedAssigneeIds.length}/5
+                      </span>
+                    </div>
+
                     <button
-                        onClick={() => handleAssigneeChange(null)}
-                        className="w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[9px] font-black uppercase tracking-widest hover:bg-muted/50 transition-all group"
+                        onClick={() => handleAssigneeSelection([])}
+                        className="mt-1 w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[9px] font-black uppercase tracking-widest hover:bg-muted/50 transition-all group"
                     >
                         <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center text-muted-foreground/40 border border-dashed border-border/60">
                                 <UserPlus size={12} />
                             </div>
-                            <span className={task.assigneeId ? 'text-muted-foreground/80' : 'text-primary font-black'}>No Assignee</span>
+                            <span className={selectedAssigneeIds.length > 0 ? 'text-muted-foreground/80' : 'text-primary font-black'}>No assignees</span>
                         </div>
-                        {!task.assigneeId && <Check size={12} className="text-primary" />}
+                        {selectedAssigneeIds.length === 0 && <Check size={12} className="text-primary" />}
                     </button>
-                    {members.map((m) => (
-                    <button
-                        key={m.userId}
-                        onClick={() => handleAssigneeChange(m.userId)}
-                        className="w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[9px] font-black uppercase tracking-widest hover:bg-muted/50 transition-all group"
-                    >
-                        <div className="flex items-center gap-2">
-                            <div
-                                className="w-7 h-7 rounded-md flex items-center justify-center text-[9px] font-black text-white shadow-sm"
-                                style={{ backgroundColor: getUserColor(m.userId) }}
-                            >
-                                {m.user.firstName[0]}{m.user.lastName[0]}
+                    {members.map((m) => {
+                      const isSelected = selectedAssigneeIds.includes(m.userId);
+                      const selectionLimitReached = !isSelected && selectedAssigneeIds.length >= 5;
+                      const avatarUrl = (m.user as { avatarUrl?: string | null }).avatarUrl;
+
+                      return (
+                        <button
+                            key={m.userId}
+                            onClick={() => handleAssigneeToggle(m.userId)}
+                            disabled={selectionLimitReached}
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all group ${isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'} ${selectionLimitReached ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <div
+                                    className="w-7 h-7 rounded-md flex items-center justify-center text-[9px] font-black text-white shadow-sm overflow-hidden"
+                                    style={{ backgroundColor: getUserColor(m.userId) }}
+                                >
+                                    {avatarUrl ? (
+                                      <img src={avatarUrl} alt={`${m.user.firstName} ${m.user.lastName}`} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <span>{m.user.firstName[0]}{m.user.lastName[0]}</span>
+                                    )}
+                                </div>
+                                <div className="flex flex-col items-start">
+                                  <span className={isSelected ? 'text-primary' : 'text-muted-foreground/80'}>
+                                      {m.user.firstName} {m.user.lastName}
+                                  </span>
+                                  <span className="text-[8px] uppercase tracking-[0.16em] text-muted-foreground/50">
+                                    {isSelected ? 'Assigned' : 'Available'}
+                                  </span>
+                                </div>
                             </div>
-                            <span className={task.assigneeId === m.userId ? 'text-primary' : 'text-muted-foreground/80'}>
-                                {m.user.firstName} {m.user.lastName}
-                            </span>
-                        </div>
-                        {task.assigneeId === m.userId && <Check size={12} className="text-primary" />}
-                    </button>
-                    ))}
+                            {isSelected && <Check size={12} className="text-primary" />}
+                        </button>
+                      );
+                    })}
                 </motion.div>
                 )}
             </AnimatePresence>

@@ -43,7 +43,8 @@ export function TaskThumbnailSidebar() {
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
       const matchStatus = statusFilter === 'all' || t.status === statusFilter;
-      const matchAssignee = assigneeFilter === 'all' || t.assigneeId === assigneeFilter;
+      const assigneeIds = t.assignees?.map((assignee) => assignee.id) ?? (t.assigneeId ? [t.assigneeId] : []);
+      const matchAssignee = assigneeFilter === 'all' || assigneeIds.includes(assigneeFilter);
       return matchStatus && matchAssignee;
     });
   }, [tasks, statusFilter, assigneeFilter]);

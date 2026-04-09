@@ -70,7 +70,7 @@ export function ScratchpadPanel({ isOpen, onClose }: ScratchpadPanelProps) {
     editorProps: {
       attributes: {
         class:
-          'min-h-[320px] flex-1 rounded-[24px] border border-amber-200/70 bg-white/70 px-4 py-4 text-[15px] text-slate-800 outline-none shadow-inner shadow-amber-100/50 backdrop-blur-sm [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-black [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:border-l-4 [&_blockquote]:border-amber-300 [&_blockquote]:pl-3 [&_blockquote]:italic dark:border-amber-200/20 dark:bg-slate-950/50 dark:text-slate-100',
+          'h-full min-h-[320px] overflow-y-auto overscroll-contain rounded-[24px] border border-amber-200/70 bg-white/70 px-4 py-4 text-[15px] text-slate-800 outline-none shadow-inner shadow-amber-100/50 backdrop-blur-sm [scrollbar-gutter:stable] [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-black [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:border-l-4 [&_blockquote]:border-amber-300 [&_blockquote]:pl-3 [&_blockquote]:italic dark:border-amber-200/20 dark:bg-slate-950/50 dark:text-slate-100',
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
@@ -163,11 +163,11 @@ export function ScratchpadPanel({ isOpen, onClose }: ScratchpadPanelProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-3 top-20 flex h-[min(78vh,680px)] w-[min(92vw,460px)] flex-col overflow-hidden rounded-[28px] border border-amber-200/70 bg-[#fffaf0]/95 text-slate-900 shadow-[0_35px_80px_-35px_rgba(120,72,20,0.45)] backdrop-blur-xl dark:border-amber-200/10 dark:bg-[#151821]/95 dark:text-slate-100 sm:right-6"
+            className="absolute right-3 top-20 flex h-[min(78vh,680px)] min-h-0 w-[min(92vw,460px)] flex-col overflow-hidden rounded-[28px] border border-amber-200/70 bg-[#fffaf0]/95 text-slate-900 shadow-[0_35px_80px_-35px_rgba(120,72,20,0.45)] backdrop-blur-xl dark:border-amber-200/10 dark:bg-[#151821]/95 dark:text-slate-100 sm:right-6"
           >
             <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:repeating-linear-gradient(180deg,transparent,transparent_31px,rgba(180,138,64,0.12)_32px)] dark:opacity-20" />
 
-            <div className="relative flex h-full flex-col p-3 sm:p-4">
+            <div className="relative flex h-full min-h-0 flex-col p-3 sm:p-4">
               <div className="mb-3 flex items-start justify-between gap-3 rounded-[22px] border border-amber-200/70 bg-white/70 px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
@@ -220,13 +220,13 @@ export function ScratchpadPanel({ isOpen, onClose }: ScratchpadPanelProps) {
                   Loading scratchpad…
                 </div>
               ) : (
-                <div className="relative flex flex-1 flex-col">
+                <div className="relative flex min-h-0 flex-1 flex-col">
                   {!editor?.getText().trim() && (
                     <div className="pointer-events-none absolute left-5 top-4 z-10 max-w-[280px] text-sm italic text-slate-400 dark:text-slate-500">
                       Jot down rough plans, reminders, and half-formed ideas…
                     </div>
                   )}
-                  <EditorContent editor={editor} />
+                  <EditorContent editor={editor} className="min-h-0 flex-1 overflow-y-auto" />
                 </div>
               )}
             </div>

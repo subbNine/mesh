@@ -91,6 +91,7 @@ export interface ITask {
   status: TaskStatus;
   assigneeId: string | null;
   assignee: IUser | null;
+  assignees: IUser[];
   snapshotUrl: string | null;
   dueDate?: ISODateValue | null;
   projectName?: string;

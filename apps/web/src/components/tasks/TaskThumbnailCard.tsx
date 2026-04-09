@@ -1,6 +1,7 @@
 import { type ITask } from '@mesh/shared';
 import { Link, useParams } from 'react-router-dom';
-import { User } from 'lucide-react';
+
+import { AssigneeStack } from './AssigneeStack';
 
 interface TaskThumbnailCardProps {
   task: ITask;
@@ -68,12 +69,12 @@ export function TaskThumbnailCard({ task, index, isActive }: TaskThumbnailCardPr
               <span className="text-[10px] text-muted-foreground capitalize font-medium">{task.status.replace('-', ' ')}</span>
             </div>
             
-            {task.assigneeId && (
-               <div className="flex items-center gap-1 opacity-60">
-                 <User className="w-2.5 h-2.5" />
-                 <span className="text-[9px] font-medium tracking-tight">Assigned</span>
-               </div>
-            )}
+            <div className="opacity-70">
+              <AssigneeStack
+                assignees={task.assignees?.length ? task.assignees : task.assignee ? [task.assignee] : []}
+                maxVisible={2}
+              />
+            </div>
           </div>
         </div>
       </div>

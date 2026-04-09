@@ -6,6 +6,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { BaseQueryDto } from '../../common/dtos/base-query.dto';
 import { IUser } from '@mesh/shared';
+import { UpdateTaskAssigneesDto } from './dto/update-task-assignees.dto';
 
 @Controller()
 export class TasksController {
@@ -47,6 +48,26 @@ export class TasksController {
     @Body() dto: UpdateTaskDto,
   ) {
     return this.tasksService.update(taskId, user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('tasks/:taskId/assignees')
+  addAssignee(
+    @Param('taskId') taskId: string,
+    @CurrentUser() user: IUser,
+    @Body() dto: UpdateTaskAssigneesDto,
+  ) {
+    return this.tasksService.addAssignee(taskId, user.id, dto.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('tasks/:taskId/assignees/:userId')
+  removeAssignee(
+    @Param('taskId') taskId: string,
+    @Param('userId') assigneeUserId: string,
+    @CurrentUser() user: IUser,
+  ) {
+    return this.tasksService.removeAssignee(taskId, user.id, assigneeUserId);
   }
 
   @Patch('tasks/:taskId/snapshot')
