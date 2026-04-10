@@ -188,7 +188,7 @@ export default function ProjectSettingsPage() {
           </Link>
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-0.5">
-              <span>Blueprint</span>
+              <span>Project</span>
               <ChevronRight size={10} className="opacity-40" />
               <span>Settings</span>
             </div>
@@ -283,7 +283,7 @@ export default function ProjectSettingsPage() {
                 <section>
                   <div className="mb-10">
                     <h2 className="text-3xl font-black tracking-tight text-foreground">General Protocol</h2>
-                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60">Architectural metadata and descriptive identity for this project canvas.</p>
+                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60">Project metadata and descriptive identity for this project canvas.</p>
                   </div>
 
                   <Card className="glass border-border/40 rounded-[48px] overflow-hidden shadow-2xl relative">
@@ -339,7 +339,7 @@ export default function ProjectSettingsPage() {
                       <Layout size={28} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em] mb-1">Architectural Identity</h3>
+                      <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em] mb-1">Project Identity</h3>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono opacity-60">Created {new Date(currentProject.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>

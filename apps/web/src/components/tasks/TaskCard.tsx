@@ -125,7 +125,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
     e.stopPropagation();
     if (
       confirm(
-        "Are you sure you want to delete this task blueprint? This action is irreversible.",
+        "Are you sure you want to delete this task? This action is irreversible.",
       )
     ) {
       deleteTask(task.id);
@@ -244,10 +244,10 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
       onMouseLeave={() => setIsCardActive(false)}
       className={`relative group flex flex-col bg-card border border-border/60 rounded-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer overflow-visible ${className}`}
     >
-      {/* Blueprint Thumbnail */}
+      {/* Canvas Thumbnail */}
       <div className="h-[120px] w-full border-b border-border/40 relative overflow-visible">
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-t-xl bg-muted/30">
-          {/* Architectural Background Grid for the preview */}
+          {/* Canvas Background Grid for the preview */}
           <div className="absolute inset-0 bg-dot-grid opacity-10 pointer-events-none" />
 
           {task.snapshotUrl ? (
@@ -353,7 +353,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
               onMouseDown={(event) => event.stopPropagation()}
               onPointerDown={(event) => event.stopPropagation()}
               className="p-1.5 rounded-lg backdrop-blur-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg"
-              title="Delete Blueprint"
+              title="Delete Task"
             >
               <Trash2 size={12} />
             </button>
@@ -396,7 +396,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
             {task.title || "Untitled Task"}
           </h4>
           <p className="text-[11px] text-muted-foreground font-serif italic line-clamp-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
-            {task.description || "No blueprint description..."}
+            {task.description || "No description..."}
           </p>
         </div>
 

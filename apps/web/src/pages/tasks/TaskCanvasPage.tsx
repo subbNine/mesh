@@ -242,7 +242,7 @@ export default function TaskCanvasPage() {
                 <div className="absolute inset-0 border-2 border-primary/20 rounded-full" />
                 <div className="absolute inset-0 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-            <h3 className="font-display font-black text-2xl tracking-tight text-foreground/20 uppercase">Syncing Blueprint</h3>
+            <h3 className="font-display font-black text-2xl tracking-tight text-foreground/20 uppercase">Syncing Canvas</h3>
         </div>
       </div>
     );

@@ -122,7 +122,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         }
       });
       
-      success('Blueprint element added');
+      success('Canvas element added');
     } catch (err: any) {
       console.error('Failed upload', err);
       ydoc.transact(() => {

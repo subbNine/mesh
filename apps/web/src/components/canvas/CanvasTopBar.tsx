@@ -211,7 +211,7 @@ export function CanvasTopBar({
         <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5 hidden md:flex">
                 <Layers size={10} className="text-primary opacity-50" />
-                <span className="text-[8px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 leading-none">Task Blueprint</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 leading-none">Active Task</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -232,7 +232,7 @@ export function CanvasTopBar({
                     className="font-display font-black text-sm md:text-base text-foreground truncate cursor-text hover:text-primary transition-all tracking-tight leading-none"
                     onClick={() => setIsEditingTitle(true)}
                 >
-                    {task.title || 'Untitled Blueprint'}
+                    {task.title || 'Untitled Task'}
                 </h2>
                 )}
 
@@ -543,7 +543,7 @@ export function CanvasTopBar({
               ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
               : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border/40'
             }`}
-          title="Toggle Blueprint Discussion"
+          title="Toggle Task Discussion"
         >
           <MessageSquare size={16} />
         </button>
