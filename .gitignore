@@ -5,3 +5,6 @@ dist
 
 # Turborepo
 .turbo
+
+AI
+.agents
