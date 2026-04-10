@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectStore } from '../../store/project.store';
 import { useAuthStore } from '../../store/auth.store';
 import { Button } from '../../components/ui/Button';
+import { DateField } from '../../components/ui/DateField';
+import { ProgressBar } from '../../components/ui/ProgressBar';
 import { TaskGrid } from '../../components/tasks/TaskGrid';
 import { NewTaskModal } from '../../components/tasks/NewTaskModal';
 import { NotificationBell } from '../../components/ui/NotificationBell';
@@ -13,8 +15,20 @@ import {
   Settings, 
   Filter, 
   Users, 
-  Layout 
+  Layout,
+  CheckCircle2,
+  Clock3,
+  CircleDot
 } from 'lucide-react';
+
+const EMPTY_PROJECT_STATS = {
+  total: 0,
+  done: 0,
+  inProgress: 0,
+  review: 0,
+  todo: 0,
+  progressPercent: 0,
+};
 
 export default function ProjectDetailPage() {
   const { workspaceId, projectId } = useParams();
@@ -40,6 +54,7 @@ export default function ProjectDetailPage() {
   const [filterBlocks, setFilterBlocks] = useState(false);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'all');
+  const filterMenuRef = useRef<HTMLDivElement | null>(null);
 
   const tabs = [
     { id: 'all', label: 'All blueprinted', status: '' },
@@ -64,6 +79,32 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     setActiveTab(searchParams.get('tab') || 'all');
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!isFilterMenuOpen) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
+        setIsFilterMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFilterMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isFilterMenuOpen]);
 
   const isProjAdmin = useMemo(() => {
     if (!user || !currentProject) return false;
@@ -149,6 +190,12 @@ export default function ProjectDetailPage() {
 
   if (!currentProject) return null;
 
+  const projectStats = currentProject.stats ?? {
+    ...EMPTY_PROJECT_STATS,
+    total: currentProject.taskCount ?? 0,
+  };
+  const hasProjectProgress = projectStats.total > 0;
+
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
       
@@ -214,6 +261,69 @@ export default function ProjectDetailPage() {
             <p className="max-w-2xl text-xs sm:text-base text-muted-foreground font-serif italic leading-relaxed opacity-80 decoration-primary/20 decoration-2 underline-offset-4 line-clamp-2 md:line-clamp-none">
                 {currentProject.description || 'Define the architectural vision for this project...'}
             </p>
+
+            <div className="rounded-2xl border border-border/60 bg-card/70 p-3 sm:p-4 shadow-sm">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Project progress</div>
+                    <div className="mt-1 text-sm font-black text-foreground">
+                      {hasProjectProgress ? `${projectStats.progressPercent}% complete` : 'No tasks yet'}
+                    </div>
+                  </div>
+                  {hasProjectProgress && (
+                    <div className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+                      {projectStats.done} / {projectStats.total} done
+                    </div>
+                  )}
+                </div>
+
+                {hasProjectProgress ? (
+                  <>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-[11px] text-emerald-800">
+                        <div className="flex items-center gap-1.5 font-black uppercase tracking-[0.16em]"><CheckCircle2 size={12} /> Done</div>
+                        <div className="mt-1 font-semibold">{projectStats.done} tasks done</div>
+                      </div>
+                      <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-3 py-2 text-[11px] text-sky-800">
+                        <div className="flex items-center gap-1.5 font-black uppercase tracking-[0.16em]"><Clock3 size={12} /> In progress</div>
+                        <div className="mt-1 font-semibold">{projectStats.inProgress} active now</div>
+                      </div>
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
+                        <div className="flex items-center gap-1.5 font-black uppercase tracking-[0.16em]"><CircleDot size={12} /> Review</div>
+                        <div className="mt-1 font-semibold">{projectStats.review} awaiting sign-off</div>
+                      </div>
+                      <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-700">
+                        <div className="font-black uppercase tracking-[0.16em]">To do</div>
+                        <div className="mt-1 font-semibold">{projectStats.todo} still queued</div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+                        <span>{projectStats.done} tasks done · {projectStats.inProgress} in progress · {projectStats.todo} todo · {projectStats.review} in review</span>
+                        <span>{projectStats.total} total</span>
+                      </div>
+                      <ProgressBar
+                        value={projectStats.progressPercent}
+                        segmented
+                        segments={{
+                          done: projectStats.done,
+                          inProgress: projectStats.inProgress,
+                          review: projectStats.review,
+                          todo: projectStats.todo,
+                        }}
+                        className="h-3"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border/60 bg-background/70 px-3 py-3 text-sm text-muted-foreground">
+                    Create the first task to start tracking delivery progress for this project.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
             )}
           </div>
@@ -279,7 +389,7 @@ export default function ProjectDetailPage() {
                   </div>
                )}
 
-               <div className="relative">
+               <div className="relative" ref={filterMenuRef}>
                   <Button
                     type="button"
                     onClick={() => setIsFilterMenuOpen((open) => !open)}
@@ -292,7 +402,7 @@ export default function ProjectDetailPage() {
                   </Button>
 
                   {isFilterMenuOpen && (
-                    <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[min(24rem,calc(100vw-24px))] rounded-2xl border border-border/70 bg-popover/95 p-4 shadow-2xl backdrop-blur-xl">
+                    <div className="dropdown-surface absolute right-0 top-[calc(100%+10px)] z-30 w-[min(24rem,calc(100vw-24px))] rounded-2xl p-4 shadow-2xl">
                       <div className="space-y-4">
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Assignees</p>
@@ -352,11 +462,12 @@ export default function ProjectDetailPage() {
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Due date</p>
                           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                            <input
-                              type="date"
+                            <DateField
                               value={filterDueDate}
-                              onChange={(e) => setFilterDueDate(e.target.value)}
-                              className="w-full rounded-xl border border-border/60 bg-background/80 px-3 py-2 text-xs text-foreground outline-none transition-all focus:border-primary/40 focus:ring-1.5 focus:ring-primary/30"
+                              onChange={setFilterDueDate}
+                              ariaLabel="Filter by due date"
+                              className="w-full"
+                              inputClassName="text-xs"
                             />
                             <button
                               type="button"

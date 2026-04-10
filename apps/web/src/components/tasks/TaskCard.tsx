@@ -8,6 +8,7 @@ import { DependencyModal } from '../dependencies/DependencyModal';
 import { DependencyPopup } from '../dependencies/DependencyPopup';
 import { getTaskDependencyState } from '../../lib/dependency-utils';
 import { AssigneeStack } from './AssigneeStack';
+import { DateField } from '../ui/DateField';
 import { useTaskStore } from "../../store/task.store";
 import { useAuthStore } from "../../store/auth.store";
 import { useProjectStore } from "../../store/project.store";
@@ -133,6 +134,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
 
   const [isDueDateOpen, setIsDueDateOpen] = useState(false);
   const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  const [dueDateDraft, setDueDateDraft] = useState(dueDate ? format(dueDate, 'yyyy-MM-dd') : '');
   const dueStatus = dueDate
     ? isPast(dueDate) && !isToday(dueDate)
       ? "overdue"
@@ -147,9 +149,22 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
         ? "bg-amber-50 border-amber-200 text-amber-800"
         : "bg-zinc-100 border-zinc-200 text-zinc-600";
 
-  const updateDueDate = (value: string | null) => {
+  useEffect(() => {
+    setDueDateDraft(dueDate ? format(dueDate, 'yyyy-MM-dd') : '');
+  }, [dueDate]);
+
+  const commitDueDate = (value: string | null) => {
+    const normalizedValue = value || null;
+    const currentDueDate = task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : null;
+
     setIsDueDateOpen(false);
-    updateTask(task.id, { dueDate: value });
+    setDueDateDraft(normalizedValue ?? '');
+
+    if (normalizedValue === currentDueDate) {
+      return;
+    }
+
+    updateTask(task.id, { dueDate: normalizedValue });
   };
 
   const handleStatusChange = (nextStatus: ITask['status']) => {
@@ -160,7 +175,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
 
   const handleClearDueDate = (e: React.MouseEvent) => {
     e.stopPropagation();
-    updateDueDate(null);
+    commitDueDate(null);
   };
 
   const config = statusConfig[task.status] || statusConfig.todo;
@@ -298,7 +313,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
                   data-card-interactive="true"
                   onClick={(event) => event.stopPropagation()}
                   onPointerDown={(event) => event.stopPropagation()}
-                  className="absolute left-0 top-full z-[80] mt-1.5 w-40 rounded-xl border border-border/80 bg-card/95 p-1 shadow-xl backdrop-blur-xl"
+                  className="dropdown-surface absolute left-0 top-full z-[80] mt-1.5 w-40 rounded-xl p-1 shadow-xl"
                 >
                   {Object.entries(statusConfig).map(([statusKey, statusValue]) => (
                     <button
@@ -415,11 +430,12 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
                 data-card-interactive="true"
                 onClick={(e) => {
                   e.stopPropagation();
+                  setDueDateDraft(dueDate ? format(dueDate, 'yyyy-MM-dd') : '');
                   setIsDueDateOpen((prev) => !prev);
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
                 title="Set due date"
               >
                 <CalendarDays size={12} />
@@ -452,12 +468,14 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
               ref={dueDateMenuRef}
               className="absolute right-3 bottom-20 z-[60] w-44 rounded-2xl border border-border/70 bg-card p-3 shadow-xl"
             >
-              <input
-                type="date"
-                value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
-                onChange={(e) => updateDueDate(e.target.value || null)}
-                className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm outline-none"
+              <DateField
+                value={dueDateDraft}
+                onChange={setDueDateDraft}
+                ariaLabel="Set due date"
               />
+              <p className="mt-2 px-1 text-[10px] text-muted-foreground">
+                Enter `YYYY-MM-DD` or use the calendar button.
+              </p>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <button
                   type="button"
@@ -473,7 +491,7 @@ export function TaskCard({ task, onClick, className = "" }: TaskCardProps) {
                   data-card-interactive="true"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsDueDateOpen(false);
+                    commitDueDate(dueDateDraft || null);
                   }}
                   onPointerDown={(event) => event.stopPropagation()}
                   className="rounded-xl bg-primary px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-white hover:bg-primary/90"

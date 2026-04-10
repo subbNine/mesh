@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 
+export interface IProjectStats {
+  total: number;
+  done: number;
+  inProgress: number;
+  review: number;
+  todo: number;
+  progressPercent: number;
+}
+
 export interface IProject {
   id: string;
   workspaceId: string;
@@ -10,6 +19,8 @@ export interface IProject {
   createdAt: string;
   taskCount?: number;
   memberCount?: number;
+  stats?: IProjectStats;
+  previewMembers?: IProjectMember[];
 }
 
 export interface IProjectMember {
@@ -17,7 +28,7 @@ export interface IProjectMember {
   projectId: string;
   userId: string;
   role: string;
-  user: { id: string; firstName: string; lastName: string; email: string };
+  user: { id: string; firstName: string; lastName: string; email: string; avatarUrl?: string | null };
 }
 
 export interface IProjectExclusion {
@@ -35,6 +46,7 @@ interface ProjectState {
   isLoading: boolean;
   
   fetchProjects: (workspaceId: string) => Promise<void>;
+  fetchProjectStats: (projectId: string) => Promise<IProjectStats>;
   createProject: (workspaceId: string, name: string, description?: string) => Promise<IProject>;
   setCurrentProject: (project: IProject | null) => void;
   updateProject: (projectId: string, data: { name?: string; description?: string }) => Promise<void>;
@@ -62,6 +74,21 @@ export const useProjectStore = create<ProjectState>((set) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  fetchProjectStats: async (projectId: string) => {
+    const { data } = await api.get(`/projects/${projectId}/stats`);
+    set((state) => ({
+      projects: state.projects.map((project) => (
+        project.id === projectId
+          ? { ...project, taskCount: data.total, stats: data }
+          : project
+      )),
+      currentProject: state.currentProject?.id === projectId
+        ? { ...state.currentProject, taskCount: data.total, stats: data }
+        : state.currentProject,
+    }));
+    return data;
   },
 
   createProject: async (workspaceId: string, name: string, description?: string) => {

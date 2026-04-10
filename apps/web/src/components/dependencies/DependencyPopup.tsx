@@ -124,7 +124,7 @@ export function DependencyPopup({ isOpen, onClose, onManage, task, workspaceId }
           transition={{ duration: 0.18 }}
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
-          className="absolute left-3 top-12 z-[70] w-80 rounded-[22px] border border-border/70 bg-card/95 p-3 shadow-[0_30px_70px_-30px_rgba(15,23,42,0.5)] backdrop-blur-xl"
+          className="dropdown-surface absolute left-3 top-12 z-[70] w-80 rounded-[22px] p-3 shadow-[0_30px_70px_-30px_rgba(15,23,42,0.5)]"
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>

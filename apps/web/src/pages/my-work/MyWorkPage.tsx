@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
@@ -71,6 +71,7 @@ export default function MyWorkPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
+  const projectMenuRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState<Record<keyof typeof SECTION_META, boolean>>({
     overdue: false,
     dueToday: false,
@@ -110,6 +111,32 @@ export default function MyWorkPage() {
   useEffect(() => {
     void loadAssignments();
   }, [loadAssignments]);
+
+  useEffect(() => {
+    if (!isProjectMenuOpen) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (projectMenuRef.current && !projectMenuRef.current.contains(event.target as Node)) {
+        setIsProjectMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProjectMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isProjectMenuOpen]);
 
   const totalTasks =
     assignments.overdue.length +
@@ -158,6 +185,10 @@ export default function MyWorkPage() {
   const projectCountLabel = selectedProjectIds.length === 1 ? 'project' : 'projects';
   const projectFilterLabel =
     selectedProjectIds.length === 0 ? 'All projects' : `${selectedProjectIds.length} ${projectCountLabel}`;
+  const projectProgressById = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.stats?.progressPercent ?? 0])),
+    [projects],
+  );
   const skeletonCards = ['alpha', 'beta', 'gamma', 'delta'];
 
   let pageContent;
@@ -204,7 +235,7 @@ export default function MyWorkPage() {
           return (
             <section
               key={key}
-              className="overflow-hidden rounded-[28px] border border-border/50 bg-card/50 shadow-lg shadow-black/5"
+              className="relative overflow-visible rounded-[28px] border border-border/50 bg-card/50 shadow-lg shadow-black/5"
             >
               <button
                 type="button"
@@ -236,6 +267,7 @@ export default function MyWorkPage() {
                       key={task.id}
                       task={task}
                       workspaceId={activeWorkspaceId}
+                      projectProgressPercent={projectProgressById.get(task.projectId)}
                       onStatusChange={handleStatusChange}
                     />
                   ))}
@@ -365,7 +397,7 @@ export default function MyWorkPage() {
                 {showCompleted ? 'Completed shown' : 'Show completed'}
               </button>
 
-              <div className="relative">
+              <div className="relative" ref={projectMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsProjectMenuOpen((open) => !open)}
@@ -377,7 +409,7 @@ export default function MyWorkPage() {
                 </button>
 
                 {isProjectMenuOpen && (
-                  <div className="absolute right-0 top-[calc(100%+8px)] z-20 w-64 rounded-2xl border border-border/60 bg-popover p-2 shadow-2xl">
+                  <div className="dropdown-surface absolute right-0 top-[calc(100%+8px)] z-20 w-64 rounded-2xl p-2 shadow-2xl">
                     <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
                       {projects.map((project) => {
                         const checked = selectedProjectIds.includes(project.id);

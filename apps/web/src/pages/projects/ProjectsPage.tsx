@@ -6,6 +6,16 @@ import { useProjectStore } from '../../store/project.store';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { ProgressBar } from '../../components/ui/ProgressBar';
+
+const EMPTY_PROJECT_STATS = {
+  total: 0,
+  done: 0,
+  inProgress: 0,
+  review: 0,
+  todo: 0,
+  progressPercent: 0,
+};
 
 export default function ProjectsPage() {
   const { workspaceId } = useParams();
@@ -149,6 +159,42 @@ export default function ProjectsPage() {
                   <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
                     {proj.description || 'Add a goal, scope, or quick summary so the team knows what this project is about.'}
                   </p>
+
+                  <div className="mt-4 rounded-2xl border border-border/60 bg-background/70 p-3">
+                    {(() => {
+                      const stats = proj.stats ?? {
+                        ...EMPTY_PROJECT_STATS,
+                        total: proj.taskCount || 0,
+                      };
+
+                      if (stats.total === 0) {
+                        return (
+                          <div>
+                            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Progress</div>
+                            <p className="mt-2 text-sm font-semibold text-foreground">No tasks yet</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Kick off the first task to start tracking momentum.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                            <span>{stats.done} / {stats.total} tasks done</span>
+                            <span className="text-foreground">{stats.progressPercent}%</span>
+                          </div>
+                          <ProgressBar value={stats.progressPercent} className="mt-2 h-2.5" />
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {stats.progressPercent >= 100
+                              ? 'Everything in this project is wrapped.'
+                              : stats.progressPercent > 0
+                                ? `${stats.inProgress} in progress · ${stats.review} in review · ${stats.todo} to do`
+                                : 'No work marked done yet.'}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
 
                   <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
                     <Users size={15} className="text-primary" />

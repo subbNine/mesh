@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
 import { getTaskDependencyState } from '../../lib/dependency-utils';
 import type { ITask } from '@mesh/shared';
-import { format } from 'date-fns';
+import { format, isPast, isToday } from 'date-fns';
 import { useCanvasStore } from '../../store/canvas.store';
 import { useTaskStore } from '../../store/task.store';
 import { useProjectStore } from '../../store/project.store';
@@ -14,6 +14,7 @@ import { DependencyModal } from '../dependencies/DependencyModal';
 import { SubtaskPanel } from '../subtasks/SubtaskPanel';
 import { AssigneeStack } from '../tasks/AssigneeStack';
 import { NotificationBell } from '../ui/NotificationBell';
+import { DateField } from '../ui/DateField';
 import { useAuthStore } from '../../store/auth.store';
 import { getUserColor } from '../../lib/user-color';
 
@@ -56,6 +57,7 @@ export function CanvasTopBar({
   const [isSubtasksOpen, setIsSubtasksOpen] = useState(false);
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [isDependencyModalOpen, setIsDependencyModalOpen] = useState(false);
+  const [dueDateDraft, setDueDateDraft] = useState(task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : '');
 
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const assigneeMenuRef = useRef<HTMLDivElement>(null);
@@ -79,6 +81,10 @@ export function CanvasTopBar({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setDueDateDraft(task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : '');
+  }, [task.dueDate]);
 
   const handleTitleBlur = () => {
     setIsEditingTitle(false);
@@ -124,17 +130,41 @@ export function CanvasTopBar({
     handleAssigneeSelection(nextIds);
   };
 
-  const handleDueDateChange = (dueDate: string | null) => {
+  const commitDueDateChange = (nextDueDate: string | null) => {
+    const normalizedDueDate = nextDueDate || null;
+    const currentDueDate = task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : null;
+
     setIsDueDateOpen(false);
-    if (dueDate === task.dueDate) return;
-    onTaskUpdate({ dueDate });
-    api.patch(`/tasks/${task.id}`, { dueDate }).catch(console.error);
+    setDueDateDraft(normalizedDueDate ?? '');
+
+    if (normalizedDueDate === currentDueDate) return;
+    onTaskUpdate({ dueDate: normalizedDueDate });
+    api.patch(`/tasks/${task.id}`, { dueDate: normalizedDueDate }).catch(console.error);
   };
 
   const visibleAvatars = awarenessUsers.slice(0, 5);
   const extraAvatars = awarenessUsers.length > 5 ? awarenessUsers.length - 5 : 0;
   const statusKey = task.status?.toLowerCase() ?? 'todo';
   const config = STATUS_CONFIG[statusKey] || STATUS_CONFIG.todo;
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  const dueToneClass = dueDate
+    ? isPast(dueDate) && !isToday(dueDate)
+      ? 'border-red-200 bg-red-50/80 text-red-700 hover:bg-red-100/80'
+      : isToday(dueDate)
+        ? 'border-amber-200 bg-amber-50/80 text-amber-800 hover:bg-amber-100/80'
+        : 'border-sky-200/70 bg-sky-50/80 text-sky-700 hover:bg-sky-100/80'
+    : 'border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/60';
+  const dueDateIconClass = dueDate
+    ? 'border-current/15 bg-white/70'
+    : 'border-border/60 bg-background/80';
+  const dueDateCaption = dueDate
+    ? isPast(dueDate) && !isToday(dueDate)
+      ? 'Overdue'
+      : isToday(dueDate)
+        ? 'Due today'
+        : 'Due date'
+    : 'Due date';
+  const dueDateValueLabel = dueDate ? format(dueDate, 'EEE, MMM d') : 'Add due date';
   const dependencyState = getTaskDependencyState({
     ...task,
     blockedBy: dependencySnapshot?.blockedBy ?? task.blockedBy,
@@ -222,7 +252,7 @@ export function CanvasTopBar({
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
-                            className="absolute top-full left-0 mt-1.5 w-40 bg-card/60 backdrop-blur-3xl rounded-lg shadow-lg border border-border/80 p-1 z-50 overflow-hidden"
+                            className="dropdown-surface absolute top-full left-0 mt-1.5 w-40 rounded-lg p-1 z-50 overflow-hidden"
                         >
                             {Object.entries(STATUS_CONFIG).map(([s, cfg]) => (
                             <button
@@ -336,7 +366,7 @@ export function CanvasTopBar({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full right-0 mt-1.5 w-72 bg-card/80 backdrop-blur-3xl rounded-xl shadow-lg border border-border/80 p-1.5 z-50 overflow-hidden"
+                    className="dropdown-surface absolute top-full right-0 mt-1.5 w-72 rounded-xl p-1.5 z-50 overflow-hidden"
                 >
                     <div className="flex items-center justify-between gap-2 border-b border-border/40 px-2.5 py-2">
                       <div>
@@ -403,12 +433,26 @@ export function CanvasTopBar({
 
         <div className="relative" ref={dueDateMenuRef}>
           <button
-            onClick={() => setIsDueDateOpen((prev) => !prev)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-muted/40 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground hover:bg-muted/80 transition-all"
+            onClick={() => {
+              setDueDateDraft(task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : '');
+              setIsDueDateOpen((prev) => !prev);
+            }}
+            className={`group flex shrink-0 items-center gap-2 rounded-xl border px-2.5 py-1.5 transition-all hover:-translate-y-0.5 hover:shadow-sm ${dueToneClass}`}
+            title="Set due date"
           >
-            <CalendarDays size={14} />
-            <span>
-              {task.dueDate ? format(new Date(task.dueDate), 'MMM d') : 'Add due date'}
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${dueDateIconClass}`}>
+              <CalendarDays size={14} />
+            </div>
+            <div className="hidden min-w-[96px] md:block">
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-muted-foreground/60 leading-none">
+                {dueDateCaption}
+              </div>
+              <div className="mt-1 whitespace-nowrap text-[10px] font-black tracking-tight leading-none">
+                {dueDateValueLabel}
+              </div>
+            </div>
+            <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.16em] md:hidden">
+              {dueDate ? format(dueDate, 'MMM d') : 'Due date'}
             </span>
           </button>
 
@@ -418,25 +462,29 @@ export function CanvasTopBar({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-2xl z-50"
+                className="dropdown-surface absolute right-0 top-full mt-2 w-64 rounded-2xl p-3 shadow-2xl z-50"
               >
-                <input
-                  type="date"
-                  value={task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : ''}
-                  onChange={(e) => handleDueDateChange(e.target.value || null)}
-                  className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm outline-none"
-                />
+                <div className="space-y-2">
+                  <DateField
+                    value={dueDateDraft}
+                    onChange={setDueDateDraft}
+                    ariaLabel="Set due date"
+                  />
+                  <p className="px-1 text-[10px] text-muted-foreground">
+                    Enter `YYYY-MM-DD` or use the calendar button.
+                  </p>
+                </div>
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => handleDueDateChange(null)}
+                    onClick={() => commitDueDateChange(null)}
                     className="rounded-xl bg-muted/80 px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/80 hover:bg-muted"
                   >
                     Clear
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsDueDateOpen(false)}
+                    onClick={() => commitDueDateChange(dueDateDraft || null)}
                     className="rounded-xl bg-primary px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:bg-primary/90"
                   >
                     Done
@@ -515,7 +563,7 @@ export function CanvasTopBar({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-border/80 bg-card/95 p-1.5 shadow-2xl z-50"
+                className="dropdown-surface absolute right-0 top-full mt-2 w-52 rounded-2xl p-1.5 shadow-2xl z-50"
               >
                 <button
                   type="button"

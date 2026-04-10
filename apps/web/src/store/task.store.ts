@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { type TaskStatus, type ITask, type IMyAssignmentsResponse, type ITaskDependenciesResponse, type ISubtask } from '@mesh/shared';
 import { api } from '../lib/api';
 import { useToastStore } from './toast.store';
+import { useProjectStore, type IProjectStats } from './project.store';
 
 interface MyAssignmentsFilters {
   workspaceId: string;
@@ -51,6 +52,86 @@ const applySubtaskSummary = (task: ITask, subtasks: ISubtask[]): ITask => ({
   subtaskCount: subtasks.length,
   completedSubtaskCount: subtasks.filter((subtask) => subtask.isCompleted).length,
 });
+
+const emptyProjectStats = (): IProjectStats => ({
+  total: 0,
+  done: 0,
+  inProgress: 0,
+  review: 0,
+  todo: 0,
+  progressPercent: 0,
+});
+
+const getProjectStatsKey = (status?: TaskStatus | null): keyof Pick<IProjectStats, 'done' | 'inProgress' | 'review' | 'todo'> | null => {
+  switch (status) {
+    case 'done':
+      return 'done';
+    case 'inprogress':
+      return 'inProgress';
+    case 'review':
+      return 'review';
+    case 'todo':
+      return 'todo';
+    default:
+      return null;
+  }
+};
+
+const mutateProjectStats = (
+  stats: IProjectStats | undefined,
+  options: { totalDelta?: number; previousStatus?: TaskStatus | null; nextStatus?: TaskStatus | null },
+): IProjectStats => {
+  const nextStats = { ...(stats ?? emptyProjectStats()) };
+  const previousKey = getProjectStatsKey(options.previousStatus);
+  const nextKey = getProjectStatsKey(options.nextStatus);
+
+  if (previousKey) {
+    nextStats[previousKey] = Math.max(0, nextStats[previousKey] - 1);
+  }
+
+  if (nextKey) {
+    nextStats[nextKey] += 1;
+  }
+
+  if (options.totalDelta) {
+    nextStats.total = Math.max(0, nextStats.total + options.totalDelta);
+  }
+
+  if (nextStats.total === 0) {
+    nextStats.progressPercent = 0;
+    return nextStats;
+  }
+
+  nextStats.progressPercent = Math.round((nextStats.done / nextStats.total) * 100);
+  return nextStats;
+};
+
+const applyProjectStatsMutation = (
+  projectId: string,
+  options: { totalDelta?: number; previousStatus?: TaskStatus | null; nextStatus?: TaskStatus | null },
+) => {
+  useProjectStore.setState((state) => ({
+    projects: state.projects.map((project) => {
+      if (project.id !== projectId) {
+        return project;
+      }
+
+      const stats = mutateProjectStats(project.stats, options);
+      return {
+        ...project,
+        taskCount: stats.total,
+        stats,
+      };
+    }),
+    currentProject: state.currentProject?.id === projectId
+      ? {
+          ...state.currentProject,
+          taskCount: mutateProjectStats(state.currentProject.stats, options).total,
+          stats: mutateProjectStats(state.currentProject.stats, options),
+        }
+      : state.currentProject,
+  }));
+};
 
 interface TaskState {
   tasks: ITask[];
@@ -152,6 +233,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   createTask: async (projectId, dto) => {
     const { data } = await api.post(`/projects/${projectId}/tasks`, dto);
     set((state) => ({ tasks: [data, ...state.tasks] }));
+    applyProjectStatsMutation(projectId, { totalDelta: 1, nextStatus: data.status });
+    void useProjectStore.getState().fetchProjectStats(projectId).catch(() => undefined);
     return data;
   },
 
@@ -159,6 +242,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const previousTasks = get().tasks;
     const previousAssignments = get().assignments;
     const previousCurrentTask = get().currentTask;
+    const previousProjectState = useProjectStore.getState();
+    const previousTask = previousTasks.find((task) => task.id === taskId) ?? previousCurrentTask;
+    const projectId = previousTask?.projectId;
+    const previousStatus = previousTask?.status;
+    const nextStatus = dto.status;
+    const didChangeStatus = Boolean(projectId && nextStatus && previousStatus && nextStatus !== previousStatus);
+
+    if (projectId && didChangeStatus) {
+      applyProjectStatsMutation(projectId, {
+        previousStatus,
+        nextStatus,
+      });
+    }
 
     set((state) => ({
       tasks: state.tasks.map((task) => (task.id === taskId ? { ...task, ...dto } as ITask : task)),
@@ -173,11 +269,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         currentTask: state.currentTask?.id === taskId ? data : state.currentTask,
         assignments: mapAssignments(state.assignments, taskId, () => data),
       }));
+
+      if (projectId) {
+        void useProjectStore.getState().fetchProjectStats(projectId).catch(() => undefined);
+      }
+
       useToastStore.getState().addToast('success', 'Task updated');
     } catch (err) {
       console.error('Failed to update task:', err);
       useToastStore.getState().addToast('error', 'Failed to update task');
       set({ tasks: previousTasks, assignments: previousAssignments, currentTask: previousCurrentTask });
+      useProjectStore.setState(previousProjectState);
     }
   },
 
@@ -336,14 +438,29 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   deleteTask: async (taskId) => {
     const previousTasks = get().tasks;
+    const previousProjectState = useProjectStore.getState();
+    const taskToDelete = previousTasks.find((task) => task.id === taskId);
+
     set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) }));
+
+    if (taskToDelete) {
+      applyProjectStatsMutation(taskToDelete.projectId, {
+        totalDelta: -1,
+        previousStatus: taskToDelete.status,
+      });
+    }
+
     try {
       await api.delete(`/tasks/${taskId}`);
+      if (taskToDelete) {
+        void useProjectStore.getState().fetchProjectStats(taskToDelete.projectId).catch(() => undefined);
+      }
       useToastStore.getState().addToast('success', 'Task deleted');
     } catch (err) {
       console.error('Failed to delete task:', err);
       useToastStore.getState().addToast('error', 'Failed to delete task');
       set({ tasks: previousTasks });
+      useProjectStore.setState(previousProjectState);
     }
   },
 

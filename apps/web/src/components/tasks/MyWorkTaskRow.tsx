@@ -9,6 +9,7 @@ import { AssigneeStack } from './AssigneeStack';
 interface MyWorkTaskRowProps {
   task: ITask;
   workspaceId: string;
+  projectProgressPercent?: number;
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void> | void;
 }
 
@@ -89,9 +90,22 @@ function getDueMeta(task: ITask): { label: string; className: string } {
   };
 }
 
+function getProgressDotClass(progressPercent = 0): string {
+  if (progressPercent >= 75) {
+    return 'bg-emerald-500';
+  }
+
+  if (progressPercent >= 25) {
+    return 'bg-amber-400';
+  }
+
+  return 'bg-zinc-400';
+}
+
 export function MyWorkTaskRow({
   task,
   workspaceId,
+  projectProgressPercent,
   onStatusChange,
 }: Readonly<MyWorkTaskRowProps>) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -101,6 +115,7 @@ export function MyWorkTaskRow({
     STATUS_OPTIONS.find((option) => option.value === task.status) ?? STATUS_OPTIONS[0];
   const dueMeta = getDueMeta(task);
   const projectTone = getProjectTone(task.projectId);
+  const projectProgressDotClass = getProgressDotClass(projectProgressPercent ?? 0);
 
   const taskAssignees = task.assignees?.length ? task.assignees : task.assignee ? [task.assignee] : [];
 
@@ -120,13 +135,15 @@ export function MyWorkTaskRow({
   };
 
   return (
-    <div className="group rounded-[24px] border border-border/50 bg-card/70 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5">
+    <div className={`group relative rounded-[24px] border border-border/50 bg-card/70 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 ${isMenuOpen ? 'z-30' : 'z-0'}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <Link
             to={`/w/${workspaceId}/p/${task.projectId}`}
-            className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${projectTone}`}
+            title={`Project progress: ${Math.round(projectProgressPercent ?? 0)}% complete`}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${projectTone}`}
           >
+            <span className={`h-2 w-2 rounded-full ${projectProgressDotClass}`} />
             {task.projectName || 'Project'}
           </Link>
 
@@ -156,7 +173,7 @@ export function MyWorkTaskRow({
             </button>
 
             {isMenuOpen && (
-              <div className="absolute right-0 top-[calc(100%+8px)] z-20 w-40 rounded-2xl border border-border/60 bg-popover p-1.5 shadow-2xl">
+              <div className="dropdown-surface absolute right-0 top-[calc(100%+8px)] z-50 w-40 rounded-2xl p-1.5 shadow-2xl">
                 {STATUS_OPTIONS.map((option) => (
                   <button
                     key={option.value}

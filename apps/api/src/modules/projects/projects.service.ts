@@ -11,8 +11,18 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddProjectMemberDto } from './dto/add-project-member.dto';
 import { ExcludeWorkspaceMemberDto } from './dto/exclude-workspace-member.dto';
 import { ActivityService } from '../activity/activity.service';
-import { ProjectMemberRole } from '@mesh/shared';
+import { ProjectMemberRole, TaskStatus } from '@mesh/shared';
 import { InvitationsService } from '../auth/invitations.service';
+
+
+type ProjectStats = {
+  total: number;
+  done: number;
+  inProgress: number;
+  review: number;
+  todo: number;
+  progressPercent: number;
+};
 
 @Injectable()
 export class ProjectsService {
@@ -30,6 +40,102 @@ export class ProjectsService {
     private readonly activityService: ActivityService,
     private readonly invitationsService: InvitationsService,
   ) {}
+
+  private buildDefaultStats(): ProjectStats {
+    return {
+      total: 0,
+      done: 0,
+      inProgress: 0,
+      review: 0,
+      todo: 0,
+      progressPercent: 0,
+    };
+  }
+
+  private async getProjectStatsMap(projectIds: string[]): Promise<Map<string, ProjectStats>> {
+    if (projectIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.taskRepo.createQueryBuilder('task')
+      .select('task.projectId', 'projectId')
+      .addSelect('COUNT(*)::int', 'total')
+      .addSelect(`COALESCE(SUM(CASE WHEN task.status = :doneStatus THEN 1 ELSE 0 END), 0)::int`, 'done')
+      .addSelect(`COALESCE(SUM(CASE WHEN task.status = :inProgressStatus THEN 1 ELSE 0 END), 0)::int`, 'inProgress')
+      .addSelect(`COALESCE(SUM(CASE WHEN task.status = :reviewStatus THEN 1 ELSE 0 END), 0)::int`, 'review')
+      .addSelect(`COALESCE(SUM(CASE WHEN task.status = :todoStatus THEN 1 ELSE 0 END), 0)::int`, 'todo')
+      .where('task.projectId IN (:...projectIds)', { projectIds })
+      .setParameters({
+        doneStatus: TaskStatus.Done,
+        inProgressStatus: TaskStatus.InProgress,
+        reviewStatus: TaskStatus.Review,
+        todoStatus: TaskStatus.Todo,
+      })
+      .groupBy('task.projectId')
+      .getRawMany<{
+        projectId: string;
+        total: string;
+        done: string;
+        inProgress: string;
+        review: string;
+        todo: string;
+      }>();
+
+    return new Map(
+      rows.map((row) => {
+        const total = Number(row.total ?? 0);
+        const done = Number(row.done ?? 0);
+        const inProgress = Number(row.inProgress ?? 0);
+        const review = Number(row.review ?? 0);
+        const todo = Number(row.todo ?? 0);
+
+        return [
+          row.projectId,
+          {
+            total,
+            done,
+            inProgress,
+            review,
+            todo,
+            progressPercent: total > 0 ? Math.round((done / total) * 100) : 0,
+          },
+        ];
+      }),
+    );
+  }
+
+  private async decorateProjects(projects: Project[]): Promise<any[]> {
+    if (projects.length === 0) {
+      return [];
+    }
+
+    const statsByProjectId = await this.getProjectStatsMap(projects.map((project) => project.id));
+
+    return Promise.all(
+      projects.map(async (project) => {
+        const stats = statsByProjectId.get(project.id) ?? this.buildDefaultStats();
+        const memberCount = await this.projectMemberRepo.count({ where: { projectId: project.id } });
+        const previewMembers = await this.projectMemberRepo.find({
+          where: { projectId: project.id },
+          relations: ['user'],
+          take: 5,
+        });
+
+        return {
+          ...project,
+          taskCount: stats.total,
+          memberCount,
+          previewMembers,
+          stats,
+        };
+      }),
+    );
+  }
+
+  private async decorateProject(project: Project): Promise<any> {
+    const [decoratedProject] = await this.decorateProjects([project]);
+    return decoratedProject;
+  }
 
   /**
    * Internal common method evaluating structural bounds natively matching PRD.
@@ -83,7 +189,7 @@ export class ProjectsService {
     await this.activityService.recordProjectCreated(saved, userId)
       .catch((error) => console.error('Failed to record project.created activity event', error));
 
-    return saved;
+    return this.findOne(saved.id, userId);
   }
 
   async findAll(workspaceId: string, userId: string): Promise<any[]> {
@@ -112,26 +218,18 @@ export class ProjectsService {
         .getMany();
     }
 
-    // Append statistics logic calculating bounds
-    return Promise.all(
-      projects.map(async (project) => {
-        const taskCount = await this.taskRepo.count({ where: { projectId: project.id } });
-        const memberCount = await this.projectMemberRepo.count({ where: { projectId: project.id } });
-        
-        const previewMembers = await this.projectMemberRepo.find({
-          where: { projectId: project.id },
-          relations: ['user'],
-          take: 5
-        });
-
-        return { ...project, taskCount, memberCount, previewMembers };
-      })
-    );
+    return this.decorateProjects(projects);
   }
 
-  async findOne(projectId: string, userId: string): Promise<Project> {
+  async findOne(projectId: string, userId: string): Promise<any> {
     const { project } = await this.checkAccess(projectId, userId);
-    return project;
+    return this.decorateProject(project);
+  }
+
+  async getStats(projectId: string, userId: string): Promise<ProjectStats> {
+    const { project } = await this.checkAccess(projectId, userId);
+    const statsByProjectId = await this.getProjectStatsMap([project.id]);
+    return statsByProjectId.get(project.id) ?? this.buildDefaultStats();
   }
 
   async update(projectId: string, userId: string, dto: UpdateProjectDto): Promise<Project> {
@@ -141,7 +239,8 @@ export class ProjectsService {
     if (dto.name !== undefined) project.name = dto.name;
     if (dto.description !== undefined) project.description = dto.description;
 
-    return this.projectRepo.save(project);
+    await this.projectRepo.save(project);
+    return this.findOne(projectId, userId);
   }
 
   async delete(projectId: string, userId: string): Promise<void> {

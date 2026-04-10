@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { addDays, endOfDay, endOfMonth, startOfDay, startOfMonth } from 'date-fns';
 import { ActivityEventRow } from '../../components/activity/ActivityEventRow';
 import { Button } from '../../components/ui/Button';
+import { DateField } from '../../components/ui/DateField';
 import { useActivityFeedStore } from '../../store/activityFeed.store';
 import { useProjectStore } from '../../store/project.store';
 import { useWorkspaceStore } from '../../store/workspace.store';
@@ -263,7 +264,7 @@ export default function ActivityFeedPage() {
                 </button>
 
                 {projectMenuOpen && (
-                  <div className="absolute left-0 top-[calc(100%+8px)] z-20 w-64 rounded-2xl border border-border/60 bg-popover p-2 shadow-2xl">
+                  <div className="dropdown-surface absolute left-0 top-[calc(100%+8px)] z-20 w-64 rounded-2xl p-2 shadow-2xl">
                     <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
                       {projects.map((project) => (
                         <label
@@ -296,7 +297,7 @@ export default function ActivityFeedPage() {
                 </button>
 
                 {actorMenuOpen && (
-                  <div className="absolute left-0 top-[calc(100%+8px)] z-20 w-64 rounded-2xl border border-border/60 bg-popover p-2 shadow-2xl">
+                  <div className="dropdown-surface absolute left-0 top-[calc(100%+8px)] z-20 w-64 rounded-2xl p-2 shadow-2xl">
                     <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
                       {members.map((member: any) => (
                         <label
@@ -340,17 +341,15 @@ export default function ActivityFeedPage() {
 
             {dateRange === 'custom' && (
               <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="date"
+                <DateField
                   value={customFrom}
-                  onChange={(event) => setCustomFrom(event.target.value)}
-                  className="rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none"
+                  onChange={setCustomFrom}
+                  ariaLabel="Filter activity from date"
                 />
-                <input
-                  type="date"
+                <DateField
                   value={customTo}
-                  onChange={(event) => setCustomTo(event.target.value)}
-                  className="rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none"
+                  onChange={setCustomTo}
+                  ariaLabel="Filter activity to date"
                 />
               </div>
             )}

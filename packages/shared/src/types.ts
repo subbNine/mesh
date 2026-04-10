@@ -33,6 +33,15 @@ export interface IWorkspaceMember {
   user: IUser;
 }
 
+export interface IProjectStats {
+  total: number;
+  done: number;
+  inProgress: number;
+  review: number;
+  todo: number;
+  progressPercent: number;
+}
+
 export interface IProject {
   id: string;
   workspaceId: string;
@@ -40,6 +49,9 @@ export interface IProject {
   description: string | null;
   createdBy: string;
   createdAt: string | Date;
+  taskCount?: number;
+  memberCount?: number;
+  stats?: IProjectStats;
 }
 
 export interface IProjectMember {

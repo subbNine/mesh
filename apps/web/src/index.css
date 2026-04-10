@@ -108,6 +108,18 @@
       radial-gradient(circle at bottom right, rgba(38, 107, 212, 0.08), transparent 24%);
     background-attachment: fixed;
   }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;
   }
@@ -129,6 +141,10 @@
 
   .glass {
     @apply border border-border/70 bg-card/85 shadow-[0_20px_60px_-32px_rgba(15,23,42,0.28)] backdrop-blur-xl;
+  }
+
+  .dropdown-surface {
+    @apply border border-border/80 bg-card text-foreground shadow-[0_24px_60px_-28px_rgba(15,23,42,0.32)];
   }
 
   .cursor-precision {

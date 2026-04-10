@@ -179,7 +179,7 @@ export function SubtaskPanel({ task, isOpen, onClose }: SubtaskPanelProps) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
           transition={{ duration: 0.18 }}
-          className="absolute right-0 top-full mt-2 w-[300px] max-w-[calc(100vw-24px)] rounded-[24px] border border-border/70 bg-card/95 p-3 shadow-[0_30px_70px_-30px_rgba(15,23,42,0.55)] backdrop-blur-xl z-50"
+          className="dropdown-surface absolute right-0 top-full mt-2 w-[300px] max-w-[calc(100vw-24px)] rounded-[24px] p-3 shadow-[0_30px_70px_-30px_rgba(15,23,42,0.55)] z-50"
         >
           <div className="mb-3 rounded-2xl border border-primary/15 bg-primary/[0.04] px-3 py-3">
             <div className="flex items-center justify-between gap-3">

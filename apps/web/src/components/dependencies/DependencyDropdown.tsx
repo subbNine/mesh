@@ -122,7 +122,7 @@ export function DependencyDropdown({ isOpen, onClose, onManage, task, workspaceI
           transition={{ duration: 0.18 }}
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
-          className="absolute left-0 top-full mt-2 w-[340px] rounded-[24px] border border-border/70 bg-card/95 p-3 shadow-[0_30px_70px_-30px_rgba(15,23,42,0.5)] backdrop-blur-xl z-50"
+          className="dropdown-surface absolute left-0 top-full mt-2 w-[340px] rounded-[24px] p-3 shadow-[0_30px_70px_-30px_rgba(15,23,42,0.5)] z-50"
         >
           <div className="mb-3 flex items-start gap-2 rounded-2xl border border-primary/15 bg-primary/[0.04] px-3 py-2.5">
             {dependencyState.isBlocked ? <Lock size={15} className="mt-0.5 text-amber-500" /> : <Link2 size={15} className="mt-0.5 text-primary" />}

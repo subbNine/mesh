@@ -38,6 +38,14 @@ export class ProjectsController {
     return this.projectsService.findOne(projectId, user.id);
   }
 
+  @Get('projects/:projectId/stats')
+  getStats(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: IUser,
+  ) {
+    return this.projectsService.getStats(projectId, user.id);
+  }
+
   @Patch('projects/:projectId')
   update(
     @Param('projectId') projectId: string,
