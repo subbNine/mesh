@@ -184,8 +184,8 @@ export function AppShell() {
                     : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
                   } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
               >
-                <Folder size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
-                {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">Overview</span>}
+                <Layers size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0 text-primary'} />
+                {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate font-bold">Overview</span>}
               </Link>
               <Link
                 to={`/w/${workspaceId}/my-work`}
