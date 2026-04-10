@@ -5,6 +5,7 @@ import './index.css';
 
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import InvitePage from './pages/auth/InvitePage';
 import WorkspaceSelectorPage from './pages/workspaces/WorkspaceSelectorPage';
 import ProjectsPage from './pages/projects/ProjectsPage';
 import ProjectDetailPage from './pages/projects/ProjectDetailPage';
@@ -65,6 +66,7 @@ function AppRoot() {
 
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/invite/:inviteId" element={<InvitePage />} />
 
           {/* Protected Routes */}
           <Route path="/workspaces" element={<ProtectedRoute><WorkspaceSelectorPage /></ProtectedRoute>} />

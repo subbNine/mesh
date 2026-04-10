@@ -12,10 +12,11 @@ import { Workspace } from '../workspaces/entities/workspaces.entity';
 import { WorkspaceMember } from '../workspaces/entities/workspace_members.entity';
 import { Project } from '../projects/entities/projects.entity';
 import { ProjectMember } from '../projects/entities/project_members.entity';
+import { Invitation } from './entities/invitation.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Workspace, WorkspaceMember, Project, ProjectMember]),
+    TypeOrmModule.forFeature([User, Workspace, WorkspaceMember, Project, ProjectMember, Invitation]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

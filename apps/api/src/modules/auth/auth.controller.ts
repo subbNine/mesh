@@ -26,8 +26,8 @@ export class AuthController {
   }
 
   @Get('invitations/preview')
-  previewInvite(@Query('token') token: string) {
-    return this.invitationsService.previewInvite(token);
+  previewInvite(@Query('inviteId') inviteId: string, @Query('token') token: string) {
+    return this.invitationsService.previewInvite(inviteId || token);
   }
 
   @UseGuards(JwtAuthGuard)

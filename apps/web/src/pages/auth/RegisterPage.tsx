@@ -36,18 +36,17 @@ export default function RegisterPage() {
   const [isInviteLoading, setIsInviteLoading] = useState(false);
 
   const register = useAuthStore((state) => state.register);
-  const currentUser = useAuthStore((state) => state.user);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const inviteToken = searchParams.get('invite') ?? '';
+  const inviteId = searchParams.get('invite') ?? '';
 
   useEffect(() => {
-    if (!inviteToken) {
+    if (!inviteId) {
       return;
     }
 
     setIsInviteLoading(true);
-    api.get('/auth/invitations/preview', { params: { token: inviteToken } })
+    api.get('/auth/invitations/preview', { params: { inviteId } })
       .then(({ data }) => {
         setInvitePreview(data);
         setEmail(data.email);
@@ -56,23 +55,9 @@ export default function RegisterPage() {
         setError(err?.response?.data?.message || 'This invite link is invalid or has expired.');
       })
       .finally(() => setIsInviteLoading(false));
-  }, [inviteToken]);
+  }, [inviteId]);
 
-  useEffect(() => {
-    if (!inviteToken || !currentUser) {
-      return;
-    }
-
-    api.post('/auth/invitations/accept', { token: inviteToken })
-      .then(({ data }) => {
-        navigate(data.redirectTo || '/workspaces', { replace: true });
-      })
-      .catch((err) => {
-        setError(err?.response?.data?.message || 'Failed to accept this invite.');
-      });
-  }, [inviteToken, currentUser, navigate]);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setError('');
     setIsRegistering(true);
@@ -82,8 +67,13 @@ export default function RegisterPage() {
         lastName,
         email,
         password,
-        inviteToken: inviteToken || undefined,
       });
+
+      if (inviteId) {
+        navigate(`/invite/${encodeURIComponent(inviteId)}`, { replace: true });
+        return;
+      }
+
       navigate(result?.redirectTo || '/workspaces', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create your account');
@@ -142,7 +132,7 @@ export default function RegisterPage() {
                 <h2 className="mt-1 text-3xl font-black tracking-tight text-foreground">Join Mesh</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {invitePreview
-                    ? `Create your account with ${invitePreview.email} to accept this ${invitePreview.scope} invite.`
+                    ? `Create your account with ${invitePreview.email} to review and accept this ${invitePreview.scope} invite.`
                     : 'Set up your personal account and head straight into your workspace.'}
                 </p>
               </div>
@@ -225,7 +215,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   className="font-semibold text-primary hover:underline"
-                  onClick={() => navigate(inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : '/login')}
+                  onClick={() => navigate(inviteId ? `/login?invite=${encodeURIComponent(inviteId)}` : '/login')}
                 >
                   Sign in
                 </button>

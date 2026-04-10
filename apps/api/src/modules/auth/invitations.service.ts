@@ -13,6 +13,7 @@ import { Repository } from 'typeorm';
 
 import { ProjectMemberRole, WorkspaceMemberRole } from '@mesh/shared';
 
+import { Invitation } from './entities/invitation.entity';
 import { Project } from '../projects/entities/projects.entity';
 import { ProjectMember } from '../projects/entities/project_members.entity';
 import { User } from '../users/entities/users.entity';
@@ -20,6 +21,10 @@ import { Workspace } from '../workspaces/entities/workspaces.entity';
 import { WorkspaceMember } from '../workspaces/entities/workspace_members.entity';
 
 type InviteScope = 'workspace' | 'project';
+type WorkspaceInviteRole = keyof typeof WorkspaceMemberRole | WorkspaceMemberRole;
+type ProjectInviteRole = keyof typeof ProjectMemberRole | ProjectMemberRole;
+
+const INVITE_EXPIRY_HOURS = 24;
 
 type InviteTokenPayload = {
   type: 'mesh-invite';
@@ -30,6 +35,19 @@ type InviteTokenPayload = {
   role: string;
   inviterId: string;
   exp?: number;
+};
+
+type ResolvedInvite = {
+  id: string | null;
+  scope: InviteScope;
+  email: string;
+  workspaceId: string;
+  projectId: string | null;
+  role: string;
+  inviterId: string;
+  expiresAt: Date | null;
+  acceptedAt: Date | null;
+  acceptedByUserId: string | null;
 };
 
 @Injectable()
@@ -48,6 +66,8 @@ export class InvitationsService {
     private readonly projectRepo: Repository<Project>,
     @InjectRepository(ProjectMember)
     private readonly projectMemberRepo: Repository<ProjectMember>,
+    @InjectRepository(Invitation)
+    private readonly invitationRepo: Repository<Invitation>,
     private readonly jwtService: JwtService,
   ) {
     this.transporter = nodemailer.createTransport({
@@ -65,9 +85,10 @@ export class InvitationsService {
     workspaceId: string,
     inviterId: string,
     email: string,
-    role: WorkspaceMemberRole | string = WorkspaceMemberRole.Member,
+    role: WorkspaceInviteRole = WorkspaceMemberRole.Member,
   ) {
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedRole = this.normalizeWorkspaceRole(role);
     const workspace = await this.workspaceRepo.findOne({ where: { id: workspaceId } });
 
     if (!workspace) {
@@ -87,32 +108,38 @@ export class InvitationsService {
       }
     }
 
-    const token = await this.createInviteToken({
+    const invitation = await this.createInvitationRecord({
       scope: 'workspace',
       email: normalizedEmail,
       workspaceId,
-      role,
+      projectId: null,
+      role: normalizedRole,
       inviterId,
     });
+
+    const workspaceRoleSuffix = normalizedRole ? ` as ${normalizedRole}` : '';
 
     await this.sendInvitationEmail({
       to: normalizedEmail,
       subject: `You're invited to join ${workspace.name} on Mesh`,
       preheader: `${inviter?.firstName || 'A teammate'} invited you to collaborate in ${workspace.name}.`,
       headline: `Join ${workspace.name}`,
-      body: `${inviter?.firstName || 'A teammate'} invited you to collaborate in Mesh. Accept the invite to join the workspace${role ? ` as ${role}` : ''}.`,
-      inviteUrl: this.buildInviteUrl(token),
-      ctaLabel: 'Accept workspace invite',
+      body: `${inviter?.firstName || 'A teammate'} invited you to collaborate in Mesh. Review the invite, sign in or create your account, and join the workspace${workspaceRoleSuffix}.`,
+      inviteUrl: this.buildInviteUrl(invitation.id),
+      ctaLabel: 'Review workspace invite',
       metaLabel: 'Workspace access',
       metaValue: workspace.name,
+      expiresAt: invitation.expiresAt,
     });
 
     return {
       invited: true,
+      inviteId: invitation.id,
       scope: 'workspace' as const,
       email: normalizedEmail,
       workspaceId,
       workspaceName: workspace.name,
+      expiresAt: invitation.expiresAt.toISOString(),
       delivery: 'email' as const,
     };
   }
@@ -121,9 +148,10 @@ export class InvitationsService {
     projectId: string,
     inviterId: string,
     email: string,
-    role: ProjectMemberRole | string = ProjectMemberRole.Member,
+    role: ProjectInviteRole = ProjectMemberRole.Member,
   ) {
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedRole = this.normalizeProjectRole(role);
     const project = await this.projectRepo.findOne({ where: { id: projectId } });
 
     if (!project) {
@@ -148,12 +176,12 @@ export class InvitationsService {
       }
     }
 
-    const token = await this.createInviteToken({
+    const invitation = await this.createInvitationRecord({
       scope: 'project',
       email: normalizedEmail,
       workspaceId: project.workspaceId,
       projectId,
-      role,
+      role: normalizedRole,
       inviterId,
     });
 
@@ -162,60 +190,73 @@ export class InvitationsService {
       subject: `You're invited to ${project.name} on Mesh`,
       preheader: `${inviter?.firstName || 'A teammate'} invited you into the ${project.name} project.`,
       headline: `Join the ${project.name} project`,
-      body: `${inviter?.firstName || 'A teammate'} invited you to collaborate on ${project.name} in the ${workspace.name} workspace. Accept the invite to finish setup and jump in.`,
-      inviteUrl: this.buildInviteUrl(token),
-      ctaLabel: 'Accept project invite',
+      body: `${inviter?.firstName || 'A teammate'} invited you to collaborate on ${project.name} in the ${workspace.name} workspace. Review the invite to sign in or create your account, then confirm you want to join.`,
+      inviteUrl: this.buildInviteUrl(invitation.id),
+      ctaLabel: 'Review project invite',
       metaLabel: 'Project access',
       metaValue: `${workspace.name} · ${project.name}`,
+      expiresAt: invitation.expiresAt,
     });
 
     return {
       invited: true,
+      inviteId: invitation.id,
       scope: 'project' as const,
       email: normalizedEmail,
       workspaceId: project.workspaceId,
       workspaceName: workspace.name,
       projectId,
       projectName: project.name,
+      expiresAt: invitation.expiresAt.toISOString(),
       delivery: 'email' as const,
     };
   }
 
-  async previewInvite(token: string) {
-    const payload = await this.verifyInviteToken(token);
-    const workspace = await this.workspaceRepo.findOne({ where: { id: payload.workspaceId } });
+  async previewInvite(inviteRef: string) {
+    const invite = await this.resolveInviteReference(inviteRef);
+    const workspace = await this.workspaceRepo.findOne({ where: { id: invite.workspaceId } });
 
     if (!workspace) {
       throw new NotFoundException('This invite points to a workspace that no longer exists.');
     }
 
-    const project = payload.projectId
-      ? await this.projectRepo.findOne({ where: { id: payload.projectId } })
+    const project = invite.projectId
+      ? await this.projectRepo.findOne({ where: { id: invite.projectId } })
       : null;
-    const existingUser = await this.userRepo.findOne({ where: { email: payload.email } });
+    const existingUser = await this.userRepo.findOne({ where: { email: invite.email } });
 
     return {
-      email: payload.email,
-      scope: payload.scope,
-      role: payload.role,
+      inviteId: invite.id,
+      email: invite.email,
+      scope: invite.scope,
+      role: invite.role,
       workspaceId: workspace.id,
       workspaceName: workspace.name,
       projectId: project?.id ?? null,
       projectName: project?.name ?? null,
       hasExistingAccount: Boolean(existingUser),
-      expiresAt: payload.exp ? new Date(payload.exp * 1000).toISOString() : null,
+      expiresAt: invite.expiresAt ? invite.expiresAt.toISOString() : null,
+      status: invite.acceptedAt ? 'accepted' : 'pending',
     };
   }
 
-  async acceptInvite(token: string, user: Pick<User, 'id' | 'email'>) {
-    const payload = await this.verifyInviteToken(token);
+  async acceptInvite(inviteRef: string, user: Pick<User, 'id' | 'email'>) {
+    const invite = await this.resolveInviteReference(inviteRef);
     const normalizedEmail = user.email.trim().toLowerCase();
 
-    if (normalizedEmail !== payload.email) {
+    if (normalizedEmail !== invite.email) {
       throw new UnauthorizedException('Sign in or register with the invited email address to accept this invite.');
     }
 
-    const workspace = await this.workspaceRepo.findOne({ where: { id: payload.workspaceId } });
+    if (invite.acceptedAt && invite.acceptedByUserId && invite.acceptedByUserId !== user.id) {
+      throw new ConflictException('This invite has already been accepted.');
+    }
+
+    if (!invite.acceptedAt) {
+      this.ensureInviteNotExpired(invite.expiresAt);
+    }
+
+    const workspace = await this.workspaceRepo.findOne({ where: { id: invite.workspaceId } });
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
     }
@@ -223,50 +264,122 @@ export class InvitationsService {
     await this.ensureWorkspaceMembership(
       user.id,
       workspace.id,
-      payload.scope === 'workspace'
-        ? (payload.role as WorkspaceMemberRole)
+      invite.scope === 'workspace'
+        ? (invite.role as WorkspaceMemberRole)
         : WorkspaceMemberRole.Member,
     );
 
-    if (payload.scope === 'project' && payload.projectId) {
-      const project = await this.projectRepo.findOne({ where: { id: payload.projectId } });
+    let projectId: string | null = null;
+    let redirectTo = `/w/${workspace.id}`;
+
+    if (invite.scope === 'project' && invite.projectId) {
+      const project = await this.projectRepo.findOne({ where: { id: invite.projectId } });
       if (!project) {
         throw new NotFoundException('Project not found');
       }
 
-      await this.ensureProjectMembership(user.id, project.id, payload.role as ProjectMemberRole);
+      await this.ensureProjectMembership(user.id, project.id, invite.role as ProjectMemberRole);
+      projectId = project.id;
+      redirectTo = `/w/${workspace.id}/p/${project.id}`;
+    }
 
-      return {
-        accepted: true,
-        redirectTo: `/w/${workspace.id}/p/${project.id}`,
-        workspaceId: workspace.id,
-        projectId: project.id,
-      };
+    if (invite.id && !invite.acceptedAt) {
+      await this.invitationRepo.update(invite.id, {
+        acceptedAt: new Date(),
+        acceptedByUserId: user.id,
+      });
     }
 
     return {
       accepted: true,
-      redirectTo: `/w/${workspace.id}`,
+      redirectTo,
       workspaceId: workspace.id,
-      projectId: null,
+      projectId,
     };
   }
 
-  private async createInviteToken(payload: Omit<InviteTokenPayload, 'type'>): Promise<string> {
-    return this.jwtService.signAsync(
-      {
-        type: 'mesh-invite',
-        ...payload,
-      },
-      { expiresIn: '7d' },
-    );
+  private async createInvitationRecord({
+    scope,
+    email,
+    workspaceId,
+    projectId,
+    role,
+    inviterId,
+  }: {
+    scope: InviteScope;
+    email: string;
+    workspaceId: string;
+    projectId: string | null;
+    role: string;
+    inviterId: string;
+  }) {
+    const expiresAt = new Date(Date.now() + INVITE_EXPIRY_HOURS * 60 * 60 * 1000);
+
+    const invitation = this.invitationRepo.create({
+      scope,
+      email,
+      workspaceId,
+      projectId,
+      role,
+      inviterId,
+      expiresAt,
+      acceptedAt: null,
+      acceptedByUserId: null,
+    });
+
+    return this.invitationRepo.save(invitation);
+  }
+
+  private async resolveInviteReference(inviteRef: string): Promise<ResolvedInvite> {
+    if (!inviteRef?.trim()) {
+      throw new BadRequestException('Invite id is required.');
+    }
+
+    const invitation = await this.findInvitationById(inviteRef);
+    if (invitation) {
+      if (!invitation.acceptedAt) {
+        this.ensureInviteNotExpired(invitation.expiresAt);
+      }
+
+      return {
+        id: invitation.id,
+        scope: invitation.scope,
+        email: invitation.email,
+        workspaceId: invitation.workspaceId,
+        projectId: invitation.projectId ?? null,
+        role: invitation.role,
+        inviterId: invitation.inviterId,
+        expiresAt: invitation.expiresAt,
+        acceptedAt: invitation.acceptedAt ?? null,
+        acceptedByUserId: invitation.acceptedByUserId ?? null,
+      };
+    }
+
+    const payload = await this.verifyInviteToken(inviteRef);
+
+    return {
+      id: null,
+      scope: payload.scope,
+      email: payload.email.trim().toLowerCase(),
+      workspaceId: payload.workspaceId,
+      projectId: payload.projectId ?? null,
+      role: payload.role,
+      inviterId: payload.inviterId,
+      expiresAt: payload.exp ? new Date(payload.exp * 1000) : null,
+      acceptedAt: null,
+      acceptedByUserId: null,
+    };
+  }
+
+  private async findInvitationById(inviteRef: string): Promise<Invitation | null> {
+    if (!this.isUuid(inviteRef)) {
+      return null;
+    }
+
+    return this.invitationRepo.findOne({ where: { id: inviteRef } });
   }
 
   private async verifyInviteToken(token: string): Promise<InviteTokenPayload> {
-    if (!token?.trim()) {
-      throw new BadRequestException('Invite token is required.');
-    }
-
     try {
       const payload = await this.jwtService.verifyAsync<InviteTokenPayload>(token);
 
@@ -282,6 +395,32 @@ export class InvitationsService {
 
       throw new BadRequestException('This invite link is invalid or has expired.');
     }
+  }
+
+  private ensureInviteNotExpired(expiresAt: Date | null) {
+    if (expiresAt && expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('This invite has expired. Ask the sender for a new invite.');
+    }
+  }
+
+  private isUuid(value: string) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  private normalizeWorkspaceRole(role?: WorkspaceInviteRole): WorkspaceMemberRole {
+    if (role === WorkspaceMemberRole.Owner || role === 'Owner') {
+      return WorkspaceMemberRole.Owner;
+    }
+
+    return WorkspaceMemberRole.Member;
+  }
+
+  private normalizeProjectRole(role?: ProjectInviteRole): ProjectMemberRole {
+    if (role === ProjectMemberRole.Admin || role === 'Admin') {
+      return ProjectMemberRole.Admin;
+    }
+
+    return ProjectMemberRole.Member;
   }
 
   private async ensureWorkspaceMembership(userId: string, workspaceId: string, role: WorkspaceMemberRole) {
@@ -320,9 +459,9 @@ export class InvitationsService {
     return this.projectMemberRepo.save(projectMember);
   }
 
-  private buildInviteUrl(token: string): string {
+  private buildInviteUrl(inviteId: string): string {
     const baseUrl = process.env.WEB_URL || 'http://localhost:5173';
-    return `${baseUrl}/register?invite=${encodeURIComponent(token)}`;
+    return `${baseUrl}/invite/${encodeURIComponent(inviteId)}`;
   }
 
   private async sendInvitationEmail({
@@ -335,6 +474,7 @@ export class InvitationsService {
     ctaLabel,
     metaLabel,
     metaValue,
+    expiresAt,
   }: {
     to: string;
     subject: string;
@@ -345,7 +485,9 @@ export class InvitationsService {
     ctaLabel: string;
     metaLabel: string;
     metaValue: string;
+    expiresAt: Date;
   }) {
+    const expiresLabel = expiresAt.toLocaleString();
     const html = `
       <div style="margin:0;padding:32px;background:#f6f8fb;font-family:Inter,Arial,sans-serif;color:#132238;">
         <div style="max-width:640px;margin:0 auto;background:white;border-radius:24px;overflow:hidden;border:1px solid #d9e3ec;box-shadow:0 24px 64px rgba(21,33,50,0.08);">
@@ -359,6 +501,10 @@ export class InvitationsService {
             <div style="margin:0 0 20px;padding:14px 16px;border-radius:16px;background:#f8fbfd;border:1px solid #d9e3ec;">
               <div style="font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#617086;margin-bottom:6px;">${metaLabel}</div>
               <div style="font-size:15px;font-weight:700;color:#152132;">${metaValue}</div>
+            </div>
+            <div style="margin:0 0 20px;padding:12px 14px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:12px;line-height:1.6;">
+              This invite expires in 24 hours and is reserved for <strong>${to}</strong>.<br />
+              Expiry time: ${expiresLabel}
             </div>
             <a href="${inviteUrl}" style="display:inline-block;padding:12px 18px;border-radius:14px;background:#279fbd;color:white;text-decoration:none;font-weight:800;letter-spacing:0.04em;">${ctaLabel}</a>
             <p style="margin:18px 0 0;font-size:12px;line-height:1.6;color:#617086;">If the button does not work, copy this link into your browser:<br /><span style="word-break:break-all;color:#279fbd;">${inviteUrl}</span></p>

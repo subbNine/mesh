@@ -33,14 +33,14 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const inviteToken = searchParams.get('invite') ?? '';
+  const inviteId = searchParams.get('invite') ?? '';
 
   useEffect(() => {
-    if (!inviteToken) {
+    if (!inviteId) {
       return;
     }
 
-    api.get('/auth/invitations/preview', { params: { token: inviteToken } })
+    api.get('/auth/invitations/preview', { params: { inviteId } })
       .then(({ data }) => {
         setInvitePreview(data);
         setEmail(data.email);
@@ -48,14 +48,20 @@ export default function LoginPage() {
       .catch((err) => {
         setError(err?.response?.data?.message || 'This invite link is invalid or has expired.');
       });
-  }, [inviteToken]);
+  }, [inviteId]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setError('');
     setIsLoggingIn(true);
     try {
-      const result = await login(email, password, inviteToken || undefined);
+      const result = await login(email, password);
+
+      if (inviteId) {
+        navigate(`/invite/${encodeURIComponent(inviteId)}`, { replace: true });
+        return;
+      }
+
       navigate(result?.redirectTo || '/workspaces', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to sign in');
@@ -114,7 +120,7 @@ export default function LoginPage() {
                 <h2 className="mt-1 text-3xl font-black tracking-tight text-foreground">Access your workspace</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {invitePreview
-                    ? `Sign in with ${invitePreview.email} to accept this ${invitePreview.scope} invite.`
+                    ? `Sign in with ${invitePreview.email} to review and accept this ${invitePreview.scope} invite.`
                     : 'Use the email and password you registered with.'}
                 </p>
               </div>
@@ -172,7 +178,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className="font-semibold text-primary hover:underline"
-                  onClick={() => navigate(inviteToken ? `/register?invite=${encodeURIComponent(inviteToken)}` : '/register')}
+                  onClick={() => navigate(inviteId ? `/register?invite=${encodeURIComponent(inviteId)}` : '/register')}
                 >
                   Create an account
                 </button>
