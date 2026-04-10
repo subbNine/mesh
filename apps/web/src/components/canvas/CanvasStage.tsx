@@ -98,6 +98,318 @@ function getTextFormatting(content = '') {
   };
 }
 
+type TextAlignMode = 'left' | 'center' | 'right';
+
+interface RichTextToken {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  align: TextAlignMode;
+}
+
+interface RichTextLine {
+  y: number;
+  height: number;
+  tokens: Array<RichTextToken & { x: number }>;
+}
+
+const DEFAULT_TEXT_FONT_FAMILY = "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+let textMeasureContext: CanvasRenderingContext2D | null = null;
+
+function getCanvasFontStyle({ bold, italic }: Pick<RichTextToken, 'bold' | 'italic'>) {
+  if (bold && italic) return 'bold italic';
+  if (bold) return 'bold';
+  if (italic) return 'italic';
+  return 'normal';
+}
+
+function getTextMeasureContext() {
+  if (textMeasureContext || !globalThis.document) {
+    return textMeasureContext;
+  }
+
+  textMeasureContext = globalThis.document.createElement('canvas').getContext('2d');
+  return textMeasureContext;
+}
+
+function measureRichTextToken(text: string, token: RichTextToken) {
+  const context = getTextMeasureContext();
+
+  if (!context) {
+    return text.length * token.fontSize * 0.6;
+  }
+
+  context.font = `${token.italic ? 'italic ' : ''}${token.bold ? '700 ' : '400 '}${token.fontSize}px ${token.fontFamily}`;
+  return context.measureText(text).width;
+}
+
+function parseTextAlign(value?: string | null): TextAlignMode | undefined {
+  const normalized = value?.toLowerCase();
+  if (normalized === 'center' || normalized === 'right' || normalized === 'left') {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function parseRichTextTokens(content: string, defaultFontSize: number, defaultColor: string) {
+  if (!globalThis.document) {
+    return [] as RichTextToken[];
+  }
+
+  const root = globalThis.document.createElement('div');
+  root.innerHTML = content;
+
+  const baseStyle: Omit<RichTextToken, 'text'> = {
+    bold: false,
+    italic: false,
+    underline: false,
+    fontSize: defaultFontSize,
+    fontFamily: DEFAULT_TEXT_FONT_FAMILY,
+    color: defaultColor,
+    align: 'left',
+  };
+
+  const tokens: RichTextToken[] = [];
+
+  const pushToken = (text: string, style: Omit<RichTextToken, 'text'>) => {
+    if (!text) return;
+
+    const lastToken = tokens[tokens.length - 1];
+    const nextToken: RichTextToken = { text, ...style };
+
+    if (
+      lastToken &&
+      lastToken.bold === nextToken.bold &&
+      lastToken.italic === nextToken.italic &&
+      lastToken.underline === nextToken.underline &&
+      lastToken.fontSize === nextToken.fontSize &&
+      lastToken.fontFamily === nextToken.fontFamily &&
+      lastToken.color === nextToken.color &&
+      lastToken.align === nextToken.align
+    ) {
+      lastToken.text += text;
+      return;
+    }
+
+    tokens.push(nextToken);
+  };
+
+  const pushBreak = (style: Omit<RichTextToken, 'text'>) => {
+    const lastToken = tokens[tokens.length - 1];
+    if (!lastToken || lastToken.text.endsWith('\n')) {
+      return;
+    }
+    pushToken('\n', style);
+  };
+
+  const visitNode = (node: Node, inheritedStyle: Omit<RichTextToken, 'text'>) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      pushToken(node.textContent ?? '', inheritedStyle);
+      return;
+    }
+
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') {
+      pushBreak(inheritedStyle);
+      return;
+    }
+
+    const nextStyle = { ...inheritedStyle };
+
+    if (tag === 'strong' || tag === 'b') nextStyle.bold = true;
+    if (tag === 'em' || tag === 'i') nextStyle.italic = true;
+    if (tag === 'u') nextStyle.underline = true;
+    if (tag === 'code' || tag === 'pre') {
+      nextStyle.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
+      nextStyle.fontSize = Math.max(14, inheritedStyle.fontSize - 1);
+    }
+    if (tag === 'h1') {
+      nextStyle.bold = true;
+      nextStyle.fontSize = Math.max(inheritedStyle.fontSize + 10, 30);
+    }
+    if (tag === 'h2') {
+      nextStyle.bold = true;
+      nextStyle.fontSize = Math.max(inheritedStyle.fontSize + 6, 24);
+    }
+
+    const inlineFontSize = Number.parseFloat(node.style.fontSize || '');
+    if (Number.isFinite(inlineFontSize)) {
+      nextStyle.fontSize = inlineFontSize;
+    }
+
+    if (node.style.fontWeight) {
+      nextStyle.bold = nextStyle.bold || Number.parseInt(node.style.fontWeight, 10) >= 600 || node.style.fontWeight === 'bold';
+    }
+
+    if (node.style.fontStyle === 'italic') {
+      nextStyle.italic = true;
+    }
+
+    if (node.style.textDecoration.includes('underline')) {
+      nextStyle.underline = true;
+    }
+
+    if (node.style.color) {
+      nextStyle.color = node.style.color;
+    }
+
+    const inlineAlign = parseTextAlign(node.style.textAlign);
+    if (inlineAlign) {
+      nextStyle.align = inlineAlign;
+    }
+
+    const isBlock = ['p', 'div', 'li', 'blockquote', 'pre', 'h1', 'h2', 'ul', 'ol'].includes(tag);
+    if (isBlock && tokens.length > 0) {
+      pushBreak(nextStyle);
+    }
+
+    if (tag === 'li') {
+      pushToken('• ', nextStyle);
+    }
+
+    Array.from(node.childNodes).forEach((child) => visitNode(child, nextStyle));
+
+    if (isBlock) {
+      pushBreak(nextStyle);
+    }
+  };
+
+  Array.from(root.childNodes).forEach((child) => visitNode(child, baseStyle));
+
+  return tokens;
+}
+
+function buildRichTextLines(tokens: RichTextToken[], maxWidth: number, maxHeight: number) {
+  const lines: RichTextLine[] = [];
+  const safeWidth = Math.max(maxWidth, 24);
+  const safeHeight = Math.max(maxHeight, 20);
+
+  let currentTokens: RichTextToken[] = [];
+  let currentWidth = 0;
+  let currentHeight = 0;
+  let currentY = 0;
+  let shouldStop = false;
+
+  const pushLineToken = (text: string, token: RichTextToken, width: number) => {
+    const lastToken = currentTokens[currentTokens.length - 1];
+    if (
+      lastToken &&
+      lastToken.bold === token.bold &&
+      lastToken.italic === token.italic &&
+      lastToken.underline === token.underline &&
+      lastToken.fontSize === token.fontSize &&
+      lastToken.fontFamily === token.fontFamily &&
+      lastToken.color === token.color &&
+      lastToken.align === token.align
+    ) {
+      lastToken.text += text;
+    } else {
+      currentTokens.push({ ...token, text });
+    }
+
+    currentWidth += width;
+    currentHeight = Math.max(currentHeight, token.fontSize * 1.35);
+  };
+
+  const commitLine = () => {
+    const lineHeight = Math.max(currentHeight || 24, 20);
+    if (currentY + lineHeight > safeHeight) {
+      shouldStop = true;
+      return;
+    }
+
+    const align = currentTokens[0]?.align ?? 'left';
+    const offsetX = align === 'center'
+      ? Math.max((safeWidth - currentWidth) / 2, 0)
+      : align === 'right'
+        ? Math.max(safeWidth - currentWidth, 0)
+        : 0;
+
+    let cursorX = offsetX;
+    const positionedTokens = currentTokens.map((token) => {
+      const tokenWidth = measureRichTextToken(token.text, token);
+      const positioned = { ...token, x: cursorX };
+      cursorX += tokenWidth;
+      return positioned;
+    });
+
+    lines.push({ y: currentY, height: lineHeight, tokens: positionedTokens });
+    currentY += lineHeight;
+    currentTokens = [];
+    currentWidth = 0;
+    currentHeight = 0;
+  };
+
+  for (const token of tokens) {
+    const parts = token.text.split(/(\n|\s+)/).filter(Boolean);
+
+    for (let part of parts) {
+      if (part === '\n') {
+        commitLine();
+        if (shouldStop) return lines;
+        continue;
+      }
+
+      if (!currentTokens.length) {
+        part = part.replace(/^\s+/, '');
+      }
+
+      if (!part) continue;
+
+      let partWidth = measureRichTextToken(part, token);
+      if (currentTokens.length > 0 && currentWidth + partWidth > safeWidth && !/^\s+$/.test(part)) {
+        commitLine();
+        if (shouldStop) return lines;
+        part = part.replace(/^\s+/, '');
+        if (!part) continue;
+        partWidth = measureRichTextToken(part, token);
+      }
+
+      if (partWidth <= safeWidth) {
+        pushLineToken(part, token, partWidth);
+        continue;
+      }
+
+      let chunk = '';
+      for (const char of Array.from(part)) {
+        const nextChunk = `${chunk}${char}`;
+        const nextWidth = measureRichTextToken(nextChunk, token);
+
+        if (!chunk || nextWidth <= safeWidth) {
+          chunk = nextChunk;
+          continue;
+        }
+
+        const chunkWidth = measureRichTextToken(chunk, token);
+        pushLineToken(chunk, token, chunkWidth);
+        commitLine();
+        if (shouldStop) return lines;
+        chunk = char;
+      }
+
+      if (chunk) {
+        const chunkWidth = measureRichTextToken(chunk, token);
+        pushLineToken(chunk, token, chunkWidth);
+      }
+    }
+  }
+
+  if (currentTokens.length && !shouldStop) {
+    commitLine();
+  }
+
+  return lines;
+}
+
 const MAX_TRANSFORM_DIMENSION = 4000;
 
 function getTransformSizeBounds(element?: CanvasElement | null) {
@@ -167,16 +479,32 @@ const CanvasElementView = React.memo(({
   onEdit: (id: string) => void;
 }) => {
   const isSelectTool = activeTool === 'select';
+  const isCallout = el.type === 'callout';
+  const isTextElement = el.type === 'text' || isCallout;
+  const width = el.width || (isCallout ? 220 : 200);
+  const height = el.height || (isCallout ? 88 : 60);
+  const paddingX = isCallout ? 12 : 8;
+  const paddingY = isCallout ? 10 : 8;
+  const contentWidth = Math.max(width - (isCallout ? 24 : 16), 24);
+  const contentHeight = Math.max(height - (isCallout ? 20 : 16), 20);
+  const textValue = htmlToPlainText(el.content);
+  const hasContent = textValue.length > 0;
+  const { fontStyle, textDecoration, align } = getTextFormatting(el.content);
+  const richTextLines = isTextElement && hasContent
+    ? buildRichTextLines(
+        parseRichTextTokens(el.content || '', isCallout ? 18 : 20, '#1a1a1a'),
+        contentWidth,
+        contentHeight,
+      )
+    : [];
 
-  if (el.type === 'text' || el.type === 'callout') {
-    const isCallout = el.type === 'callout';
-    const width = el.width || (isCallout ? 220 : 200);
-    const height = el.height || (isCallout ? 88 : 60);
-    const textValue = htmlToPlainText(el.content);
-    const hasContent = textValue.length > 0;
-    const { fontStyle, textDecoration, align } = getTextFormatting(el.content);
+  if (isTextElement) {
     const fillColor = el.backgroundColor || (isCallout ? '#fff2b3' : '#ffffff');
     const strokeColor = isSelected ? '#0ea5e9' : isCallout ? '#d4a017' : 'transparent';
+    const strokeWidth = isCallout ? (isSelected ? 2 : 1.25) : (isSelected ? 1.5 : 1);
+    const shadowBlur = isCallout ? (isSelected ? 12 : 6) : 0;
+    const placeholderText = isCallout ? 'Add callout' : 'Text block';
+    const placeholderColor = isCallout ? '#92400e' : '#adb5bd';
     const localAnchorX = typeof el.anchorX === 'number' ? el.anchorX - el.x : width * 0.5;
     const localAnchorY = typeof el.anchorY === 'number' ? el.anchorY - el.y : height + 18;
     const tailBaseX = Math.min(Math.max(localAnchorX, 24), Math.max(width - 24, 24));
@@ -226,30 +554,51 @@ const CanvasElementView = React.memo(({
           height={height}
           fill={fillColor}
           stroke={strokeColor}
-          strokeWidth={isCallout ? (isSelected ? 2 : 1.25) : (isSelected ? 1.5 : 1)}
+          strokeWidth={strokeWidth}
           cornerRadius={isCallout ? 18 : 2}
           shadowColor={isCallout ? '#f59e0b' : undefined}
-          shadowBlur={isCallout ? (isSelected ? 12 : 6) : 0}
+          shadowBlur={shadowBlur}
           shadowOpacity={isCallout ? 0.12 : 0}
         />
 
         {!isEditing && (
-          <Text
-            x={isCallout ? 12 : 8}
-            y={isCallout ? 10 : 8}
-            width={Math.max(width - (isCallout ? 24 : 16), 24)}
-            height={Math.max(height - (isCallout ? 20 : 16), 20)}
-            text={hasContent ? textValue : isCallout ? 'Add callout' : 'Text block'}
-            fill={hasContent ? '#1a1a1a' : isCallout ? '#92400e' : '#adb5bd'}
-            fontSize={isCallout ? 18 : 20}
-            lineHeight={1.45}
-            fontStyle={hasContent ? fontStyle : 'italic'}
-            textDecoration={hasContent ? textDecoration : undefined}
-            align={align}
-            verticalAlign="top"
-            wrap="word"
-            listening={false}
-          />
+          richTextLines.length > 0 ? (
+            richTextLines.map((line, lineIndex) => (
+              <Group key={`${el.id}-line-${lineIndex}`} listening={false}>
+                {line.tokens.map((token, tokenIndex) => (
+                  <Text
+                    key={`${el.id}-token-${lineIndex}-${tokenIndex}`}
+                    x={paddingX + token.x}
+                    y={paddingY + line.y}
+                    text={token.text}
+                    fill={token.color}
+                    fontSize={token.fontSize}
+                    fontStyle={getCanvasFontStyle(token)}
+                    textDecoration={token.underline ? 'underline' : undefined}
+                    fontFamily={token.fontFamily}
+                    listening={false}
+                  />
+                ))}
+              </Group>
+            ))
+          ) : (
+            <Text
+              x={paddingX}
+              y={paddingY}
+              width={contentWidth}
+              height={contentHeight}
+              text={hasContent ? textValue : placeholderText}
+              fill={hasContent ? '#1a1a1a' : placeholderColor}
+              fontSize={isCallout ? 18 : 20}
+              lineHeight={1.45}
+              fontStyle={hasContent ? fontStyle : 'italic'}
+              textDecoration={hasContent ? textDecoration : undefined}
+              align={align}
+              verticalAlign="top"
+              wrap="word"
+              listening={false}
+            />
+          )
         )}
       </Group>
     );
