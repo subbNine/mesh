@@ -98,6 +98,20 @@ function getTextFormatting(content = '') {
   };
 }
 
+const MAX_TRANSFORM_DIMENSION = 4000;
+
+function getTransformSizeBounds(element?: CanvasElement | null) {
+  if (element?.type === 'callout') {
+    return { minWidth: 120, minHeight: 56 };
+  }
+
+  if (element?.type === 'text') {
+    return { minWidth: 80, minHeight: 30 };
+  }
+
+  return { minWidth: 24, minHeight: 24 };
+}
+
 const URLImage = React.memo(({ src, width, height, isSelected, ...props }: any) => {
   const [img, setImg] = useState<HTMLImageElement | null>(imagePreviewCache.get(src) || null);
   const [error, setError] = useState(false);
@@ -361,6 +375,11 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const [stageProps, setStageProps] = useState({ scale: 1, x: 0, y: 0 });
   const [drawingPoints, setDrawingPoints] = useState<number[] | null>(null);
   const [dragPreviewById, setDragPreviewById] = useState<Record<string, { x: number; y: number }>>({});
+
+  const selectedElement = useMemo(
+    () => elements.find((element) => element.id === selectedId) ?? null,
+    [elements, selectedId],
+  );
 
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
   const globalZoom = useCanvasStore((state: any) => state.zoom);
@@ -758,21 +777,30 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
     }
   };
 
-  const handleTransform = () => {
-    if (!selectedId || !trRef.current) return;
-    const node = layerRef.current.findOne(`#${selectedId}`);
-    if (!node) return;
-    node.setAttrs({
-      width: Math.max(5, node.width() * node.scaleX()),
-      height: Math.max(5, node.height() * node.scaleY()),
-      scaleX: 1, scaleY: 1
-    });
-  };
-
   const handleTransformEnd = () => {
     if (!selectedId || !trRef.current) return;
     const node = layerRef.current.findOne(`#${selectedId}`);
     if (!node) return;
+
+    const { minWidth, minHeight } = getTransformSizeBounds(selectedElement);
+    const scaleX = Math.abs(node.scaleX() || 1);
+    const scaleY = Math.abs(node.scaleY() || 1);
+    const nextWidth = Math.max(minWidth, node.width() * scaleX);
+    const nextHeight = Math.max(minHeight, node.height() * scaleY);
+    const nextX = node.x();
+    const nextY = node.y();
+    const nextRotation = node.rotation();
+
+    node.setAttrs({
+      x: nextX,
+      y: nextY,
+      width: nextWidth,
+      height: nextHeight,
+      scaleX: 1,
+      scaleY: 1,
+    });
+    node.getLayer()?.batchDraw();
+
     ydoc.transact(() => {
       const arr = ydoc.getArray<Y.Map<any>>('elements');
       const map = arr.toArray().find(m => m.get('id') === selectedId);
@@ -781,23 +809,23 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
         if (parentId) {
           const parent = elements.find((item) => item.id === parentId);
           if (parent) {
-            map.set('relX', (node.x() - parent.x) / (parent.width || 1));
-            map.set('relY', (node.y() - parent.y) / (parent.height || 1));
-            map.set('relW', node.width() / (parent.width || 1));
-            map.set('relH', node.height() / (parent.height || 1));
+            map.set('relX', (nextX - parent.x) / (parent.width || 1));
+            map.set('relY', (nextY - parent.y) / (parent.height || 1));
+            map.set('relW', nextWidth / (parent.width || 1));
+            map.set('relH', nextHeight / (parent.height || 1));
           } else {
-            map.set('x', node.x());
-            map.set('y', node.y());
-            map.set('width', node.width());
-            map.set('height', node.height());
+            map.set('x', nextX);
+            map.set('y', nextY);
+            map.set('width', nextWidth);
+            map.set('height', nextHeight);
           }
         } else {
-          map.set('x', node.x());
-          map.set('y', node.y());
-          map.set('width', node.width());
-          map.set('height', node.height());
+          map.set('x', nextX);
+          map.set('y', nextY);
+          map.set('width', nextWidth);
+          map.set('height', nextHeight);
         }
-        map.set('rotation', node.rotation());
+        map.set('rotation', nextRotation);
       }
     });
     triggerSnapshot();
@@ -1080,7 +1108,31 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
               />
             );
           })}
-          {selectedId && <Transformer ref={trRef} onTransform={handleTransform} onTransformEnd={handleTransformEnd} />}
+          {selectedId && (
+            <Transformer
+              ref={trRef}
+              onTransformEnd={handleTransformEnd}
+              flipEnabled={false}
+              boundBoxFunc={(oldBox, newBox) => {
+                const { minWidth, minHeight } = getTransformSizeBounds(selectedElement);
+                const nextWidth = Math.abs(newBox.width);
+                const nextHeight = Math.abs(newBox.height);
+
+                if (
+                  !Number.isFinite(nextWidth) ||
+                  !Number.isFinite(nextHeight) ||
+                  nextWidth < minWidth ||
+                  nextHeight < minHeight ||
+                  nextWidth > MAX_TRANSFORM_DIMENSION ||
+                  nextHeight > MAX_TRANSFORM_DIMENSION
+                ) {
+                  return oldBox;
+                }
+
+                return newBox;
+              }}
+            />
+          )}
 
           {previewRect && (
              <Rect
