@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { useThemeStore } from '../../store/theme.store';
 import {
   Folder, LogOut, ChevronRight, LayoutGrid,
-  List, User, Moon, Sun, Monitor, Menu, X, Activity
+  List, User, Moon, Sun, Monitor, Menu, X, Activity, Layers
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
@@ -133,8 +133,8 @@ export function AppShell() {
       {/* Branding */}
       <div className={`p-4 flex items-center gap-2 ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-3' : ''}`}>
         <Link to="/workspaces" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-105 transition-transform text-sm">
-            M
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-110 transition-transform">
+            <Layers size={16} />
           </div>
           {(!isCollapsed || isMobileMenuOpen) && (
             <motion.span
@@ -332,8 +332,10 @@ export function AppShell() {
 
       {/* Mobile Top Bar */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-16 bg-card/60 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-6 z-40">
-        <Link to="/workspaces" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black text-sm">M</div>
+        <Link to="/workspaces" className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-110 transition-transform">
+            <Layers size={18} />
+          </div>
           <span className="font-display font-black text-lg tracking-tighter">Mesh</span>
         </Link>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-foreground">
