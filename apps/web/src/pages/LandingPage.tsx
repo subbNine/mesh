@@ -53,14 +53,14 @@ export default function LandingPage() {
 
       <main>
         <section className="relative mx-auto max-w-7xl px-5 pb-16 pt-10 sm:px-6 lg:px-8 lg:pb-24 lg:pt-16">
-          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-            <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }} className="space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }} className="flex flex-col items-center space-y-8">
               <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 <Sparkles size={12} />
                 Built for small product, design, and engineering teams
               </motion.div>
 
-              <motion.h1 variants={fadeUp} className="max-w-3xl text-balance font-display text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">
+              <motion.h1 variants={fadeUp} className="max-w-4xl text-balance font-display text-5xl font-black tracking-tight sm:text-7xl lg:text-8xl">
                 Plan, discuss, and ship from the <span className="text-primary">canvas</span>.
               </motion.h1>
 
@@ -77,115 +77,11 @@ export default function LandingPage() {
                 </Button>
               </motion.div>
 
-              <motion.div variants={fadeUp} className="grid gap-3 pt-2 sm:grid-cols-3">
+              <motion.div variants={fadeUp} className="grid gap-4 pt-6 sm:grid-cols-3 w-full max-w-3xl">
                 <PreviewStat label="Canvas tasks" value="Core workflow" />
                 <PreviewStat label="Comments in context" value="Figma-style pins" />
                 <PreviewStat label="Realtime presence" value="Multi-user sync" />
               </motion.div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 22, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              className="relative"
-            >
-              <div className="absolute -inset-6 rounded-[32px] bg-primary/10 blur-3xl" />
-              <div className="relative overflow-hidden rounded-[28px] border border-border/80 bg-card/90 shadow-[0_30px_90px_-40px_rgba(15,23,42,0.45)]">
-                <div className="border-b border-border/70 px-5 py-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Launch Week</p>
-                      <p className="text-xs text-muted-foreground">Project overview</p>
-                    </div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
-                      <Users size={12} />
-                      6 active now
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {['All tasks', 'Docs & files', 'Activity'].map((tab, index) => (
-                      <span
-                        key={tab}
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          index === 0 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-                        }`}
-                      >
-                        {tab}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.85fr]">
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-secondary/55 p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground">My work</p>
-                        <h2 className="text-base font-semibold text-foreground">This week</h2>
-                      </div>
-                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">2 due soon</span>
-                    </div>
-
-                    {[
-                      { title: 'Finalize homepage messaging', meta: 'Due today', tone: 'text-amber-700 bg-amber-100' },
-                      { title: 'Review onboarding canvas', meta: 'In progress', tone: 'text-sky-700 bg-sky-100' },
-                      { title: 'Upload launch assets', meta: 'Docs & files', tone: 'text-emerald-700 bg-emerald-100' },
-                    ].map((item) => (
-                      <div key={item.title} className="rounded-xl border border-border/70 bg-card p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">Canvas task · Product team</p>
-                          </div>
-                          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${item.tone}`}>
-                            {item.meta}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="rounded-2xl border border-border/70 bg-secondary/55 p-4">
-                      <div className="mb-3 flex items-center gap-2">
-                        <MousePointer2 size={15} className="text-primary" />
-                        <p className="text-sm font-semibold">Live canvas activity</p>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm">
-                          <MessageSquare size={14} className="text-accent" />
-                          New comment pinned to onboarding flow
-                        </div>
-                        <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm">
-                          <FileText size={14} className="text-primary" />
-                          Brand brief updated in Docs & files
-                        </div>
-                        <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-sm">
-                          <Activity size={14} className="text-emerald-600" />
-                          Status changed to Review
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-border/70 bg-slate-950 p-4 text-white shadow-inner dark:bg-slate-900">
-                      <div className="mb-3 flex items-center gap-2 text-slate-300">
-                        <LayoutGrid size={15} />
-                        Canvas snapshot
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <div className="h-16 rounded-lg bg-teal-400/80" />
-                          <div className="rounded-lg border border-dashed border-white/15 p-3 text-xs text-slate-300">
-                            Launch checklist, notes, and comments stay together here.
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </motion.div>
           </div>
         </section>
