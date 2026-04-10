@@ -74,7 +74,7 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
   const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
   const [showResolved, setShowResolved] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
-  
+
   const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const fetchComments = useCallback(async (syncYdoc = false) => {
@@ -82,7 +82,7 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
       const res = await api.get(`/tasks/${taskId}/comments`);
       const fetched: CanvasComment[] = res.data;
       setComments(fetched);
-      
+
       if (syncYdoc) {
         ydoc.transact(() => {
           const yComments = ydoc.getArray<Y.Map<any>>('comments');
@@ -110,8 +110,8 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
           }
         });
       }
-    } catch(e) { 
-      console.error('Failed to load comments', e); 
+    } catch (e) {
+      console.error('Failed to load comments', e);
     } finally {
       setIsLoading(false);
     }
@@ -150,11 +150,11 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
   const handleReplySubmit = async (commentId: string) => {
     const body = replyText[commentId];
     if (!body?.trim()) return;
-    
-    const tempReply: CommentReply = { 
-      id: crypto.randomUUID(), 
-      body, 
-      createdAt: new Date().toISOString(), 
+
+    const tempReply: CommentReply = {
+      id: crypto.randomUUID(),
+      body,
+      createdAt: new Date().toISOString(),
       author: { firstName: currentUser.firstName, lastName: currentUser.lastName, userName: currentUser.userName, id: currentUser.id }
     };
     setComments(prev => prev.map(c => c.id === commentId ? { ...c, replies: [...c.replies, tempReply] } : c));
@@ -162,7 +162,7 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
 
     try {
       await api.post(`/comments/${commentId}/replies`, { body });
-      fetchComments(false); 
+      fetchComments(false);
     } catch (error) {
       console.error('Failed to post comment reply', error);
       fetchComments(false);
@@ -173,7 +173,7 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
 
   return (
     <div className="flex flex-col h-full bg-transparent overflow-hidden">
-      
+
       {/* Discussion Header */}
       <div className="border-b border-border/40 bg-card/40 px-6 py-4 backdrop-blur-3xl">
         <div className="flex items-start justify-between gap-4">
@@ -186,25 +186,23 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
               <button
                 type="button"
                 onClick={() => setActiveTab('comments')}
-                className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${
-                  activeTab === 'comments'
+                className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${activeTab === 'comments'
                     ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 Comments
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('activity')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${
-                  activeTab === 'activity'
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${activeTab === 'activity'
                     ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 <Activity size={12} />
-                Activity
+                Activities
               </button>
             </div>
           </div>
@@ -255,118 +253,117 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
                 </motion.div>
               ) : (
                 visibleComments.map((comment) => {
-                const isActive = activeCommentId === comment.id;
-                const isResolved = !!comment.resolvedAt;
+                  const isActive = activeCommentId === comment.id;
+                  const isResolved = !!comment.resolvedAt;
 
-                return (
-                <motion.div
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    key={comment.id}
-                    ref={(el) => { commentRefs.current[comment.id] = el; }}
-                    onClick={() => onCommentClick(comment.id)}
-                    className={`flex flex-col rounded-[32px] border transition-all duration-300 overflow-hidden cursor-pointer ${
-                        isActive 
-                        ? 'bg-card border-primary ring-4 ring-primary/5 shadow-2xl scale-[1.02]' 
-                        : 'bg-card/40 border-border/60 hover:border-primary/40'
-                    } ${isResolved ? 'opacity-50 grayscale select-none' : ''}`}
-                >
-                    <div className="p-6">
+                  return (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      key={comment.id}
+                      ref={(el) => { commentRefs.current[comment.id] = el; }}
+                      onClick={() => onCommentClick(comment.id)}
+                      className={`flex flex-col rounded-[32px] border transition-all duration-300 overflow-hidden cursor-pointer ${isActive
+                          ? 'bg-card border-primary ring-4 ring-primary/5 shadow-2xl scale-[1.02]'
+                          : 'bg-card/40 border-border/60 hover:border-primary/40'
+                        } ${isResolved ? 'opacity-50 grayscale select-none' : ''}`}
+                    >
+                      <div className="p-6">
                         <div className="flex items-start justify-between gap-4 mb-4">
-                            <div className="flex items-center gap-3">
-                                <div
-                                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-lg border-2 border-card"
-                                    style={{ backgroundColor: getUserColor(comment.author.id) }}
-                                >
-                                    {getInitials(comment.author.firstName, comment.author.lastName)}
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-display font-black text-sm text-foreground tracking-tight">
-                                        {comment.author.firstName} {comment.author.lastName}
-                                    </span>
-                                    <span className="text-[10px] font-medium text-muted-foreground opacity-60">
-                                        {formatRelativeTime(comment.createdAt)}
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <button 
-                                onClick={(e) => handleResolve(e, comment.id, isResolved)}
-                                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${isResolved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-muted/50 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-lg border-2 border-card"
+                              style={{ backgroundColor: getUserColor(comment.author.id) }}
                             >
-                                {isResolved ? <Check size={16} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
-                            </button>
-                        </div>
-                        
-                        <p className="text-sm text-foreground/80 leading-relaxed font-serif italic pl-1 text-balance">
-                            {highlightMentions(comment.body)}
-                        </p>
-                    </div>
+                              {getInitials(comment.author.firstName, comment.author.lastName)}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-display font-black text-sm text-foreground tracking-tight">
+                                {comment.author.firstName} {comment.author.lastName}
+                              </span>
+                              <span className="text-[10px] font-medium text-muted-foreground opacity-60">
+                                {formatRelativeTime(comment.createdAt)}
+                              </span>
+                            </div>
+                          </div>
 
-                    {/* Replies Area */}
-                    <AnimatePresence>
+                          <button
+                            onClick={(e) => handleResolve(e, comment.id, isResolved)}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${isResolved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-muted/50 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200'}`}
+                          >
+                            {isResolved ? <Check size={16} /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                          </button>
+                        </div>
+
+                        <p className="text-sm text-foreground/80 leading-relaxed font-serif italic pl-1 text-balance">
+                          {highlightMentions(comment.body)}
+                        </p>
+                      </div>
+
+                      {/* Replies Area */}
+                      <AnimatePresence>
                         {(comment.replies.length > 0 || isActive) && !isResolved && (
-                        <motion.div 
+                          <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             className="bg-muted/30 border-t border-border/40 pb-4"
-                        >
+                          >
                             {comment.replies.map((reply) => (
-                            <div key={reply.id} className="p-4 px-6 relative">
+                              <div key={reply.id} className="p-4 px-6 relative">
                                 <CornerDownRight className="absolute left-6 top-6 text-muted-foreground/30" size={14} />
                                 <div className="pl-6 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-6 h-6 rounded-lg flex items-center justify-center text-[8px] font-black text-white shadow-sm"
-                                                style={{ backgroundColor: getUserColor(reply.author.id) }}
-                                            >
-                                                {getInitials(reply.author.firstName, reply.author.lastName)}
-                                            </div>
-                                            <span className="text-xs font-black tracking-tight">{reply.author.firstName}</span>
-                                        </div>
-                                        <span className="text-[9px] text-muted-foreground/60">{formatRelativeTime(reply.createdAt)}</span>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className="w-6 h-6 rounded-lg flex items-center justify-center text-[8px] font-black text-white shadow-sm"
+                                        style={{ backgroundColor: getUserColor(reply.author.id) }}
+                                      >
+                                        {getInitials(reply.author.firstName, reply.author.lastName)}
+                                      </div>
+                                      <span className="text-xs font-black tracking-tight">{reply.author.firstName}</span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground/80 leading-relaxed font-serif italic">
-                                        {highlightMentions(reply.body)}
-                                    </p>
+                                    <span className="text-[9px] text-muted-foreground/60">{formatRelativeTime(reply.createdAt)}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground/80 leading-relaxed font-serif italic">
+                                    {highlightMentions(reply.body)}
+                                  </p>
                                 </div>
-                            </div>
+                              </div>
                             ))}
 
                             {isActive && (
-                                <div className="px-6 pt-2" onClick={e => e.stopPropagation()}>
-                                    <div className="flex flex-col bg-card border border-border/60 rounded-2xl p-3 focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
-                                        <textarea
-                                            value={replyText[comment.id] || ''}
-                                            onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                                            placeholder="Join the discussion..."
-                                            className="bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/40 resize-none font-serif italic mb-2 min-h-[40px] px-1"
-                                            rows={2}
-                                        />
-                                        <div className="flex justify-end">
-                                            <Button
-                                                variant="primary"
-                                                size="sm"
-                                                onClick={() => handleReplySubmit(comment.id)}
-                                                disabled={!(replyText[comment.id]?.trim() || '')}
-                                                className="h-8 rounded-xl px-4"
-                                                icon={<Send size={12} />}
-                                            >
-                                                Reply
-                                            </Button>
-                                        </div>
-                                    </div>
+                              <div className="px-6 pt-2" onClick={e => e.stopPropagation()}>
+                                <div className="flex flex-col bg-card border border-border/60 rounded-2xl p-3 focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
+                                  <textarea
+                                    value={replyText[comment.id] || ''}
+                                    onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                                    placeholder="Join the discussion..."
+                                    className="bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/40 resize-none font-serif italic mb-2 min-h-[40px] px-1"
+                                    rows={2}
+                                  />
+                                  <div className="flex justify-end">
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={() => handleReplySubmit(comment.id)}
+                                      disabled={!(replyText[comment.id]?.trim() || '')}
+                                      className="h-8 rounded-xl px-4"
+                                      icon={<Send size={12} />}
+                                    >
+                                      Reply
+                                    </Button>
+                                  </div>
                                 </div>
+                              </div>
                             )}
-                        </motion.div>
+                          </motion.div>
                         )}
-                    </AnimatePresence>
-                </motion.div>
-                );
-            })
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })
               )}
             </AnimatePresence>
           </div>

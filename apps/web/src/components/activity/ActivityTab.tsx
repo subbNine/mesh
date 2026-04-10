@@ -8,8 +8,10 @@ interface ActivityTabProps {
   taskId: string;
 }
 
+const EMPTY_ARRAY: any[] = [];
+
 export function ActivityTab({ taskId }: Readonly<ActivityTabProps>) {
-  const events = useActivityFeedStore((state) => state.taskEvents[taskId] ?? []);
+  const events = useActivityFeedStore((state) => state.taskEvents[taskId] ?? EMPTY_ARRAY);
   const hasMore = useActivityFeedStore((state) => state.taskHasMore[taskId] ?? false);
   const isLoading = useActivityFeedStore((state) => state.isLoadingTask[taskId] ?? false);
   const fetchTaskActivity = useActivityFeedStore((state) => state.fetchTaskActivity);

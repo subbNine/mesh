@@ -42,8 +42,12 @@ function formatDateLabel(value?: string | null) {
 }
 
 export function getActivityDescription(event: IActivityEvent) {
-  const actorName = `${event.actor?.firstName ?? ''} ${event.actor?.lastName ?? ''}`.trim() || 'Someone';
-  const payload = event.payload as Record<string, string | null | undefined>;
+  const actor = event.actor;
+  const actorName = actor 
+    ? `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim() || 'Someone'
+    : 'System';
+    
+  const payload = (event.payload ?? {}) as Record<string, string | null | undefined>;
   const taskTitle = payload.taskTitle ?? 'Untitled task';
   const projectName = payload.projectName ?? 'Untitled project';
 

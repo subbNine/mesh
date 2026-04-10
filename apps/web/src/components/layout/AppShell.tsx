@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectStore } from '../../store/project.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useThemeStore } from '../../store/theme.store';
-import { 
-  Folder, LogOut, ChevronRight, LayoutGrid, 
-  List, User, Moon, Sun, Monitor, Menu, X, Activity 
+import {
+  Folder, LogOut, ChevronRight, LayoutGrid,
+  List, User, Moon, Sun, Monitor, Menu, X, Activity
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
@@ -78,7 +78,7 @@ export function AppShell() {
           const { data } = await api.get(`/tasks/${id}`);
           const proj = projects.find(p => p.id === data.projectId);
           results.push({ ...data, projectName: proj?.name });
-        } catch {}
+        } catch { }
       }
       if (!cancelled) {
         setPinnedTasks(results);
@@ -174,38 +174,35 @@ export function AppShell() {
           <TaskThumbnailSidebar />
         ) : (
           <div className="space-y-4">
-             {/* Section: Workspace */}
-             <div className="space-y-1">
+            {/* Section: Workspace */}
+            <div className="space-y-1">
               {(!isCollapsed || isMobileMenuOpen) && <h4 className="px-2 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">Workspace</h4>}
               <Link
                 to={`/w/${workspaceId}`}
-                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${
-                  location.pathname === `/w/${workspaceId}` || location.pathname === `/w/${workspaceId}/projects`
-                  ? 'bg-primary/10 text-primary font-bold'
-                  : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
-                } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${location.pathname === `/w/${workspaceId}` || location.pathname === `/w/${workspaceId}/projects`
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
+                  } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
               >
                 <Folder size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
                 {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">Overview</span>}
               </Link>
               <Link
                 to={`/w/${workspaceId}/my-work`}
-                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${
-                  location.pathname === `/w/${workspaceId}/my-work`
-                  ? 'bg-primary/10 text-primary font-bold'
-                  : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
-                } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${location.pathname === `/w/${workspaceId}/my-work`
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
+                  } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
               >
                 <List size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
                 {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">My work</span>}
               </Link>
               <Link
                 to={`/w/${workspaceId}/activity`}
-                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${
-                  location.pathname === `/w/${workspaceId}/activity`
-                  ? 'bg-primary/10 text-primary font-bold'
-                  : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
-                } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${location.pathname === `/w/${workspaceId}/activity`
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
+                  } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
               >
                 <Activity size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
                 {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">Activity</span>}
@@ -222,9 +219,8 @@ export function AppShell() {
                     <Link
                       key={project.id}
                       to={`/w/${workspaceId}/p/${project.id}`}
-                      className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all group text-xs ${
-                        isActive ? 'bg-primary/5 text-foreground font-bold' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-0.5'
-                      } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
+                      className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all group text-xs ${isActive ? 'bg-primary/5 text-foreground font-bold' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-0.5'
+                        } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
                     >
                       <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-primary scale-125' : 'bg-primary/40 group-hover:bg-primary/70 group-hover:scale-110'} transition-all`} />
                       {(!isCollapsed || isMobileMenuOpen) && <span className="truncate">{project.name}</span>}
@@ -245,11 +241,10 @@ export function AppShell() {
                       <Link
                         key={task.id}
                         to={`/w/${workspaceId}/p/${task.projectId}/tasks/${task.id}/canvas`}
-                        className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all group text-xs ${
-                          isActive ? 'bg-primary/5 text-foreground font-bold' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-0.5'
-                        } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
+                        className={`flex items-center gap-2 px-2 py-1 rounded-lg transition-all group text-xs ${isActive ? 'bg-primary/5 text-foreground font-bold' : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-0.5'
+                          } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
                       >
-                         <div className={`w-1 h-1 rounded-full ${statusColor(task.status)} group-hover:scale-125 transition-transform`} />
+                        <div className={`w-1 h-1 rounded-full ${statusColor(task.status)} group-hover:scale-125 transition-transform`} />
                         {(!isCollapsed || isMobileMenuOpen) && (
                           <div className="flex flex-col min-w-0 pr-1">
                             <span className="text-xs truncate leading-tight">{task.title}</span>
@@ -270,8 +265,8 @@ export function AppShell() {
       {/* Footer / User / Theme */}
       <div className="p-2 border-t border-border/50 space-y-1">
         <div className={`flex flex-col gap-0.5 ${isCollapsed && !isMobileMenuOpen ? 'items-center' : ''}`}>
-           {/* Theme Toggle */}
-           {(!isCollapsed || isMobileMenuOpen) ? (
+          {/* Theme Toggle */}
+          {(!isCollapsed || isMobileMenuOpen) ? (
             <div className="bg-muted/50 p-0.5 rounded-lg flex gap-0.5 mb-1 border border-border/50">
               <button
                 onClick={() => setTheme('light')}
@@ -292,14 +287,14 @@ export function AppShell() {
                 <Monitor size={12} />
               </button>
             </div>
-           ) : (
+          ) : (
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all mb-1"
             >
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             </button>
-           )}
+          )}
 
           <Link
             to="/settings/profile"
@@ -322,7 +317,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden p-4 gap-4">
-      
+
       {/* Background Grid */}
       <div className="fixed inset-0 bg-dot-grid opacity-[0.08] pointer-events-none z-0" />
 
@@ -338,8 +333,8 @@ export function AppShell() {
       {/* Mobile Top Bar */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-16 bg-card/60 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-6 z-40">
         <Link to="/workspaces" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black text-sm">M</div>
-            <span className="font-display font-black text-lg tracking-tighter">Mesh</span>
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black text-sm">M</div>
+          <span className="font-display font-black text-lg tracking-tighter">Mesh</span>
         </Link>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-foreground">
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -367,11 +362,11 @@ export function AppShell() {
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ 
-              opacity: 0, 
+            exit={{
+              opacity: 0,
               y: -10,
               transition: { duration: 0.2 },
-              pointerEvents: 'none' 
+              pointerEvents: 'none'
             }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="h-full w-full"

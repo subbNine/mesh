@@ -40,9 +40,15 @@ function getEventMeta(eventType: string) {
 }
 
 export function ActivityEventRow({ event, showProject = true }: Readonly<ActivityEventRowProps>) {
-  const actorName = `${event.actor?.firstName ?? ''} ${event.actor?.lastName ?? ''}`.trim() || 'Someone';
-  const actorInitials = `${event.actor?.firstName?.[0] ?? ''}${event.actor?.lastName?.[0] ?? ''}`.toUpperCase() || 'U';
-  const payload = event.payload as Record<string, string | undefined>;
+  const actor = event.actor;
+  const actorName = actor 
+    ? `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim() || 'Someone'
+    : 'System';
+  const actorInitials = actor 
+    ? `${actor.firstName?.[0] ?? ''}${actor.lastName?.[0] ?? ''}`.toUpperCase() || 'U'
+    : 'S';
+
+  const payload = (event.payload ?? {}) as Record<string, string | undefined>;
   const eventMeta = getEventMeta(event.eventType);
   const Icon = eventMeta.icon;
 
