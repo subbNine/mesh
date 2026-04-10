@@ -2,16 +2,12 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Activity,
   ArrowRight,
   CheckCircle2,
   FileText,
   Layers,
-  LayoutGrid,
   MessageSquare,
-  MousePointer2,
   Sparkles,
-  Users,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 

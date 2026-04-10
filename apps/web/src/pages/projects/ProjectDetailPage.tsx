@@ -16,9 +16,6 @@ import {
   Filter,
   Users,
   Layout,
-  CheckCircle2,
-  Clock3,
-  CircleDot
 } from 'lucide-react';
 
 const EMPTY_PROJECT_STATS = {
