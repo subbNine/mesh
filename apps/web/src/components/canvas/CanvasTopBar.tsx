@@ -299,9 +299,12 @@ export function CanvasTopBar({
         </div>
       </div>
 
-      {/* Center Checkpoint (Presence) - Hidden on Mobile */}
-      <div className="hidden lg:flex items-center gap-5">
-         <div className="flex items-center gap-3">
+
+      {/* Right Area: Management & Control */}
+      <div className="flex items-center gap-2 justify-end min-w-0">
+
+        {/* Presence Indicator - Integrated to prevent overlap */}
+        <div className="hidden lg:flex items-center gap-3 mr-1">
             <div className="flex items-center -space-x-2">
                 {visibleAvatars.map((user, idx) => {
                     const isMe = user.userId === currentUser?.id;
@@ -336,14 +339,12 @@ export function CanvasTopBar({
             </div>
 
             <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 leading-none mb-0.5">Live Now</span>
-                <span className="text-[10px] font-serif italic text-muted-foreground/60 leading-none">{awarenessUsers.length} collaborator{awarenessUsers.length !== 1 ? 's' : ''}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 leading-none mb-0.5 whitespace-nowrap">Live Now</span>
+                <span className="text-[10px] font-serif italic text-muted-foreground/60 leading-none whitespace-nowrap">{awarenessUsers.length} online</span>
             </div>
-         </div>
-      </div>
+        </div>
 
-      {/* Right Area: Management & Control */}
-      <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+        <div className="w-px h-6 bg-border/40 mx-1 hidden lg:block" />
 
         {/* Assignee Tool */}
         <div className="relative" ref={assigneeMenuRef}>
