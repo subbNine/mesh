@@ -149,13 +149,13 @@ export function CanvasTopBar({
   const dueDate = task.dueDate ? new Date(task.dueDate) : null;
   const dueToneClass = dueDate
     ? isPast(dueDate) && !isToday(dueDate)
-      ? 'border-red-200 bg-red-50/80 text-red-700 hover:bg-red-100/80'
+      ? 'border-red-200 bg-red-50/80 text-red-700 hover:bg-red-100/80 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400'
       : isToday(dueDate)
-        ? 'border-amber-200 bg-amber-50/80 text-amber-800 hover:bg-amber-100/80'
-        : 'border-sky-200/70 bg-sky-50/80 text-sky-700 hover:bg-sky-100/80'
+        ? 'border-amber-200 bg-amber-50/80 text-amber-800 hover:bg-amber-100/80 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+        : 'border-sky-200/70 bg-sky-50/80 text-sky-700 hover:bg-sky-100/80 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300'
     : 'border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/60';
   const dueDateIconClass = dueDate
-    ? 'border-current/15 bg-white/70'
+    ? 'border-current/15 bg-white/70 dark:bg-black/20'
     : 'border-border/60 bg-background/80';
   const dueDateCaption = dueDate
     ? isPast(dueDate) && !isToday(dueDate)
@@ -191,9 +191,9 @@ export function CanvasTopBar({
     : task.completedSubtaskCount ?? 0;
   const subtaskProgressPercent = subtaskCount === 0 ? 0 : Math.round((completedSubtaskCount / subtaskCount) * 100);
   const subtaskToneClass = subtaskProgressPercent >= 100
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400'
     : subtaskProgressPercent >= 50
-      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400'
       : 'border-border/60 bg-muted/40 text-muted-foreground';
 
   return (
@@ -445,7 +445,7 @@ export function CanvasTopBar({
               <CalendarDays size={14} />
             </div>
             <div className="hidden min-w-[96px] md:block">
-              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-muted-foreground/60 leading-none">
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-current opacity-60 leading-none">
                 {dueDateCaption}
               </div>
               <div className="mt-1 whitespace-nowrap text-[10px] font-black tracking-tight leading-none">
@@ -504,7 +504,7 @@ export function CanvasTopBar({
           >
             <ListChecks size={14} />
             <div className="hidden min-w-[84px] md:block">
-              <div className="text-[8px] font-black uppercase tracking-[0.18em] leading-none">Subtasks</div>
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-current opacity-60 leading-none">Subtasks</div>
               <div className="mt-1 text-[10px] font-black leading-none">
                 {subtaskCount === 0 ? 'Add checklist' : `${completedSubtaskCount} / ${subtaskCount}`}
               </div>

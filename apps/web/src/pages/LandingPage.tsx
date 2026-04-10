@@ -35,7 +35,7 @@ export default function LandingPage() {
             </div>
             <div>
               <p className="font-display text-lg font-black tracking-tight">Mesh</p>
-              <p className="text-xs text-muted-foreground">Canvas-first project management</p>
+              <p className="text-xs text-muted-foreground">Your work, on a canvas</p>
             </div>
           </div>
 

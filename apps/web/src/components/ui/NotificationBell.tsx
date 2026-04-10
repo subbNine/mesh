@@ -119,7 +119,7 @@ export function NotificationBell() {
   };
 
   const dropdownClasses = useMemo(() => {
-    return 'absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md border border-border shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right';
+    return 'absolute right-0 mt-2 w-80 dropdown-surface backdrop-blur-xl z-[100] rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right';
   }, []);
 
   return (
@@ -139,7 +139,7 @@ export function NotificationBell() {
 
       {isOpen && (
         <div className={dropdownClasses}>
-          <div className="p-4 border-b border-border flex items-center justify-between bg-zinc-50/50">
+          <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Notifications</h3>
             {unreadCount > 0 && (
               <button 
@@ -163,12 +163,12 @@ export function NotificationBell() {
               </>
             ) : notifications.length === 0 ? (
               <div className="p-10 text-center flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-full bg-zinc-50 flex items-center justify-center shadow-inner">
-                  <CheckCircle2 className="w-7 h-7 text-zinc-200" />
+                <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center shadow-inner">
+                  <CheckCircle2 className="w-7 h-7 text-muted-foreground/30" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-zinc-900">You're all caught up!</p>
-                  <p className="text-[12px] text-zinc-400">No new notifications at the moment.</p>
+                  <p className="text-sm font-semibold text-foreground">You're all caught up!</p>
+                  <p className="text-[12px] text-muted-foreground">No new notifications at the moment.</p>
                 </div>
               </div>
             ) : (
@@ -176,20 +176,20 @@ export function NotificationBell() {
                 <button
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`w-full p-4 flex gap-3 text-left hover:bg-zinc-50 transition-all relative border-b border-border/50 last:border-0 group ${
-                    n.readAt ? '' : 'bg-primary/[0.02]'
+                  className={`w-full p-4 flex gap-3 text-left hover:bg-muted/50 transition-all relative border-b border-border/50 last:border-0 group ${
+                    n.readAt ? '' : 'bg-primary/[0.04]'
                   }`}
                 >
                   <div className="flex-shrink-0 mt-1">
-                    <div className="w-9 h-9 rounded-xl bg-white border border-border flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                    <div className="w-9 h-9 rounded-xl bg-background border border-border flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                       {getIcon(n.type)}
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-zinc-700">
+                    <div className="text-foreground/90">
                       {renderNotificationMessage(n)}
                     </div>
-                    <p className="text-[11px] text-zinc-400 mt-1 font-medium italic">
+                    <p className="text-[11px] text-muted-foreground mt-1 font-medium italic">
                       {formatRelativeTime(n.createdAt)}
                     </p>
                   </div>
@@ -202,10 +202,10 @@ export function NotificationBell() {
           </div>
 
           {notifications.length > 0 && (
-            <div className="p-3 border-t border-border bg-zinc-50/30 text-center">
+            <div className="p-3 border-t border-border bg-muted/20 text-center">
               <button 
                 onClick={() => setIsOpen(false)}
-                className="text-[11px] font-bold text-zinc-400 hover:text-zinc-600 transition-colors uppercase tracking-widest"
+                className="text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
               >
                 Dismiss
               </button>
