@@ -202,11 +202,11 @@ export default function ProjectDetailPage() {
       {/* Background Decor */}
       <div className="absolute inset-0 bg-dot-grid opacity-[0.08] pointer-events-none" />
 
-      {/* Top Header */}
-      <header className="px-3 py-3 sm:px-6 sm:py-4 border-b border-border/40 relative z-20 bg-background/60 backdrop-blur-3xl">
-        <div className="max-w-screen-2xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-3 md:gap-6">
+      {/* Compact Top Header */}
+      <header className="px-3 py-2 sm:px-6 sm:py-3 border-b border-border/40 relative z-20 bg-background/60 backdrop-blur-3xl">
+        <div className="max-w-screen-2xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
-          <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
             {isEditingDetails ? (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -236,95 +236,82 @@ export default function ProjectDetailPage() {
                 </div>
               </motion.div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-primary">
-                   <Layout size={10} fill="currentColor" /> Project Blueprint
+                  <Layout size={10} fill="currentColor" /> Project Blueprint
                 </div>
-                <div className="flex items-start gap-2 group">
-                <button
+                <div className="flex items-center gap-3 group">
+                  <button
                     type="button"
                     onClick={() => isProjAdmin && setIsEditingDetails(true)}
-                    className={`text-left text-xl sm:text-3xl md:text-4xl font-display font-black text-foreground tracking-[calc(-0.02em)] leading-tight ${isProjAdmin ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
-                >
+                    className={`text-left text-xl sm:text-2xl font-display font-black text-foreground tracking-tight leading-none ${isProjAdmin ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+                  >
                     {currentProject.name}
-                </button>
-                <Button
+                  </button>
+                  {hasProjectProgress && (
+                    <div className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-primary border border-primary/20">
+                      {projectStats.progressPercent}% DONE
+                    </div>
+                  )}
+                  <Button
                     variant="tertiary"
                     size="sm"
-                    className="p-1 opacity-0 group-hover:opacity-100 rounded-lg transition-all mt-0.5"
+                    className="p-1 opacity-0 group-hover:opacity-100 rounded-lg transition-all"
                     onClick={() => navigate(`/w/${workspaceId}/p/${projectId}/settings`)}
                     title="Blueprint Settings"
-                >
+                  >
                     <Settings size={14} />
-                </Button>
-            </div>
-            <p className="max-w-2xl text-xs sm:text-base text-muted-foreground font-serif italic leading-relaxed opacity-80 decoration-primary/20 decoration-2 underline-offset-4 line-clamp-2 md:line-clamp-none">
-                {currentProject.description || 'Define the architectural vision for this project...'}
-            </p>
+                  </Button>
+                </div>
 
-            <div className="rounded-2xl border border-border/60 bg-card/70 p-3 sm:p-4 shadow-sm">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Project progress</div>
-                    <div className="mt-1 text-sm font-black text-foreground">
-                      {hasProjectProgress ? `${projectStats.progressPercent}% complete` : 'No tasks yet'}
-                    </div>
-                  </div>
+                {/* Compact Horizontal Stats Dashboard */}
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <p className="text-[11px] text-muted-foreground font-serif italic max-w-sm truncate opacity-70">
+                    {currentProject.description || 'Define the architectural vision for this project...'}
+                  </p>
+
                   {hasProjectProgress && (
-                    <div className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
-                      {projectStats.done} / {projectStats.total} done
+                    <div className="flex items-center gap-4 border-l border-border/40 pl-6 h-4">
+                      <div className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                        <span className="font-black uppercase tracking-widest text-foreground">{projectStats.done}</span>
+                        <span className="font-medium text-muted-foreground/60">Done</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
+                        <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)]" />
+                        <span className="font-black uppercase tracking-widest text-foreground">{projectStats.inProgress}</span>
+                        <span className="font-medium text-muted-foreground/60">Active</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                        <span className="font-black uppercase tracking-widest text-foreground">{projectStats.review}</span>
+                        <span className="font-medium text-muted-foreground/60">Review</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
+                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                        <span className="font-black uppercase tracking-widest text-foreground">{projectStats.todo}</span>
+                        <span className="font-medium text-muted-foreground/60">Queued</span>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {hasProjectProgress ? (
-                  <>
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-[11px] text-emerald-800">
-                        <div className="flex items-center gap-1.5 font-black uppercase tracking-[0.16em]"><CheckCircle2 size={12} /> Done</div>
-                        <div className="mt-1 font-semibold">{projectStats.done} tasks done</div>
-                      </div>
-                      <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-3 py-2 text-[11px] text-sky-800">
-                        <div className="flex items-center gap-1.5 font-black uppercase tracking-[0.16em]"><Clock3 size={12} /> In progress</div>
-                        <div className="mt-1 font-semibold">{projectStats.inProgress} active now</div>
-                      </div>
-                      <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
-                        <div className="flex items-center gap-1.5 font-black uppercase tracking-[0.16em]"><CircleDot size={12} /> Review</div>
-                        <div className="mt-1 font-semibold">{projectStats.review} awaiting sign-off</div>
-                      </div>
-                      <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-700">
-                        <div className="font-black uppercase tracking-[0.16em]">To do</div>
-                        <div className="mt-1 font-semibold">{projectStats.todo} still queued</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
-                        <span>{projectStats.done} tasks done · {projectStats.inProgress} in progress · {projectStats.todo} todo · {projectStats.review} in review</span>
-                        <span>{projectStats.total} total</span>
-                      </div>
-                      <ProgressBar
-                        value={projectStats.progressPercent}
-                        segmented
-                        segments={{
-                          done: projectStats.done,
-                          inProgress: projectStats.inProgress,
-                          review: projectStats.review,
-                          todo: projectStats.todo,
-                        }}
-                        className="h-3"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-border/60 bg-background/70 px-3 py-3 text-sm text-muted-foreground">
-                    Create the first task to start tracking delivery progress for this project.
+                {hasProjectProgress && (
+                  <div className="max-w-md mt-1">
+                    <ProgressBar
+                      value={projectStats.progressPercent}
+                      segmented
+                      segments={{
+                        done: projectStats.done,
+                        inProgress: projectStats.inProgress,
+                        review: projectStats.review,
+                        todo: projectStats.todo,
+                      }}
+                      className="h-1"
+                    />
                   </div>
                 )}
               </div>
-            </div>
-          </div>
             )}
           </div>
 
