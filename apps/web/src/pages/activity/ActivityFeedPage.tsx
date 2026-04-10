@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { addDays, endOfDay, endOfMonth, startOfDay, startOfMonth } from 'date-fns';
 import { ActivityEventRow } from '../../components/activity/ActivityEventRow';
-import { Button } from '../../components/ui/Button';
 import { DateField } from '../../components/ui/DateField';
 import { useActivityFeedStore } from '../../store/activityFeed.store';
 import { useProjectStore } from '../../store/project.store';
@@ -54,6 +53,7 @@ export default function ActivityFeedPage() {
   const [page, setPage] = useState(1);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [actorMenuOpen, setActorMenuOpen] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (activeWorkspaceId && projects.length === 0) {
@@ -155,7 +155,11 @@ export default function ActivityFeedPage() {
     });
   };
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || isLoading) {
+      return;
+    }
+
     const nextPage = page + 1;
     setPage(nextPage);
     await fetchWorkspaceActivity(
@@ -171,7 +175,30 @@ export default function ActivityFeedPage() {
       },
       true,
     );
-  };
+  }, [activeWorkspaceId, dateFilter.from, dateFilter.to, eventTypes, fetchWorkspaceActivity, hasMore, isLoading, page, selectedActorIds, selectedProjectIds]);
+
+  useEffect(() => {
+    if (!hasMore || isLoading) {
+      return;
+    }
+
+    const node = loadMoreRef.current;
+    if (!node) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void handleLoadMore();
+        }
+      },
+      { rootMargin: '220px 0px' },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [handleLoadMore, hasMore, isLoading]);
 
   const projectFilterLabel = selectedProjectIds.length === 0 ? 'All projects' : `${selectedProjectIds.length} selected`;
   const actorFilterLabel = selectedActorIds.length === 0 ? 'All members' : `${selectedActorIds.length} selected`;
@@ -209,11 +236,11 @@ export default function ActivityFeedPage() {
           <ActivityEventRow key={event.id} event={event} />
         ))}
 
-        {hasMore && (
-          <div className="pt-2">
-            <Button size="md" variant="outline" onClick={() => { handleLoadMore().catch(console.error); }} loading={isLoading}>
-              Load more
-            </Button>
+        {(hasMore || isLoading) && (
+          <div ref={loadMoreRef} className="flex justify-center pt-2">
+            <div className="rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+              {isLoading ? 'Loading more activity…' : 'Scroll for more'}
+            </div>
           </div>
         )}
       </div>

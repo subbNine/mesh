@@ -74,29 +74,47 @@ export class CommentsService {
     return { ...fetched, replies: [] };
   }
 
-  async findAll(taskId: string, userId: string): Promise<any[]> {
+  async findAll(taskId: string, userId: string, page?: number | string, limit?: number | string) {
     await this.tasksService.findOne(taskId, userId); // Verifies access
 
-    const comments = await this.commentRepo.createQueryBuilder('comment')
+    const pagination = this.normalizePagination(page, limit);
+
+    const [comments, total] = await this.commentRepo.createQueryBuilder('comment')
       .leftJoinAndSelect('comment.author', 'author')
       .where('comment.taskId = :taskId', { taskId })
-      .orderBy('comment.createdAt', 'ASC')
-      .getMany();
+      .orderBy('comment.createdAt', 'DESC')
+      .skip((pagination.page - 1) * pagination.limit)
+      .take(pagination.limit)
+      .getManyAndCount();
 
-    if (comments.length === 0) return [];
+    if (comments.length === 0) {
+      return {
+        comments: [],
+        total,
+        hasMore: pagination.page * pagination.limit < total,
+        page: pagination.page,
+        limit: pagination.limit,
+      };
+    }
 
-    const commentIds = comments.map(c => c.id);
+    const commentIds = comments.map((comment) => comment.id);
     const replies = await this.replyRepo.createQueryBuilder('reply')
       .leftJoinAndSelect('reply.author', 'author')
       .where('reply.commentId IN (:...commentIds)', { commentIds })
       .orderBy('reply.createdAt', 'ASC')
       .getMany();
 
-    return comments.map(c => ({
-      ...c,
-      author: c.author,
-      replies: replies.filter(r => r.commentId === c.id),
-    }));
+    return {
+      comments: comments.map((comment) => ({
+        ...comment,
+        author: comment.author,
+        replies: replies.filter((reply) => reply.commentId === comment.id),
+      })),
+      total,
+      hasMore: pagination.page * pagination.limit < total,
+      page: pagination.page,
+      limit: pagination.limit,
+    };
   }
 
   async createReply(commentId: string, userId: string, dto: CreateReplyDto): Promise<any> {
@@ -180,5 +198,15 @@ export class CommentsService {
     }
 
     await this.commentRepo.remove(comment);
+  }
+
+  private normalizePagination(page?: number | string, limit?: number | string) {
+    const parsedPage = Number.parseInt(String(page ?? '1'), 10);
+    const parsedLimit = Number.parseInt(String(limit ?? '20'), 10);
+
+    return {
+      page: Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage,
+      limit: Number.isNaN(parsedLimit) || parsedLimit < 1 ? 20 : Math.min(parsedLimit, 100),
+    };
   }
 }

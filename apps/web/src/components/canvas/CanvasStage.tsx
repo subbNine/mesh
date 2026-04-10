@@ -364,6 +364,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const stageRef = useRef<any>(null);
   const layerRef = useRef<any>(null);
   const trRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const dragUpdateTimeoutRef = useRef<number | null>(null);
 
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -375,6 +376,10 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const [stageProps, setStageProps] = useState({ scale: 1, x: 0, y: 0 });
   const [drawingPoints, setDrawingPoints] = useState<number[] | null>(null);
   const [dragPreviewById, setDragPreviewById] = useState<Record<string, { x: number; y: number }>>({});
+  const [stageSize, setStageSize] = useState({
+    width: globalThis.innerWidth,
+    height: globalThis.innerHeight,
+  });
 
   const selectedElement = useMemo(
     () => elements.find((element) => element.id === selectedId) ?? null,
@@ -390,6 +395,44 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   useEffect(() => {
     setStageProps(prev => ({ ...prev, scale: globalZoom }));
   }, [globalZoom]);
+
+  useEffect(() => {
+    const updateStageSize = () => {
+      const node = containerRef.current;
+      if (!node) {
+        return;
+      }
+
+      const nextWidth = Math.max(Math.round(node.clientWidth), 1);
+      const nextHeight = Math.max(Math.round(node.clientHeight), 1);
+
+      setStageSize((current) => {
+        if (current.width === nextWidth && current.height === nextHeight) {
+          return current;
+        }
+
+        return { width: nextWidth, height: nextHeight };
+      });
+    };
+
+    updateStageSize();
+
+    const node = containerRef.current;
+    const observer = typeof ResizeObserver !== 'undefined' && node
+      ? new ResizeObserver(() => updateStageSize())
+      : null;
+
+    if (node && observer) {
+      observer.observe(node);
+    }
+
+    globalThis.addEventListener('resize', updateStageSize);
+
+    return () => {
+      observer?.disconnect();
+      globalThis.removeEventListener('resize', updateStageSize);
+    };
+  }, []);
 
   // Cleanup drag timeout on unmount
   useEffect(() => {
@@ -430,8 +473,8 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
       const padding = 100;
       const width = (maxX - minX) + padding * 2;
       const height = (maxY - minY) + padding * 2;
-      const sw = globalThis.innerWidth;
-      const sh = globalThis.innerHeight;
+      const sw = stageSize.width;
+      const sh = stageSize.height;
       const scale = Math.min(Math.max(Math.min(sw / width, sh / height), 0.2), 2);
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
@@ -1060,14 +1103,16 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   }, [elements, dragPreviewById]);
 
   return (
-    <div className={`w-full h-full relative overflow-hidden ${containerCursor}`}
+    <div
+      ref={containerRef}
+      className={`relative h-full w-full overflow-hidden ${containerCursor}`}
       style={{
         backgroundImage: 'radial-gradient(#828282 1px, transparent 1px)',
         backgroundSize: '20px 20px', backgroundPosition: `${stageProps.x}px ${stageProps.y}px`
       }}
     >
       <Stage
-        width={globalThis.innerWidth} height={globalThis.innerHeight}
+        width={stageSize.width} height={stageSize.height}
         scaleX={stageProps.scale} scaleY={stageProps.scale}
         x={stageProps.x} y={stageProps.y}
         draggable={activeTool === 'select'}

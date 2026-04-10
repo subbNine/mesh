@@ -40,6 +40,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   currentUser,
   activeTool,
   onToolChange,
+  onToggleComments,
+  showComments,
   zoomLevel,
   onZoomIn,
   onZoomOut,
@@ -118,7 +120,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         const map = elements.toArray().find((m) => m.get('id') === loadingId);
         if (map) {
           map.set('content', url);
-          map.set('opacity', 1.0);
+          map.set('opacity', 1);
         }
       });
       
@@ -147,12 +149,12 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   ];
 
   return (
-    <div className="select-none flex flex-col items-center gap-2">
+    <div className="select-none flex w-full flex-col items-center gap-2">
       {activeTool === 'pencil' && (
         <motion.div
           initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="glass rounded-2xl px-3 py-2 flex items-center gap-2 backdrop-blur-3xl border border-border/60 shadow-xl shadow-primary/5"
+          className="glass flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-border/60 px-3 py-2 shadow-xl shadow-primary/5 backdrop-blur-3xl no-scrollbar"
         >
           <div className="flex items-center gap-1 pr-1 text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">
             <Droplets size={11} /> Ink
@@ -186,7 +188,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
       <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="glass rounded-2xl sm:p-1.5 p-1 flex items-center gap-1.5 backdrop-blur-3xl border border-border/60 shadow-xl shadow-primary/5 sm:scale-100 scale-90"
+        className="glass flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/60 p-1 shadow-xl shadow-primary/5 backdrop-blur-3xl no-scrollbar sm:gap-1.5 sm:p-1.5 sm:scale-100 scale-[0.86]"
       >
         {/* Tools Section */}
         <div className="flex items-center gap-1">
@@ -269,6 +271,21 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
           >
             <Maximize size={14} />
           </button>
+
+          {onToggleComments && (
+            <>
+              <div className="w-px h-3 bg-border/20 mx-0.5" />
+              <button
+                onClick={onToggleComments}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${showComments
+                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                  : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/50'}`}
+                title={showComments ? 'Hide discussion' : 'Show discussion'}
+              >
+                <MessageSquare size={14} />
+              </button>
+            </>
+          )}
         </div>
       </motion.div>
 

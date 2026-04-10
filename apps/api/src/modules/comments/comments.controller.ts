@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateReplyDto } from './dto/create-reply.dto';
@@ -10,8 +10,13 @@ export class CommentsController {
   constructor(private readonly commentsService: CommentsService) { }
 
   @Get('tasks/:taskId/comments')
-  findAll(@Param('taskId') taskId: string, @Request() req: any) {
-    return this.commentsService.findAll(taskId, req.user.id);
+  findAll(
+    @Param('taskId') taskId: string,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+    @Request() req: any,
+  ) {
+    return this.commentsService.findAll(taskId, req.user.id, page, limit);
   }
 
   @Post('comments')

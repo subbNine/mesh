@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Button } from '../ui/Button';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityEventRow } from './ActivityEventRow';
 import { useActivityFeedStore } from '../../store/activityFeed.store';
 import { Activity, Inbox } from 'lucide-react';
@@ -17,17 +16,45 @@ export function ActivityTab({ taskId }: Readonly<ActivityTabProps>) {
   const fetchTaskActivity = useActivityFeedStore((state) => state.fetchTaskActivity);
 
   const [page, setPage] = useState(1);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setPage(1);
     void fetchTaskActivity(taskId, { page: 1, limit: 25 }, false);
   }, [taskId, fetchTaskActivity]);
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || isLoading) {
+      return;
+    }
+
     const nextPage = page + 1;
     setPage(nextPage);
     await fetchTaskActivity(taskId, { page: nextPage, limit: 25 }, true);
-  };
+  }, [fetchTaskActivity, hasMore, isLoading, page, taskId]);
+
+  useEffect(() => {
+    if (!hasMore || isLoading) {
+      return;
+    }
+
+    const node = loadMoreRef.current;
+    if (!node) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void handleLoadMore();
+        }
+      },
+      { rootMargin: '160px 0px' },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [handleLoadMore, hasMore, isLoading]);
 
   if (isLoading && events.length === 0) {
     return (
@@ -64,11 +91,11 @@ export function ActivityTab({ taskId }: Readonly<ActivityTabProps>) {
         <ActivityEventRow key={event.id} event={event} showProject={false} />
       ))}
 
-      {hasMore && (
-        <div className="pt-2">
-          <Button size="sm" variant="outline" onClick={() => void handleLoadMore()} loading={isLoading}>
-            Load more
-          </Button>
+      {(hasMore || isLoading) && (
+        <div ref={loadMoreRef} className="flex justify-center pt-2">
+          <div className="rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+            {isLoading ? 'Loading more activity…' : 'Scroll for more'}
+          </div>
         </div>
       )}
     </div>

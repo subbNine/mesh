@@ -197,10 +197,9 @@ export function CanvasTopBar({
       : 'border-border/60 bg-muted/40 text-muted-foreground';
 
   return (
-    <div className="h-14 px-4 flex items-center justify-between border-b border-border/40 bg-card/60 backdrop-blur-3xl shadow-sm relative z-30">
-
+    <div className="relative z-30 flex min-h-14 items-center justify-between gap-2 overflow-hidden rounded-[20px] border border-border/40 bg-card/70 px-2.5 shadow-sm backdrop-blur-3xl sm:rounded-none sm:border-x-0 sm:border-t-0 sm:px-4">
       {/* Left Area: Context & Hierarchy */}
-      <div className="flex items-center gap-4 flex-1 min-w-0">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
         <button
           onClick={() => navigate(-1)}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all border border-transparent hover:border-border/40"
@@ -301,7 +300,7 @@ export function CanvasTopBar({
 
 
       {/* Right Area: Management & Control */}
-      <div className="flex items-center gap-2 justify-end min-w-0">
+      <div className="flex min-w-0 items-center justify-end gap-1 overflow-x-auto pl-2 no-scrollbar sm:gap-2">
 
         {/* Presence Indicator - Integrated to prevent overlap */}
         <div className="hidden lg:flex items-center gap-3 mr-1">
@@ -548,7 +547,9 @@ export function CanvasTopBar({
           <MessageSquare size={16} />
         </button>
 
-        <NotificationBell />
+        <div className="hidden shrink-0 sm:block">
+          <NotificationBell />
+        </div>
 
         <div className="relative" ref={overflowMenuRef}>
           <button

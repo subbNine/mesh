@@ -66,10 +66,10 @@ export default function TaskCanvasPage() {
   } = useCanvasStore();
 
   useEffect(() => {
-    if (globalThis.innerWidth < 1400 && isCommentPaneOpen) {
+    if (globalThis.innerWidth < 1024 && isCommentPaneOpen) {
       setCommentPaneOpen(false);
     }
-  }, []);
+  }, [isCommentPaneOpen, setCommentPaneOpen]);
 
   useEffect(() => {
     if (currentUser) {
@@ -103,14 +103,35 @@ export default function TaskCanvasPage() {
 
   const loadCommentsFromBackend = useCallback(async (doc: Y.Doc) => {
     try {
-      const { data } = await api.get(`/tasks/${taskId}/comments`);
-      if (data && Array.isArray(data)) {
+      const collectedComments: any[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data } = await api.get(`/tasks/${taskId}/comments`, {
+          params: {
+            page,
+            limit: 100,
+          },
+        });
+
+        const commentsPage = Array.isArray(data) ? data : (data.comments ?? []);
+        collectedComments.push(...commentsPage);
+        hasMore = Array.isArray(data) ? false : Boolean(data.hasMore);
+        page += 1;
+
+        if (Array.isArray(data)) {
+          break;
+        }
+      }
+
+      if (collectedComments.length > 0) {
         doc.transact(() => {
           const commentsArr = doc.getArray<Y.Map<any>>('comments');
           if (commentsArr.length === 0) {
-            for (const c of data) {
+            for (const comment of collectedComments) {
               const cm = new Y.Map();
-              for (const [k, v] of Object.entries(c)) {
+              for (const [k, v] of Object.entries(comment)) {
                 cm.set(k, v);
               }
               commentsArr.push([cm]);
@@ -249,22 +270,21 @@ export default function TaskCanvasPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden relative bg-background">
-      
+    <div className="relative flex min-h-[100dvh] w-full flex-col overflow-hidden bg-background pb-[env(safe-area-inset-bottom)]">
       {/* Background Decor */}
       <div className="absolute inset-0 bg-grid opacity-[0.05] pointer-events-none z-0" />
       <div className="absolute inset-0 bg-dot-grid opacity-[0.1] pointer-events-none z-0" />
 
       {!isSynced && <div className="slim-progress-bar" />}
-      
+
       {/* Precision Top Bar */}
-      <div className="relative z-30">
+      <div className="relative z-30 px-2 pt-2 sm:px-0 sm:pt-0">
         <CanvasTopBar
-            task={task}
-            awarenessUsers={awarenessUsers}
-            onTaskUpdate={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
-            isScratchpadOpen={isScratchpadOpen}
-            onToggleScratchpad={() => setScratchpadOpen(!isScratchpadOpen)}
+          task={task}
+          awarenessUsers={awarenessUsers}
+          onTaskUpdate={(updates) => setTask((prev) => prev ? { ...prev, ...updates } : prev)}
+          isScratchpadOpen={isScratchpadOpen}
+          onToggleScratchpad={() => setScratchpadOpen(!isScratchpadOpen)}
         />
       </div>
 
@@ -273,9 +293,8 @@ export default function TaskCanvasPage() {
         onClose={() => setScratchpadOpen(false)}
       />
 
-      <div className="flex-1 relative flex overflow-hidden z-10">
-        {/* Main Workspace Stage */}
-        <div className="flex-1 relative overflow-hidden">
+      <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
           <CanvasStage
             ref={canvasRef}
             taskId={taskId!}
@@ -289,44 +308,42 @@ export default function TaskCanvasPage() {
             showComments={isCommentPaneOpen}
           />
 
-          {/* Floating Tool Dock */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
-             <CanvasToolbar
-                taskId={taskId!}
-                ydoc={ydoc}
-                currentUser={currentUser}
-                activeTool={activeTool}
-                onToolChange={setActiveTool as any}
-                onToggleComments={toggleCommentPane}
-                showComments={isCommentPaneOpen}
-                zoomLevel={zoom}
-                onZoomIn={() => setZoom(Math.min(zoom * 1.25, 3))}
-                onZoomOut={() => setZoom(Math.max(zoom / 1.25, 0.2))}
-                onZoomReset={() => setZoom(1)}
-                onFitToView={() => canvasRef.current?.fitToView()}
+          <div className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-40 w-[min(calc(100%-1rem),720px)] -translate-x-1/2 sm:bottom-8">
+            <CanvasToolbar
+              taskId={taskId!}
+              ydoc={ydoc}
+              currentUser={currentUser}
+              activeTool={activeTool}
+              onToolChange={setActiveTool as any}
+              onToggleComments={toggleCommentPane}
+              showComments={isCommentPaneOpen}
+              zoomLevel={zoom}
+              onZoomIn={() => setZoom(Math.min(zoom * 1.25, 3))}
+              onZoomOut={() => setZoom(Math.max(zoom / 1.25, 0.2))}
+              onZoomReset={() => setZoom(1)}
+              onFitToView={() => canvasRef.current?.fitToView()}
             />
           </div>
         </div>
 
-        {/* Floating Discussion Pane */}
         <AnimatePresence>
-            {isCommentPaneOpen && (
-                <motion.div
-                    initial={{ x: 320, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: 320, opacity: 0 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="w-[calc(100%-32px)] md:w-[340px] flex-shrink-0 bg-card/60 backdrop-blur-3xl border-l border-border/40 relative z-20 flex flex-col m-4 rounded-[32px] shadow-2xl overflow-hidden shadow-primary/5"
-                >
-                    <CommentPane 
-                        taskId={taskId!} 
-                        ydoc={ydoc} 
-                        currentUser={currentUser} 
-                        activeCommentId={activeCommentId} 
-                        onCommentClick={(id) => setActiveComment(id)}
-                    />
-                </motion.div>
-            )}
+          {isCommentPaneOpen && (
+            <motion.div
+              initial={{ x: 320, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 320, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-x-2 bottom-2 top-2 z-20 flex flex-col overflow-hidden rounded-[28px] border border-border/40 bg-card/80 shadow-2xl shadow-primary/5 backdrop-blur-3xl md:bottom-4 md:right-4 md:top-4 md:left-auto md:w-[340px] md:rounded-[32px]"
+            >
+              <CommentPane
+                taskId={taskId!}
+                ydoc={ydoc}
+                currentUser={currentUser}
+                activeCommentId={activeCommentId}
+                onCommentClick={(id) => setActiveComment(id)}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     </div>
