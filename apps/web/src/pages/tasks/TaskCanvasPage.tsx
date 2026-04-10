@@ -270,7 +270,7 @@ export default function TaskCanvasPage() {
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] w-full flex-col overflow-hidden bg-background pb-[env(safe-area-inset-bottom)]">
+    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden overscroll-none bg-background pb-[env(safe-area-inset-bottom)]">
       {/* Background Decor */}
       <div className="absolute inset-0 bg-grid opacity-[0.05] pointer-events-none z-0" />
       <div className="absolute inset-0 bg-dot-grid opacity-[0.1] pointer-events-none z-0" />

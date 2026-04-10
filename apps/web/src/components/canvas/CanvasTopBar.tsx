@@ -197,7 +197,7 @@ export function CanvasTopBar({
       : 'border-border/60 bg-muted/40 text-muted-foreground';
 
   return (
-    <div className="relative z-30 flex min-h-14 items-center justify-between gap-2 overflow-hidden rounded-[20px] border border-border/40 bg-card/70 px-2.5 shadow-sm backdrop-blur-3xl sm:rounded-none sm:border-x-0 sm:border-t-0 sm:px-4">
+    <div className="relative z-30 flex min-h-14 flex-wrap items-center justify-between gap-2 overflow-visible rounded-[20px] border border-border/40 bg-card/70 px-2.5 shadow-sm backdrop-blur-3xl sm:rounded-none sm:border-x-0 sm:border-t-0 sm:px-4">
       {/* Left Area: Context & Hierarchy */}
       <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
         <button
@@ -300,7 +300,7 @@ export function CanvasTopBar({
 
 
       {/* Right Area: Management & Control */}
-      <div className="flex min-w-0 items-center justify-end gap-1 overflow-x-auto pl-2 no-scrollbar sm:gap-2">
+      <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1 pl-2 sm:w-auto sm:flex-nowrap sm:gap-2">
 
         {/* Presence Indicator - Integrated to prevent overlap */}
         <div className="hidden lg:flex items-center gap-3 mr-1">

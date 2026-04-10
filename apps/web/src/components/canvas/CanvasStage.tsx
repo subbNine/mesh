@@ -1105,10 +1105,13 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full overflow-hidden ${containerCursor}`}
+      className={`relative h-full w-full overflow-hidden overscroll-none ${containerCursor}`}
       style={{
         backgroundImage: 'radial-gradient(#828282 1px, transparent 1px)',
-        backgroundSize: '20px 20px', backgroundPosition: `${stageProps.x}px ${stageProps.y}px`
+        backgroundSize: '20px 20px',
+        backgroundPosition: `${stageProps.x}px ${stageProps.y}px`,
+        overscrollBehavior: 'none',
+        touchAction: activeTool === 'text' || Boolean(editingId) ? 'auto' : 'none',
       }}
     >
       <Stage

@@ -358,7 +358,13 @@ export function AppShell() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-background/50 relative z-10 glass rounded-3xl sm:p-4 p-2 pt-14 md:pt-4">
+      <main
+        className={`relative z-10 flex-1 bg-background/50 glass ${
+          isCanvasRoute
+            ? 'overflow-hidden rounded-3xl p-0 pt-14 md:pt-0'
+            : 'overflow-auto rounded-3xl p-2 pt-14 sm:p-4 md:pt-4'
+        }`}
+      >
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={location.pathname}
@@ -371,7 +377,7 @@ export function AppShell() {
               pointerEvents: 'none'
             }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full w-full"
+            className={`h-full w-full ${isCanvasRoute ? 'overflow-hidden' : ''}`}
           >
             <Outlet />
           </motion.div>
