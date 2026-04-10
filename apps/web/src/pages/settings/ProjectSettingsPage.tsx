@@ -97,7 +97,7 @@ export default function ProjectSettingsPage() {
       setIsSavingContent(true);
       await updateProject(projectId!, { name: editName.trim(), description: editDesc.trim() || undefined });
     } catch (err: any) {
-      setError('System rejection: Configuration sync failed.');
+      setError('Failed to save changes.');
     } finally {
       setIsSavingContent(false);
     }
@@ -132,7 +132,7 @@ export default function ProjectSettingsPage() {
       setExcludeUserId('');
       setIsExcludeModalOpen(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to configure explicit exclusion');
+      setError(err.response?.data?.message || 'Failed to restrict user access');
     } finally {
       setIsExcluding(false);
     }
@@ -166,8 +166,8 @@ export default function ProjectSettingsPage() {
 
   const sidebarItems = [
     { id: 'general', label: 'General', icon: Settings },
-    { id: 'members', label: 'Team & Access', icon: Users },
-    { id: 'exclusions', label: 'Exclusions', icon: UserX },
+    { id: 'members', label: 'Team', icon: Users },
+    { id: 'exclusions', label: 'Access Restrictions', icon: UserX },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle, danger: true },
   ];
 
@@ -209,7 +209,7 @@ export default function ProjectSettingsPage() {
         {/* Navigation Sidebar - Refined Design */}
         <aside className="w-72 flex-shrink-0 space-y-8">
           <section>
-            <h2 className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.3em] px-4 mb-6">Configuration Stack</h2>
+            <h2 className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.3em] px-4 mb-6">Project Settings</h2>
             <div className="space-y-2">
               {sidebarItems.map((item) => (
                 <button
@@ -240,7 +240,7 @@ export default function ProjectSettingsPage() {
                 <div className="w-8 h-8 rounded-xl bg-background border border-border/60 flex items-center justify-center text-primary">
                    <History size={16} />
                 </div>
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-foreground">Sync Stats</h4>
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-foreground">Project Status</h4>
              </div>
              <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
                 Project last synchronized at 12:40 PM UTC.
@@ -282,8 +282,8 @@ export default function ProjectSettingsPage() {
               <div className="space-y-12">
                 <section>
                   <div className="mb-10">
-                    <h2 className="text-3xl font-black tracking-tight text-foreground">General Protocol</h2>
-                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60">Project metadata and descriptive identity for this project canvas.</p>
+                    <h2 className="text-3xl font-black tracking-tight text-foreground">General</h2>
+                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60">Basic information about your project.</p>
                   </div>
 
                   <Card className="glass border-border/40 rounded-[48px] overflow-hidden shadow-2xl relative">
@@ -329,7 +329,7 @@ export default function ProjectSettingsPage() {
                   </Card>
                 </section>
 
-                {/* Identity Metadata Section - Redesigned as architectural stamp */}
+                {/* Identity Metadata Section - Redesigned stamp */}
                 <section className="p-10 rounded-[40px] bg-muted/10 border border-dashed border-border/60 flex items-center justify-between relative overflow-hidden group">
                   <div className="absolute right-0 top-0 opacity-[0.03] pointer-events-none -mr-8 -mt-8 grayscale select-none">
                     <Fingerprint size={160} />
@@ -339,12 +339,12 @@ export default function ProjectSettingsPage() {
                       <Layout size={28} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em] mb-1">Project Identity</h3>
+                      <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em] mb-1">Project Record</h3>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono opacity-60">Created {new Date(currentProject.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="text-right relative z-10">
-                    <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-2 px-1">Registry Sequence</div>
+                    <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-2 px-1">Project ID</div>
                     <code className="text-[11px] font-mono text-primary bg-primary/5 px-4 py-2 rounded-xl border border-primary/20 shadow-sm">{currentProject.id}</code>
                   </div>
                 </section>
@@ -355,8 +355,8 @@ export default function ProjectSettingsPage() {
               <div className="space-y-10">
                 <div className="flex justify-between items-end">
                   <div>
-                    <h2 className="text-3xl font-black tracking-tight text-foreground">Team Hierarchy</h2>
-                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60 font-medium leading-relaxed max-w-lg">Manage explicit access controls. Global workspace members maintain baseline collaborative rights by default.</p>
+                    <h2 className="text-3xl font-black tracking-tight text-foreground">Project Members</h2>
+                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60 font-medium leading-relaxed max-w-lg">Manage individual member permissions. Global workspace members maintain baseline access by default.</p>
                   </div>
                   {isProjAdmin && (
                     <Button variant="secondary" size="lg" onClick={() => setIsInviteModalOpen(true)} className="rounded-[18px] gap-3 px-6 shadow-xl border-border/40">
@@ -371,7 +371,7 @@ export default function ProjectSettingsPage() {
                       <div className="w-20 h-20 bg-muted/20 rounded-[32px] flex items-center justify-center mx-auto mb-6 border border-border/40 text-primary/30">
                         <ShieldCheck size={32} />
                       </div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Standard Inheritance Protocol Active</p>
+                      <p className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Inherited Access Active</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-border/40">
@@ -392,12 +392,12 @@ export default function ProjectSettingsPage() {
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                               <div className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.3em] mb-1">Clearance</div>
+                               <div className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.3em] mb-1">Role</div>
                                <Badge 
                                   variant={member.role === 'admin' ? 'primary' : 'secondary'} 
                                   className="px-4 py-1 rounded-full uppercase text-[10px] tracking-widest font-black"
                                >
-                                {member.role === 'admin' ? 'Administrator' : 'Contributor'}
+                                {member.role === 'admin' ? 'Admin' : 'Member'}
                                </Badge>
                             </div>
                             {isProjAdmin && member.userId !== user?.id && (
@@ -423,8 +423,8 @@ export default function ProjectSettingsPage() {
                       <ShieldCheck size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[11px] font-black text-foreground uppercase tracking-widest mb-2">Access Inheritance Logic</h4>
-                      <p className="text-[13px] text-muted-foreground leading-relaxed italic font-serif">Workspace members carry inherited permissions. Adding them here explicitly verifies their role as a "Project Administrator" or "Dedicated Contributor," overriding baseline restrictions.</p>
+                      <h4 className="text-[11px] font-black text-foreground uppercase tracking-widest mb-2">About access levels</h4>
+                      <p className="text-[13px] text-muted-foreground leading-relaxed italic font-serif">Workspace members carry inherited permissions. Adding them here explicitly sets their role as a "Project Admin" or "Member," overriding workspace defaults.</p>
                     </div>
                   </div>
                 </div>
@@ -435,12 +435,12 @@ export default function ProjectSettingsPage() {
               <div className="space-y-10">
                 <div className="flex justify-between items-end">
                   <div>
-                    <h2 className="text-3xl font-black tracking-tight text-destructive">Dark Exclusions</h2>
-                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60 font-medium leading-relaxed max-w-lg">Identify users to be explicitly purged from the project discovery and access context.</p>
+                    <h2 className="text-3xl font-black tracking-tight text-destructive">Restricted Access</h2>
+                    <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60 font-medium leading-relaxed max-w-lg">Restrict specific users from this project.</p>
                   </div>
                   {isProjAdmin && (
                     <Button variant="secondary" size="lg" onClick={() => setIsExcludeModalOpen(true)} className="rounded-[18px] gap-3 px-6 shadow-xl border-destructive/20 text-destructive hover:bg-destructive/5">
-                      <UserX size={16} /> Exclude Entity
+                      <UserX size={16} /> Restrict User
                     </Button>
                   )}
                 </div>
@@ -461,7 +461,7 @@ export default function ProjectSettingsPage() {
                             <Avatar name={`${ex.user.firstName} ${ex.user.lastName}`} className="w-12 h-12 grayscale brightness-75 rounded-[18px] border border-border/40" />
                             <div>
                               <p className="font-black text-base text-destructive tracking-tight uppercase">{ex.user.firstName} {ex.user.lastName}</p>
-                              <p className="text-muted-foreground text-[10px] uppercase font-black tracking-widest opacity-40 italic">Expelled from active canvas</p>
+                              <p className="text-muted-foreground text-[10px] uppercase font-black tracking-widest opacity-40 italic">Access restricted</p>
                             </div>
                           </div>
                           {isProjAdmin && (
@@ -484,8 +484,8 @@ export default function ProjectSettingsPage() {
                       <ShieldAlert size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[11px] font-black text-destructive uppercase tracking-widest mb-2">Blacklist Severity</h4>
-                      <p className="text-[13px] text-destructive/60 leading-relaxed italic font-serif">Exclusions act as higher-order overrides. An entity identified here cannot participate in communication, task-drawing, or discovery workflows within this project context.</p>
+                      <h4 className="text-[11px] font-black text-destructive uppercase tracking-widest mb-2">Restriction Info</h4>
+                      <p className="text-[13px] text-destructive/60 leading-relaxed italic font-serif">Access restrictions act as higher-order overrides. A restricted user cannot participate in communication, sketches, or see this project.</p>
                     </div>
                   </div>
                 </div>
@@ -495,8 +495,8 @@ export default function ProjectSettingsPage() {
             {activeTab === 'danger' && (
               <div className="space-y-10">
                 <div className="mb-6">
-                  <h2 className="text-3xl font-black tracking-tight text-foreground">Project Finality</h2>
-                  <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60 font-medium leading-relaxed">System-critical operations with immediate and total permanence.</p>
+                  <h2 className="text-3xl font-black tracking-tight text-foreground">Delete Project</h2>
+                  <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60 font-medium leading-relaxed">Permanent actions that cannot be undone.</p>
                 </div>
 
                 <Card className="border-destructive/40 bg-destructive/[0.03] rounded-[48px] overflow-hidden shadow-2xl relative group">
@@ -507,20 +507,20 @@ export default function ProjectSettingsPage() {
                         <Trash2 size={32} />
                       </div>
                       <div className="space-y-4">
-                        <h3 className="font-black text-3xl text-foreground uppercase tracking-tighter">Total Deletion</h3>
-                        <p className="text-base text-muted-foreground/80 leading-relaxed font-serif max-w-xl">This action will purge the <strong>{currentProject.name}</strong> identity from the Mesh universe. All task hashes, canvas states, and historical data will be definitively neutralized.</p>
+                        <h3 className="font-black text-3xl text-foreground uppercase tracking-tighter">Delete Project Permanently</h3>
+                        <p className="text-base text-muted-foreground/80 leading-relaxed font-serif max-w-xl">Permanently delete <strong>{currentProject.name}</strong> and all its data. All tasks, canvas sketches, and history will be lost.</p>
                       </div>
                     </div>
 
                     <div className="pt-10 border-t border-destructive/10 flex items-center justify-between">
-                      <div className="text-[11px] text-destructive/60 font-black uppercase tracking-widest max-w-sm italic opacity-70">"Deletion is the last step to nothing." — Core Logic</div>
+                      <div className="text-[11px] text-destructive/60 font-black uppercase tracking-widest max-w-sm italic opacity-70">"Deleting a project is permanent."</div>
                       <Button 
                         variant="destructive" 
                         size="xl"
                         onClick={() => setIsDeleteModalOpen(true)} 
                         className="px-12 rounded-[22px] shadow-2xl shadow-destructive/20 group-hover:bg-destructive transition-colors duration-300"
                       >
-                        Execute Deletion
+                        Delete Project
                       </Button>
                     </div>
                   </div>
@@ -544,7 +544,7 @@ export default function ProjectSettingsPage() {
         </main>
       </div>
 
-      {/* Modals - Architectural Refinement */}
+      {/* Modals - Refined Design */}
       <Modal
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
@@ -574,7 +574,7 @@ export default function ProjectSettingsPage() {
           </div>
           
           <div className="space-y-4">
-            <label className="text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] ml-1">Clearance Tier</label>
+            <label className="text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] ml-1">Permission Level</label>
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
@@ -584,7 +584,7 @@ export default function ProjectSettingsPage() {
                 <div className={`w-10 h-10 rounded-xl mb-4 flex items-center justify-center transition-colors ${inviteRole === 'member' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-muted/40 text-muted-foreground/40'}`}>
                   <Users className="w-5 h-5" />
                 </div>
-                <div className="font-black text-[13px] text-foreground uppercase tracking-widest mb-1">Contributor</div>
+                <div className="font-black text-[13px] text-foreground uppercase tracking-widest mb-1">Member</div>
                 <div className="text-[11px] text-muted-foreground font-serif italic">Full canvas drawing rights.</div>
               </button>
               <button
@@ -611,16 +611,16 @@ export default function ProjectSettingsPage() {
       <Modal
         isOpen={isExcludeModalOpen}
         onClose={() => setIsExcludeModalOpen(false)}
-        title="Exclude Identity"
+        title="Restrict User"
       >
         <form onSubmit={handleExcludeSubmit} className="space-y-6 p-6">
           <div className="p-5 bg-destructive/5 rounded-[24px] border border-destructive/20 flex items-start gap-4 mb-4">
             <ShieldAlert className="w-6 h-6 text-destructive mt-1" />
-            <p className="text-xs text-destructive/80 leading-relaxed font-serif italic">Blacklisting a specific entity permanently removes this project from their network discovery. They will be met with a 403 Access Denied state.</p>
+            <p className="text-xs text-destructive/80 leading-relaxed font-serif italic">Restricting a user removes this project from their view. They will no longer be able to access any tasks or sketches here.</p>
           </div>
           
           <div className="space-y-3">
-            <label htmlFor="exclude-user" className="text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] ml-1">Selection for Purge</label>
+            <label htmlFor="exclude-user" className="text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] ml-1">Select User</label>
             <select 
               id="exclude-user"
               className="w-full px-5 py-4 border border-border/40 rounded-2xl text-[15px] bg-muted/20 text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-destructive/20 focus:border-destructive transition-all pr-12 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%23ef4444%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:24px_24px] bg-[position:right_12px_center] bg-no-repeat"
@@ -637,7 +637,7 @@ export default function ProjectSettingsPage() {
           
           <div className="flex justify-end gap-3 pt-8 border-t border-border/40">
             <Button type="button" variant="tertiary" onClick={() => setIsExcludeModalOpen(false)} className="rounded-full px-8">Cancel</Button>
-            <Button type="submit" variant="destructive" loading={isExcluding} disabled={!excludeUserId} className="rounded-full shadow-2xl shadow-destructive/20 px-10">Purge Entity</Button>
+            <Button type="submit" variant="destructive" loading={isExcluding} disabled={!excludeUserId} className="rounded-full shadow-2xl shadow-destructive/20 px-10">Restrict Access</Button>
           </div>
         </form>
       </Modal>
@@ -645,7 +645,7 @@ export default function ProjectSettingsPage() {
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Destroy Canvas State"
+        title="Confirm Deletion"
       >
         <form onSubmit={handleDeleteProject} className="space-y-8 p-6">
           <div className="p-6 bg-destructive/10 text-destructive text-sm rounded-[32px] border border-destructive/20 relative overflow-hidden group">
@@ -654,20 +654,20 @@ export default function ProjectSettingsPage() {
              </div>
             <div className="flex items-center gap-4 mb-4 relative z-10">
               <AlertTriangle className="w-6 h-6 flex-shrink-0 animate-pulse" />
-              <p className="font-black uppercase tracking-widest text-base">Warning: Total Purge</p>
+              <p className="font-black uppercase tracking-widest text-base">Warning: Permanent Deletion</p>
             </div>
-            <p className="text-sm leading-relaxed opacity-90 font-serif italic relative z-10">This protocol will permanently neutralize <strong>{currentProject.name}</strong>. All task history, canvas snapshots, and project hashes will be definitively erased across the global Mesh indexing system.</p>
+            <p className="text-sm leading-relaxed opacity-90 font-serif italic relative z-10">This will permanently delete <strong>{currentProject.name}</strong>. All task history, sketches, and project data will be lost forever.</p>
           </div>
           
           <div className="space-y-4">
             <label htmlFor="delete-confirm" className="block text-[11px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] ml-1">
-              Verify destruction by typing <span className="text-destructive font-mono select-none underline decoration-2 underline-offset-4">{currentProject.name}</span>
+              Type the project name to confirm <span className="text-destructive font-mono select-none underline decoration-2 underline-offset-4">{currentProject.name}</span>
             </label>
             <Input 
               id="delete-confirm"
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder="System confirmation..."
+              placeholder="Confirm project name..."
               required
               autoFocus
               className="border-destructive/30 focus:ring-destructive/20 focus:border-destructive rounded-[20px]"
@@ -683,7 +683,7 @@ export default function ProjectSettingsPage() {
               disabled={deleteConfirmText !== currentProject.name}
               className="rounded-full shadow-2xl shadow-destructive/20 px-12 h-14 uppercase tracking-[0.2em] font-black"
             >
-              Destroy
+              Delete Project
             </Button>
           </div>
         </form>

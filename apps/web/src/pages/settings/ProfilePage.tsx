@@ -114,7 +114,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen w-full bg-background flex flex-col text-foreground font-sans selection:bg-primary/20 overflow-x-hidden relative transition-colors duration-500">
-      {/* Architectural Background Grid */}
+      {/* Canvas Background Grid */}
       <div className="fixed inset-0 bg-dot-grid opacity-20 pointer-events-none" />
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
 
@@ -142,14 +142,14 @@ export default function ProfilePage() {
                className="hidden sm:flex text-[10px] items-center gap-2"
                icon={<ArrowLeft size={14} />}
              >
-               Return to Active Deck
+               Back to workspace
              </Button>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/40 border border-border/40">
                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Registry Synchronized</span>
+               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Account synced</span>
             </div>
             <div className="w-px h-4 bg-border/40 mx-1" />
             <Button
@@ -173,7 +173,7 @@ export default function ProfilePage() {
             animate={{ opacity: 1, x: 0 }}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-[0.2em] text-primary"
           >
-            System / Configuration
+            Settings
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 10 }}
@@ -181,7 +181,7 @@ export default function ProfilePage() {
             transition={{ delay: 0.1 }}
             className="font-display text-4xl sm:text-6xl font-black tracking-tight text-foreground"
           >
-            Account <span className="text-primary italic">Configuration</span>.
+            Account <span className="text-primary italic">Settings</span>.
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -189,7 +189,7 @@ export default function ProfilePage() {
             transition={{ delay: 0.2 }}
             className="text-muted-foreground text-lg max-w-2xl font-serif italic leading-relaxed opacity-70 mx-auto sm:mx-0"
           >
-            Modify your digital signature, security protocols, and visual representation within the Mesh neural network.
+            Manage your profile details, security, and profile photo within the Mesh workspace.
           </motion.p>
         </header>
 
@@ -210,7 +210,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <h2 className="font-display text-2xl font-black text-foreground tracking-tight">Public Profile</h2>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Primary Identity Layer</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Personal Details</p>
                   </div>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10">
                   <div className="space-y-3">
-                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Forename Designation</label>
+                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">First Name</label>
                     <input
                       type="text"
                       className="w-full h-14 bg-muted/20 border border-border/40 rounded-2xl px-5 text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-foreground/10"
@@ -231,7 +231,7 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div className="space-y-3">
-                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Surname Designation</label>
+                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Last Name</label>
                     <input
                       type="text"
                       className="w-full h-14 bg-muted/20 border border-border/40 rounded-2xl px-5 text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-foreground/10"
@@ -243,7 +243,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-3 relative z-10">
-                  <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Neural Connection (Email)</label>
+                  <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Email Address</label>
                   <div className="relative group/field">
                     <input
                       type="email"
@@ -253,10 +253,10 @@ export default function ProfilePage() {
                     />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 rounded bg-card/60 border border-border/40 flex items-center gap-2">
                        <Shield size={10} className="text-primary/40" />
-                       <span className="text-[9px] font-black uppercase tracking-widest text-primary/40">Read Only Layer</span>
+                       <span className="text-[9px] font-black uppercase tracking-widest text-primary/40">Default</span>
                     </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground/40 italic font-serif pl-1">Connection persistence is locked to the primary registrar.</p>
+                  <p className="text-[10px] text-muted-foreground/40 italic font-serif pl-1">Your email is managed by your account provider.</p>
                 </div>
 
                 <div className="pt-6 flex justify-end relative z-10">
@@ -268,7 +268,7 @@ export default function ProfilePage() {
                     className="h-14 rounded-2xl px-12"
                     icon={<Check size={18} />}
                   >
-                    Commit Configuration
+                    Save Changes
                   </Button>
                 </div>
               </div>
@@ -289,8 +289,8 @@ export default function ProfilePage() {
                       <Lock size={24} />
                     </div>
                     <div>
-                      <h2 className="font-display text-2xl font-black text-foreground tracking-tight">Security Protocols</h2>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Access Encryption Layer</p>
+                      <h2 className="font-display text-2xl font-black text-foreground tracking-tight">Security</h2>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Manage Password</p>
                     </div>
                   </div>
                 </div>
@@ -299,7 +299,7 @@ export default function ProfilePage() {
                    <div className="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none" />
                    
                    <div className="space-y-3 relative z-10">
-                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Current Secret Key</label>
+                    <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Current Password</label>
                     <input
                       type="password"
                       required
@@ -311,7 +311,7 @@ export default function ProfilePage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10">
                     <div className="space-y-3">
-                      <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">New Secret Key</label>
+                      <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">New Password</label>
                       <input
                         type="password"
                         required
@@ -321,7 +321,7 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="space-y-3">
-                      <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Verify New Key</label>
+                      <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pl-1">Verify Password</label>
                       <input
                         type="password"
                         required
@@ -340,7 +340,7 @@ export default function ProfilePage() {
                       size="lg"
                       className="h-14 rounded-2xl px-12 border-border/40 hover:border-amber-500/50 hover:text-amber-500"
                     >
-                      Update Security Key
+                      Update Password
                     </Button>
                   </div>
                 </div>
@@ -358,7 +358,7 @@ export default function ProfilePage() {
               className="glass rounded-[40px] border-border/40 overflow-hidden group shadow-2xl p-8 flex flex-col items-center text-center space-y-10 transition-colors"
             >
               <div className="w-full flex flex-col items-center">
-                 <h3 className="text-[11px] font-black text-muted-foreground/50 uppercase tracking-[0.3em] mb-10">Visual Identification</h3>
+                 <h3 className="text-[11px] font-black text-muted-foreground/50 uppercase tracking-[0.3em] mb-10">Profile Photo</h3>
                  
                  <button 
                   type="button"
@@ -376,7 +376,7 @@ export default function ProfilePage() {
                     
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white backdrop-blur-sm">
                       <Camera className="w-8 h-8 mb-2 text-primary" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Update Signature</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Change Photo</span>
                     </div>
 
                     {isUploadingAvatar && (
@@ -403,7 +403,7 @@ export default function ProfilePage() {
                     disabled={isUploadingAvatar}
                     icon={<ImageIcon size={16} />}
                 >
-                    Upload System Photo
+                    Upload Photo
                 </Button>
 
                 <p className="text-[10px] text-muted-foreground/30 font-serif italic leading-relaxed">
@@ -430,10 +430,10 @@ export default function ProfilePage() {
                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground/40">
                   <Mail size={18} />
                </div>
-               <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">Registry Assistance</p>
+               <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">Need help?</p>
                <p className="text-[12px] font-serif italic text-muted-foreground/40 leading-relaxed">
-                  Encountering synchronization errors? <br />
-                  Contact the system administrator.
+                  Having trouble with your account? <br />
+                  Contact support.
                </p>
             </motion.div>
           </div>
