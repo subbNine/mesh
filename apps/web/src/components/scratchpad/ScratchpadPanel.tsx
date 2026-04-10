@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -44,6 +44,10 @@ type ScratchpadPanelProps = Readonly<{
   onClose: () => void;
 }>;
 
+function getScratchpadContentSignature(content: Record<string, unknown> | null | undefined) {
+  return JSON.stringify(normalizeScratchpadContent(content));
+}
+
 export function ScratchpadPanel({ isOpen, onClose }: ScratchpadPanelProps) {
   const scratchpad = useScratchpadStore((state) => state.scratchpad);
   const isLoading = useScratchpadStore((state) => state.isLoading);
@@ -53,15 +57,23 @@ export function ScratchpadPanel({ isOpen, onClose }: ScratchpadPanelProps) {
   const updateLocalContent = useScratchpadStore((state) => state.updateLocalContent);
   const saveScratchpad = useScratchpadStore((state) => state.saveScratchpad);
 
-  const [isOffline, setIsOffline] = useState(() =>
-    typeof navigator !== 'undefined' ? !navigator.onLine : false,
-  );
+  const [isOffline, setIsOffline] = useState(() => {
+    if (typeof navigator === 'undefined') {
+      return false;
+    }
+
+    return !navigator.onLine;
+  });
+  const hydratedScratchpadIdRef = useRef<string | null>(null);
 
   const normalizedContent = useMemo(
     () => normalizeScratchpadContent(scratchpad?.content),
     [scratchpad?.content],
   );
-  const serializedContent = useMemo(() => JSON.stringify(normalizedContent), [normalizedContent]);
+  const serializedContent = useMemo(
+    () => getScratchpadContentSignature(normalizedContent),
+    [normalizedContent],
+  );
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -85,34 +97,40 @@ export function ScratchpadPanel({ isOpen, onClose }: ScratchpadPanelProps) {
   }, [fetchScratchpad, isOpen]);
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || !scratchpad) {
       return;
     }
 
-    const currentSerialized = JSON.stringify(editor.getJSON());
-    if (currentSerialized !== serializedContent) {
+    if (hydratedScratchpadIdRef.current !== scratchpad.id) {
+      hydratedScratchpadIdRef.current = scratchpad.id;
       editor.commands.setContent(normalizedContent as never, { emitUpdate: false });
     }
+  }, [editor, normalizedContent, scratchpad]);
 
-    if (isOpen) {
-      requestAnimationFrame(() => {
-        editor.commands.focus('end');
-      });
+  useEffect(() => {
+    if (!editor || !isOpen) {
+      return;
     }
-  }, [editor, isOpen, normalizedContent, serializedContent]);
+
+    requestAnimationFrame(() => {
+      if (!editor.isDestroyed) {
+        editor.commands.focus('end');
+      }
+    });
+  }, [editor, isOpen]);
 
   useEffect(() => {
     if (!isOpen || !isDirty) {
       return;
     }
 
-    const timeout = window.setTimeout(() => {
+    const timeout = globalThis.setTimeout(() => {
       if (typeof navigator === 'undefined' || navigator.onLine) {
         void saveScratchpad();
       }
     }, 900);
 
-    return () => window.clearTimeout(timeout);
+    return () => globalThis.clearTimeout(timeout);
   }, [isDirty, isOpen, saveScratchpad, serializedContent]);
 
   useEffect(() => {
@@ -125,22 +143,24 @@ export function ScratchpadPanel({ isOpen, onClose }: ScratchpadPanelProps) {
 
     const handleOffline = () => setIsOffline(true);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    globalThis.addEventListener('online', handleOnline);
+    globalThis.addEventListener('offline', handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      globalThis.removeEventListener('online', handleOnline);
+      globalThis.removeEventListener('offline', handleOffline);
     };
   }, [saveScratchpad]);
 
-  const saveLabel = isOffline
-    ? 'Offline · saved locally'
-    : isSaving
-      ? 'Syncing…'
-      : isDirty
-        ? 'Saving soon…'
-        : 'All changes saved';
+  let saveLabel = 'All changes saved';
+
+  if (isOffline) {
+    saveLabel = 'Offline · saved locally';
+  } else if (isSaving) {
+    saveLabel = 'Syncing…';
+  } else if (isDirty) {
+    saveLabel = 'Saving soon…';
+  }
 
   return (
     <AnimatePresence>

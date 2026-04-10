@@ -28,11 +28,11 @@ interface ScratchpadState {
 }
 
 const readCache = (): ScratchpadCache | null => {
-  if (typeof window === 'undefined') {
+  if (globalThis.window === undefined) {
     return null;
   }
 
-  const raw = window.localStorage.getItem(SCRATCHPAD_CACHE_KEY);
+  const raw = globalThis.localStorage.getItem(SCRATCHPAD_CACHE_KEY);
   if (!raw) {
     return null;
   }
@@ -41,17 +41,17 @@ const readCache = (): ScratchpadCache | null => {
     return JSON.parse(raw) as ScratchpadCache;
   } catch (error) {
     console.error('Failed to parse scratchpad cache', error);
-    window.localStorage.removeItem(SCRATCHPAD_CACHE_KEY);
+    globalThis.localStorage.removeItem(SCRATCHPAD_CACHE_KEY);
     return null;
   }
 };
 
 const writeCache = (scratchpad: IScratchpad | null, isDirty: boolean) => {
-  if (typeof window === 'undefined' || !scratchpad) {
+  if (globalThis.window === undefined || !scratchpad) {
     return;
   }
 
-  window.localStorage.setItem(
+  globalThis.localStorage.setItem(
     SCRATCHPAD_CACHE_KEY,
     JSON.stringify({
       id: scratchpad.id,
@@ -70,6 +70,9 @@ const buildScratchpadFromCache = (cache: ScratchpadCache): IScratchpad => ({
   createdAt: cache.updatedAt,
   updatedAt: cache.updatedAt,
 });
+
+const getScratchpadContentSignature = (content: Record<string, unknown> | null | undefined) =>
+  JSON.stringify(normalizeScratchpadContent(content));
 
 export const useScratchpadStore = create<ScratchpadState>((set, get) => ({
   scratchpad: null,
@@ -158,11 +161,14 @@ export const useScratchpadStore = create<ScratchpadState>((set, get) => ({
       return;
     }
 
+    const snapshotContent = normalizeScratchpadContent(scratchpad.content);
+    const snapshotSignature = getScratchpadContentSignature(snapshotContent);
+
     set({ isSaving: true });
 
     try {
       const { data } = await api.patch('/scratchpad/me', {
-        content: normalizeScratchpadContent(scratchpad.content),
+        content: snapshotContent,
       });
 
       const normalized = {
@@ -170,14 +176,31 @@ export const useScratchpadStore = create<ScratchpadState>((set, get) => ({
         content: normalizeScratchpadContent(data.content),
       } as IScratchpad;
 
-      set({
-        scratchpad: normalized,
-        isSaving: false,
-        isDirty: false,
-        hasLoaded: true,
+      let nextScratchpad = normalized;
+      let nextIsDirty = false;
+
+      set((state) => {
+        const latestContent = state.scratchpad
+          ? normalizeScratchpadContent(state.scratchpad.content)
+          : snapshotContent;
+        const latestSignature = getScratchpadContentSignature(latestContent);
+        const hasNewerChanges = latestSignature !== snapshotSignature;
+
+        nextScratchpad = {
+          ...normalized,
+          content: hasNewerChanges ? latestContent : normalized.content,
+        };
+        nextIsDirty = hasNewerChanges;
+
+        return {
+          scratchpad: nextScratchpad,
+          isSaving: false,
+          isDirty: nextIsDirty,
+          hasLoaded: true,
+        };
       });
 
-      writeCache(normalized, false);
+      writeCache(nextScratchpad, nextIsDirty);
     } catch (error) {
       console.error('Failed to save scratchpad', error);
       set({ isSaving: false });

@@ -5,7 +5,7 @@ import { useProjectStore } from '../../store/project.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useThemeStore } from '../../store/theme.store';
 import {
-  Folder, LogOut, ChevronRight, LayoutGrid,
+  LogOut, ChevronRight, LayoutGrid,
   List, User, Moon, Sun, Monitor, Menu, X, Activity, Layers
 } from 'lucide-react';
 import { api } from '../../lib/api';

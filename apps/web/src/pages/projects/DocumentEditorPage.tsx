@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -56,6 +56,10 @@ function getEditorContent(content: Record<string, unknown> | null | undefined) {
   return EMPTY_DOCUMENT_CONTENT;
 }
 
+function getDraftSignature(title: string, content: Record<string, unknown>) {
+  return JSON.stringify({ title, content });
+}
+
 export default function DocumentEditorPage() {
   const { workspaceId, projectId, docId } = useParams();
   const currentProject = useProjectStore((state) => state.currentProject);
@@ -71,6 +75,12 @@ export default function DocumentEditorPage() {
   const [pendingContent, setPendingContent] = useState<Record<string, unknown>>(EMPTY_DOCUMENT_CONTENT);
   const [saveState, setSaveState] = useState<'saved' | 'dirty' | 'saving'>('saved');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const hydratedDocumentIdRef = useRef<string | null>(null);
+  const latestDraftRef = useRef<{ title: string; content: Record<string, unknown> }>({
+    title: '',
+    content: EMPTY_DOCUMENT_CONTENT,
+  });
+  const lastPersistedSignatureRef = useRef(getDraftSignature('', EMPTY_DOCUMENT_CONTENT));
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -97,16 +107,35 @@ export default function DocumentEditorPage() {
   }, [projectId, docId, fetchDocument, clearCurrentDocument]);
 
   useEffect(() => {
+    latestDraftRef.current = {
+      title: draftTitle,
+      content: pendingContent,
+    };
+  }, [draftTitle, pendingContent]);
+
+  useEffect(() => {
     if (!currentDocument) {
       return;
     }
 
     const editorContent = getEditorContent(currentDocument.content as Record<string, unknown> | null | undefined);
+    const persistedSignature = getDraftSignature(currentDocument.title, editorContent);
 
+    setLastSavedAt(new Date(currentDocument.updatedAt));
+    lastPersistedSignatureRef.current = persistedSignature;
+
+    if (hydratedDocumentIdRef.current === currentDocument.id) {
+      return;
+    }
+
+    hydratedDocumentIdRef.current = currentDocument.id;
     setDraftTitle(currentDocument.title);
     setPendingContent(editorContent);
+    latestDraftRef.current = {
+      title: currentDocument.title,
+      content: editorContent,
+    };
     setSaveState('saved');
-    setLastSavedAt(new Date(currentDocument.updatedAt));
 
     if (editor) {
       editor.commands.setContent(editorContent as never, { emitUpdate: false });
@@ -118,20 +147,31 @@ export default function DocumentEditorPage() {
       return;
     }
 
+    const snapshotTitle = draftTitle;
+    const snapshotContent = pendingContent;
+    const snapshotSignature = getDraftSignature(snapshotTitle, snapshotContent);
+
     const timeout = globalThis.setTimeout(async () => {
       try {
         setSaveState('saving');
         await updateDocument(projectId, docId, {
-          title: draftTitle,
-          content: pendingContent,
+          title: snapshotTitle,
+          content: snapshotContent,
         });
+        lastPersistedSignatureRef.current = snapshotSignature;
         setLastSavedAt(new Date());
-        setSaveState('saved');
+
+        const latestSignature = getDraftSignature(
+          latestDraftRef.current.title,
+          latestDraftRef.current.content,
+        );
+
+        setSaveState(latestSignature === snapshotSignature ? 'saved' : 'dirty');
       } catch (error) {
         console.error('Failed to auto-save document', error);
         setSaveState('dirty');
       }
-    }, 3000);
+    }, 1000);
 
     return () => globalThis.clearTimeout(timeout);
   }, [projectId, docId, currentDocument, draftTitle, pendingContent, saveState, updateDocument]);
@@ -149,11 +189,13 @@ export default function DocumentEditorPage() {
     return text.split(/\s+/).filter(Boolean).length;
   }, [editor, pendingContent]);
 
-  const saveLabel = saveState === 'saving' || isSavingDocument
-    ? 'Saving…'
-    : saveState === 'dirty'
-      ? 'Unsaved changes'
-      : 'All changes saved';
+  let saveLabel = 'All changes saved';
+
+  if (saveState === 'saving' || isSavingDocument) {
+    saveLabel = 'Saving…';
+  } else if (saveState === 'dirty') {
+    saveLabel = 'Unsaved changes';
+  }
 
   if (!currentDocument || !editor) {
     return (
