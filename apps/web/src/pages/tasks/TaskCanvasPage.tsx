@@ -211,6 +211,7 @@ export default function TaskCanvasPage() {
       if (debounceTimer) clearTimeout(debounceTimer);
       removeAwarenessListener?.();
       removeDocListener?.();
+      
       if (currentAwareness) {
         currentAwareness.setLocalState(null);
       }

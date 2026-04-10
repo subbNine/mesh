@@ -354,7 +354,7 @@ export function CanvasTopBar({
             >
                 <AssigneeStack assignees={selectedAssignees} maxVisible={3} size="md" />
                 <div className="flex flex-col items-start pr-1 hidden md:flex">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 leading-none mb-0.5">Assigned team</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 leading-none mb-0.5">Assignee</span>
                     <span className="text-[10px] font-black tracking-tight text-foreground/80 group-hover:text-primary transition-colors leading-none">
                         {assigneeLabel}
                     </span>

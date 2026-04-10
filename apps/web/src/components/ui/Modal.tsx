@@ -21,6 +21,10 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
       dialogRef.current?.close();
       document.body.style.overflow = '';
     }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isOpen]);
 
   const handleClose = () => {

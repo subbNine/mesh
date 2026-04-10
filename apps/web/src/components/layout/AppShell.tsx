@@ -11,6 +11,7 @@ import {
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
+import { useScratchpadStore } from '../../store/scratchpad.store';
 import { TaskThumbnailSidebar } from '../tasks/TaskThumbnailSidebar';
 
 // ─── Pinned Tasks helpers ──────────────────────
@@ -43,6 +44,18 @@ export function AppShell() {
       setSidebarMode('navigation');
     }
   }, [isCanvasRoute, sidebarMode, setSidebarMode]);
+
+  // ── Global Safety Net: Reset scroll/pointer states on route change ──
+  useEffect(() => {
+    document.body.style.overflow = '';
+    document.body.style.pointerEvents = 'auto';
+
+    // Close side panels on route change to prevent ghost overlays
+    if (!isCanvasRoute) {
+      useCanvasStore.getState().setCommentPaneOpen(false);
+      useScratchpadStore.getState().setOpen(false);
+    }
+  }, [location.pathname, isCanvasRoute]);
 
   // ── Pinned tasks ──
   const [pinnedIds, setPinnedIds] = useState<string[]>(loadPinnedIds);
@@ -354,7 +367,12 @@ export function AppShell() {
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ 
+              opacity: 0, 
+              y: -10,
+              transition: { duration: 0.2 },
+              pointerEvents: 'none' 
+            }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="h-full w-full"
           >
