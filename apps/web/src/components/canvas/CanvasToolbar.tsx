@@ -13,6 +13,7 @@ import {
   Maximize,
   ChevronUp,
   Droplets,
+  Grid3X3,
 } from 'lucide-react';
 import type { IUser } from '@mesh/shared';
 import { api } from '../../lib/api';
@@ -51,7 +52,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { success, error } = useToast();
   const inkColor = useCanvasStore((state) => state.inkColor);
-  const setInkColor = useCanvasStore((state) => state.setInkColor);
+  const snapToGrid = useCanvasStore((state) => state.snapToGrid);
+  const toggleSnapToGrid = useCanvasStore((state) => state.toggleSnapToGrid);
 
   const inkColors = ['#111827', '#ffffff', '#38bdf8', '#34d399', '#f59e0b', '#f43f5e', '#a78bfa'];
 
@@ -270,6 +272,18 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
             title="Fit to Workspace"
           >
             <Maximize size={14} />
+          </button>
+
+          <div className="w-px h-3 bg-border/20 mx-0.5" />
+
+          <button
+            onClick={toggleSnapToGrid}
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${snapToGrid 
+              ? 'bg-primary/10 text-primary shadow-inner' 
+              : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/50'}`}
+            title={snapToGrid ? "Disable grid snap" : "Enable grid snap"}
+          >
+            <Grid3X3 size={14} />
           </button>
 
           {onToggleComments && (

@@ -72,7 +72,7 @@ export class EmailChannel implements INotificationChannel {
     }
 
     await this.transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"Mesh Notifications" <no-reply@mesh.app>',
+      from: process.env.EMAIL_FROM || '"Mesh Notifications" <no-reply@usemesh.work>',
       to: user.email,
       subject: payload.type === 'assigned' ? 'New Task Assignment' : 'You were mentioned',
       html,

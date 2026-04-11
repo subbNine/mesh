@@ -10,16 +10,17 @@ export class S3StorageProvider implements IStorageProvider {
   private readonly endpoint: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.endpoint = this.configService.get('R2_ENDPOINT') || '';
-    this.bucketName = this.configService.get('R2_BUCKET') || '';
+    this.endpoint = this.configService.get('MINIO_ENDPOINT') || '';
+    this.bucketName = this.configService.get('MINIO_BUCKET') || '';
 
     this.s3Client = new S3Client({
       region: 'auto',
       endpoint: this.endpoint,
       credentials: {
-        accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID') || '',
-        secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY') || '',
+        accessKeyId: this.configService.get('MINIO_ACCESS_KEY') || '',
+        secretAccessKey: this.configService.get('MINIO_SECRET_KEY') || '',
       },
+      forcePathStyle: true,
     });
   }
 

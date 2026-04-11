@@ -738,6 +738,7 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
   const setStoreZoom = useCanvasStore((state: any) => state.setZoom);
   const globalZoom = useCanvasStore((state: any) => state.zoom);
   const inkColor = useCanvasStore((state: any) => state.inkColor);
+  const snapToGrid = useCanvasStore((state: any) => state.snapToGrid);
   const { info } = useToast();
 
   // Sync global zoom store with local stageProps scale
@@ -1225,8 +1226,15 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
 
   const handleDragMove = (e: any) => {
     const id = e.target.id();
-    const x = e.target.x();
-    const y = e.target.y();
+    let x = e.target.x();
+    let y = e.target.y();
+
+    if (snapToGrid) {
+      x = Math.round(x / 20) * 20;
+      y = Math.round(y / 20) * 20;
+      e.target.x(x);
+      e.target.y(y);
+    }
     const draggedElement = elements.find((el) => el.id === id);
 
     if (draggedElement?.type === 'callout') {
@@ -1526,6 +1534,12 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
                   return oldBox;
                 }
 
+                if (snapToGrid) {
+                  newBox.width = Math.round(newBox.width / 20) * 20;
+                  newBox.height = Math.round(newBox.height / 20) * 20;
+                  newBox.x = Math.round(newBox.x / 20) * 20;
+                  newBox.y = Math.round(newBox.y / 20) * 20;
+                }
                 return newBox;
               }}
             />

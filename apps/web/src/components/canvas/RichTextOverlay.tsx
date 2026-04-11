@@ -1,5 +1,6 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import * as Y from 'yjs';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 
 interface RichTextOverlayProps {
@@ -128,10 +129,22 @@ export function RichTextOverlay({
   }, [ydoc, el.id, onEndEdit]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const isMeta = e.metaKey || e.ctrlKey;
+    
     if (e.key === 'Escape') {
       e.preventDefault();
       commit();
+    } else if (isMeta && e.key === 'b') {
+      e.preventDefault();
+      handleExec('bold');
+    } else if (isMeta && e.key === 'i') {
+      e.preventDefault();
+      handleExec('italic');
+    } else if (isMeta && e.key === 'u') {
+      e.preventDefault();
+      handleExec('underline');
     }
+    
     e.stopPropagation(); 
   };
 
@@ -322,11 +335,15 @@ export function RichTextOverlay({
         .canvas-rich-text u { text-decoration: underline !important; }
         .canvas-rich-text b, .canvas-rich-text strong { font-weight: bold !important; }
       `}</style>
-      <div
-        className="absolute bottom-[calc(100%+6px)] left-0 bg-white border border-zinc-200 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.10)] px-1.5 py-1 flex items-center gap-0.5 select-none"
-        style={{ pointerEvents: 'auto', whiteSpace: 'nowrap' }}
-        onMouseDown={(e) => e.preventDefault()} 
-      >
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 5 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 5 }}
+          className="absolute bottom-[calc(100%+6px)] left-0 bg-white/90 backdrop-blur-xl border border-zinc-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.12)] px-1.5 py-1 flex items-center gap-0.5 select-none z-[101]"
+          style={{ pointerEvents: 'auto', whiteSpace: 'nowrap' }}
+          onMouseDown={(e) => e.preventDefault()} 
+        >
         <button
           onMouseDown={(e) => { e.preventDefault(); handleExec('bold'); }}
           className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors text-[13px] font-bold ${formatState.bold ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
@@ -401,7 +418,8 @@ export function RichTextOverlay({
             />
           );
         })}
-      </div>
+        </motion.div>
+      </AnimatePresence>
 
       <div style={editorShellStyle}>
         <div
@@ -412,6 +430,23 @@ export function RichTextOverlay({
           onKeyDown={handleKeyDown}
           onKeyUp={updateFormatState}
           onMouseUp={updateFormatState}
+          onInput={() => {
+            if (contentEditableRef.current) {
+              const scrollHeight = contentEditableRef.current.scrollHeight;
+              const padding = isCallout ? 28 : 16;
+              const contentHeight = scrollHeight + padding;
+              
+              if (contentHeight > el.height) {
+                ydoc.transact(() => {
+                  const arr = ydoc.getArray<Y.Map<any>>('elements');
+                  const map = arr.toArray().find(m => m.get('id') === el.id);
+                  if (map) {
+                    map.set('height', contentHeight);
+                  }
+                });
+              }
+            }
+          }}
           spellCheck
           style={editorContentStyle}
         />

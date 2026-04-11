@@ -21,6 +21,7 @@ interface CanvasState {
   zoom: number;
   sidebarMode: 'navigation' | 'thumbnails';
   inkColor: string;
+  snapToGrid: boolean;
 
   setActiveTool: (tool: CanvasTool) => void;
   setSelectedElement: (id: string | null) => void;
@@ -30,6 +31,8 @@ interface CanvasState {
   setZoom: (zoom: number) => void;
   setSidebarMode: (mode: 'navigation' | 'thumbnails') => void;
   setInkColor: (color: string) => void;
+  setSnapToGrid: (snap: boolean) => void;
+  toggleSnapToGrid: () => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
@@ -40,6 +43,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   zoom: 1,
   sidebarMode: 'navigation',
   inkColor: loadInkColor(),
+  snapToGrid: true,
 
   setActiveTool: (tool) => set({ activeTool: tool }),
   setSelectedElement: (id) => set({ selectedElementId: id }),
@@ -48,6 +52,8 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   setActiveComment: (id) => set({ activeCommentId: id, isCommentPaneOpen: !!id || undefined }),
   setZoom: (zoom) => set({ zoom }),
   setSidebarMode: (mode) => set({ sidebarMode: mode }),
+  setSnapToGrid: (snap) => set({ snapToGrid: snap }),
+  toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
   setInkColor: (inkColor) => {
     try {
       globalThis.localStorage?.setItem(INK_COLOR_STORAGE_KEY, inkColor);
