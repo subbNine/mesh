@@ -119,45 +119,41 @@ export default function ProfilePage() {
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
 
       {/* Floating Glass Navigation */}
-      <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-5xl px-6 z-[100]">
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-7xl px-4 sm:px-6 lg:px-8 z-[100]">
         <motion.div 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="glass h-14 rounded-2xl flex items-center justify-between px-6 shadow-2xl backdrop-blur-3xl border-border/40"
+          className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-4"
         >
-          <div className="flex items-center gap-6">
-             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+          <div className="flex items-center gap-3">
+             <div 
+               className="flex items-center gap-3 cursor-pointer group/logo" 
+               onClick={() => navigate('/workspaces')}
+             >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 group-hover/logo:scale-105 transition-transform">
                    <Layers size={18} />
                 </div>
-                <span className="font-display font-black text-lg tracking-tight uppercase text-foreground">Mesh</span>
+                <div>
+                  <div className="font-display text-xl font-black tracking-tight text-foreground group-hover/logo:text-primary transition-colors">Mesh</div>
+                  <div className="text-xs text-muted-foreground hidden sm:block">Your profile settings and account preferences.</div>
+                </div>
              </div>
              
-             <div className="h-4 w-px bg-border/40 hidden sm:block" />
-             
-             <Button
-               variant="tertiary"
-               size="sm"
-               onClick={() => navigate(-1)}
-               className="hidden sm:flex text-[10px] items-center gap-2"
-               icon={<ArrowLeft size={14} />}
-             >
-               Back to workspace
-             </Button>
+             <div className="h-4 w-px bg-border/40 hidden lg:block" />
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between sm:justify-end gap-2">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/40 border border-border/40">
                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Account synced</span>
             </div>
-            <div className="w-px h-4 bg-border/40 mx-1" />
+            <div className="w-px h-4 bg-border/40 mx-1 hidden sm:block" />
             <Button
               variant="tertiary"
               size="sm"
               onClick={logout}
               className="px-3 hover:text-destructive group"
-              icon={<LogOut size={16} className="group-hover:translate-x-0.5 transition-transform" />}
+              icon={<LogOut size={14} className="group-hover:translate-x-0.5 transition-transform" />}
             >
               Sign out
             </Button>
