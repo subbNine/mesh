@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Check, MessageSquare, CornerDownRight, Activity } from 'lucide-react';
 import { useCanvasStore } from '../../store/canvas.store';
@@ -9,6 +9,11 @@ import { getUserColor } from '../../lib/user-color';
 import { formatRelativeTime } from '../../lib/date-utils';
 import { Button } from '../ui/Button';
 import { ActivityTab } from '../activity/ActivityTab';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Mention from '@tiptap/extension-mention';
+import { getMentionSuggestions } from '../mentions/mention-suggestions';
+import { useProjectStore } from '../../store/project.store';
 
 export interface CommentReply {
   id: string;
@@ -37,11 +42,39 @@ interface CommentPaneProps {
 }
 
 const highlightMentions = (text: string) => {
-  const parts = text.split(/(@\w+)/g);
-  return parts.map((part) => {
+  // Support both legacy @name and new data-mention-id spans
+  const mentionIdRegex = /<span [^>]*data-mention-id="([^"]+)"[^>]*>(@?[^<]+)<\/span>/g;
+  const legacyRegex = /(@\w+)/g;
+
+  if (text.includes('data-mention-id')) {
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mentionIdRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      parts.push(
+        <span key={match.index} className="text-primary font-black bg-primary/10 px-1.5 py-0.5 rounded-md">
+          {match[2]}
+        </span>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts;
+  }
+
+  const parts = text.split(legacyRegex);
+  return parts.map((part, i) => {
     if (part.startsWith('@')) {
       return (
-        <span key={`${part}-${Math.random().toString(36).slice(2, 8)}`} className="text-primary font-black bg-primary/10 px-1 rounded-md">
+        <span key={i} className="text-primary font-black bg-primary/10 px-1 rounded-md">
           {part}
         </span>
       );
@@ -89,8 +122,27 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
   const [showResolved, setShowResolved] = useState(false);
-  const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [page, setPage] = useState(1);
+  const projectMembers = useProjectStore(state => state.members);
+  const mentionSuggestions = useMemo(() => getMentionSuggestions(projectMembers), [projectMembers]);
+
+  const replyEditor = useEditor({
+    extensions: [
+      StarterKit,
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention text-primary font-bold bg-primary/5 px-1 rounded',
+        },
+        suggestion: mentionSuggestions,
+      }),
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/40 min-h-[40px] px-1 font-serif italic',
+      },
+    },
+  });
 
   const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -248,8 +300,8 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
   };
 
   const handleReplySubmit = async (commentId: string) => {
-    const body = replyText[commentId];
-    if (!body?.trim()) return;
+    if (!replyEditor || replyEditor.isEmpty) return;
+    const body = replyEditor.getHTML();
 
     const tempReply: CommentReply = {
       id: crypto.randomUUID(),
@@ -258,7 +310,7 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
       author: { firstName: currentUser.firstName, lastName: currentUser.lastName, userName: currentUser.userName, id: currentUser.id }
     };
     setComments(prev => prev.map(c => c.id === commentId ? { ...c, replies: [...c.replies, tempReply] } : c));
-    setReplyText(prev => ({ ...prev, [commentId]: '' }));
+    replyEditor.commands.clearContent();
 
     try {
       await api.post(`/comments/${commentId}/replies`, { body });
@@ -382,17 +434,17 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
                 ))}
 
                 {isActive && (
-                  <div className="px-6 pt-2">
+                  <div className="px-6 pt-2" onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-col bg-card border border-border/60 rounded-2xl p-3 focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
-                      <textarea
-                        value={replyText[comment.id] || ''}
-                        onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                        onClick={(e) => e.stopPropagation()}
-                        placeholder="Join the discussion..."
-                        className="bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/40 resize-none font-serif italic mb-2 min-h-[40px] px-1"
-                        rows={2}
-                      />
-                      <div className="flex justify-end">
+                      <div className="relative">
+                        {replyEditor?.isEmpty && (
+                          <div className="absolute top-2 left-1 text-sm text-muted-foreground/40 font-serif italic pointer-events-none">
+                            Join the discussion...
+                          </div>
+                        )}
+                        <EditorContent editor={replyEditor} />
+                      </div>
+                      <div className="flex justify-end mt-2">
                         <Button
                           variant="primary"
                           size="sm"
@@ -400,7 +452,7 @@ export function CommentPane({ taskId, ydoc, currentUser, activeCommentId, onComm
                             e.stopPropagation();
                             void handleReplySubmit(comment.id);
                           }}
-                          disabled={!(replyText[comment.id]?.trim() || '')}
+                          disabled={!replyEditor || replyEditor.isEmpty}
                           className="h-8 rounded-xl px-4"
                           icon={<Send size={12} />}
                         >

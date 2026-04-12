@@ -24,13 +24,46 @@ export class CommentsService {
     private readonly activityService: ActivityService,
   ) { }
 
+  private lastNotified = new Map<string, number>();
+
   private async parseAndNotifyMentions(taskId: string, body: string, actorId: string) {
-    const mentions = Array.from(body.matchAll(/@(\w+)/g)).map(m => m[1]);
-    if (mentions.length > 0) {
-      const uniqueNames = [...new Set(mentions)];
-      const users = await this.usersService.findUsersByNames(uniqueNames);
-      for (const user of users) {
-        await this.notificationsService.createMentionNotification(taskId, user.id, actorId).catch(console.error);
+    // 1. Extract IDs from data-mention-id attributes (TipTap format)
+    const mentionIdRegex = /data-mention-id="([^"]+)"/g;
+    const taggedIds = new Set<string>();
+    let match;
+    while ((match = mentionIdRegex.exec(body)) !== null) {
+      taggedIds.add(match[1]);
+    }
+
+    // 2. Fallback to name-based regex if no IDs found (for legacy/compatibility)
+    if (taggedIds.size === 0) {
+      const nameRegex = /@(\w+)/g;
+      const names = new Set<string>();
+      while ((match = nameRegex.exec(body)) !== null) {
+        names.add(match[1]);
+      }
+
+      if (names.size > 0) {
+        const users = await this.usersService.findUsersByNames(Array.from(names));
+        users.forEach(u => taggedIds.add(u.id));
+      }
+    }
+
+    if (taggedIds.size === 0) return;
+
+    // 3. Notify and suppress duplicates
+    const now = Date.now();
+    const SUPPRESSION_MS = 5 * 60 * 1000;
+
+    for (const userId of taggedIds) {
+      if (userId === actorId) continue;
+
+      const suppressionKey = `${taskId}:comment:${userId}`;
+      const last = this.lastNotified.get(suppressionKey);
+
+      if (!last || (now - last) > SUPPRESSION_MS) {
+        await this.notificationsService.createMentionNotification(taskId, userId, actorId).catch(console.error);
+        this.lastNotified.set(suppressionKey, now);
       }
     }
   }

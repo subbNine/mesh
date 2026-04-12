@@ -114,6 +114,7 @@ interface RichTextToken {
 interface RichTextLine {
   y: number;
   height: number;
+  maxFontSize: number;
   tokens: Array<RichTextToken & { x: number }>;
 }
 
@@ -225,6 +226,12 @@ function parseRichTextTokens(content: string, defaultFontSize: number, defaultCo
 
     const nextStyle = { ...inheritedStyle };
 
+    // Handle mentions (TipTap format)
+    if (tag === 'span' && (node.classList.contains('mention') || node.hasAttribute('data-mention-id'))) {
+      nextStyle.bold = true;
+      nextStyle.color = '#0ca3ba'; // Primary theme color
+    }
+
     if (tag === 'strong' || tag === 'b') nextStyle.bold = true;
     if (tag === 'em' || tag === 'i') nextStyle.italic = true;
     if (tag === 'u') nextStyle.underline = true;
@@ -296,6 +303,7 @@ function buildRichTextLines(tokens: RichTextToken[], maxWidth: number, maxHeight
   let currentTokens: RichTextToken[] = [];
   let currentWidth = 0;
   let currentHeight = 0;
+  let currentMaxFontSize = 0;
   let currentY = 0;
   let shouldStop = false;
 
@@ -318,6 +326,7 @@ function buildRichTextLines(tokens: RichTextToken[], maxWidth: number, maxHeight
 
     currentWidth += width;
     currentHeight = Math.max(currentHeight, token.fontSize * 1.35);
+    currentMaxFontSize = Math.max(currentMaxFontSize, token.fontSize);
   };
 
   const commitLine = () => {
@@ -342,11 +351,12 @@ function buildRichTextLines(tokens: RichTextToken[], maxWidth: number, maxHeight
       return positioned;
     });
 
-    lines.push({ y: currentY, height: lineHeight, tokens: positionedTokens });
+    lines.push({ y: currentY, height: lineHeight, maxFontSize: currentMaxFontSize, tokens: positionedTokens });
     currentY += lineHeight;
     currentTokens = [];
     currentWidth = 0;
     currentHeight = 0;
+    currentMaxFontSize = 0;
   };
 
   for (const token of tokens) {
@@ -569,7 +579,7 @@ const CanvasElementView = React.memo(({
                   <Text
                     key={`${el.id}-token-${lineIndex}-${tokenIndex}`}
                     x={paddingX + token.x}
-                    y={paddingY + line.y}
+                    y={paddingY + line.y + (line.maxFontSize - token.fontSize) * 0.78}
                     text={token.text}
                     fill={token.color}
                     fontSize={token.fontSize}

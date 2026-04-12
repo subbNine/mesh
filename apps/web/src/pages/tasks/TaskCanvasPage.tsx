@@ -5,6 +5,7 @@ import { api } from '../../lib/api';
 import { connectToCanvas, disconnectFromCanvas } from '../../lib/ws';
 import { useCanvasStore } from '../../store/canvas.store';
 import { useAuthStore } from '../../store/auth.store';
+import { useProjectStore } from '../../store/project.store';
 import type { ITask } from '@mesh/shared';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
@@ -169,7 +170,7 @@ export default function TaskCanvasPage() {
 
     const init = async () => {
       try {
-        const token = localStorage.getItem('token') || '';
+        const token = useAuthStore.getState().token || '';
         const { ydoc: doc, provider: prov, awareness: aw } = connectToCanvas(taskId, token);
 
         if (isDisposed) {
@@ -241,6 +242,13 @@ export default function TaskCanvasPage() {
       }
     };
   }, [taskId, currentUser, handleAwarenessChange, loadCommentsFromBackend]);
+
+  // Handle project member fetching for mentions separately to avoid re-triggering canvas init
+  useEffect(() => {
+    if (task?.projectId) {
+      useProjectStore.getState().fetchMembers(task.projectId);
+    }
+  }, [task?.projectId]);
 
   const canvasRef = useRef<any>(null);
 

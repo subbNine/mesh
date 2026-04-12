@@ -13,9 +13,7 @@ export function connectToCanvas(taskId: string, token: string) {
     wsBaseUrl = wsBaseUrl.replace('ws://', 'wss://');
   }
 
-  const provider = new WebsocketProvider(wsBaseUrl, taskId, ydoc, {
-    params: { token },
-  });
+  const provider = new WebsocketProvider(wsBaseUrl, `${taskId}?token=${token}`, ydoc);
 
   return { ydoc, provider, awareness: provider.awareness };
 }

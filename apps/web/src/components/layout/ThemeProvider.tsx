@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useThemeStore } from '../../store/theme.store';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

@@ -5,15 +5,19 @@ import * as Y from 'yjs';
 import { CanvasDocument } from './entities/canvas_documents.entity';
 import { TasksService } from '../tasks/tasks.service';
 import { FilesService } from '../files/files.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class CanvasService {
+  private lastNotified = new Map<string, number>();
+
   constructor(
     @InjectRepository(CanvasDocument)
     private readonly canvasRepo: Repository<CanvasDocument>,
     @Inject(forwardRef(() => TasksService))
     private readonly tasksService: any,
     private readonly filesService: FilesService,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   async getDoc(taskId: string): Promise<Buffer | null> {
@@ -76,6 +80,58 @@ export class CanvasService {
     await this.tasksService.updateSnapshot(taskId, publicUrl);
 
     return publicUrl;
+  }
+
+  async handleMentions(taskId: string, actorId: string, elementId: string, text: string): Promise<void> {
+    // 1. Extract IDs from data-mention-id attributes (TipTap format)
+    const mentionIdRegex = /data-mention-id="([^"]+)"/g;
+    const taggedIds = new Set<string>();
+    let match;
+    while ((match = mentionIdRegex.exec(text)) !== null) {
+      taggedIds.add(match[1]);
+    }
+
+    // 2. Fallback to name-based regex if no IDs found (for legacy/compatibility)
+    if (taggedIds.size === 0) {
+      const nameRegex = /@(\w+)/g;
+      const names = new Set<string>();
+      while ((match = nameRegex.exec(text)) !== null) {
+        names.add(match[1]);
+      }
+
+      if (names.size > 0) {
+        const users = await this.tasksService.usersService.findUsersByNames(Array.from(names));
+        users.forEach((u: any) => taggedIds.add(u.id));
+      }
+    }
+
+    if (taggedIds.size === 0) return;
+
+    // 3. Notify and suppress duplicates
+    const now = Date.now();
+    const SUPPRESSION_MS = 5 * 60 * 1000; // 5 minutes
+
+    for (const userId of taggedIds) {
+      // Don't notify self
+      if (userId === actorId) continue;
+
+      const suppressionKey = `${taskId}:${elementId}:${userId}`;
+      const last = this.lastNotified.get(suppressionKey);
+
+      if (!last || (now - last) > SUPPRESSION_MS) {
+        await this.notificationsService.createMentionNotification(taskId, userId, actorId).catch(console.error);
+        this.lastNotified.set(suppressionKey, now);
+      }
+    }
+
+    // Periodically clean up the suppression map to avoid leaks
+    if (this.lastNotified.size > 1000) {
+      for (const [key, timestamp] of this.lastNotified.entries()) {
+        if (now - timestamp > SUPPRESSION_MS) {
+          this.lastNotified.delete(key);
+        }
+      }
+    }
   }
 }
 

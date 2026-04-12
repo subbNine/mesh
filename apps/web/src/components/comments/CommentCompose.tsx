@@ -1,5 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Send, X } from 'lucide-react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Mention from '@tiptap/extension-mention';
+import { useProjectStore } from '../../store/project.store';
+import { getMentionSuggestions } from '../mentions/mention-suggestions';
 
 interface CommentComposeProps {
   screenX: number;
@@ -11,37 +16,51 @@ interface CommentComposeProps {
 }
 
 export function CommentCompose({ screenX, screenY, onSubmit, onCancel }: CommentComposeProps) {
-  const [text, setText] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const members = useProjectStore((state) => state.members);
+  const mentionSuggestions = useMemo(() => getMentionSuggestions(members), [members]);
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, []);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention text-primary font-bold bg-primary/5 px-1 rounded',
+        },
+        suggestion: mentionSuggestions,
+      }),
+    ],
+    content: '',
+    immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        class: 'w-full text-[13px] p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 min-h-[80px] text-zinc-800 placeholder:text-zinc-400 font-medium',
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          handleSubmit();
+          return true;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          onCancel();
+          return true;
+        }
+        return false;
+      },
+    },
+  });
 
   const handleSubmit = () => {
-    if (text.trim()) {
-      onSubmit(text);
-      setText('');
+    if (editor && !editor.isEmpty) {
+      onSubmit(editor.getHTML());
+      editor.commands.clearContent();
     }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      onCancel();
-    }
-    // Prevent these keys from bubbling to canvas stage logic
-    e.stopPropagation();
   };
 
   return (
     <div
-      className="absolute bg-white rounded-xl shadow-xl border border-zinc-200/80 p-3 flex flex-col gap-3 w-72 animate-in fade-in zoom-in-95 duration-100 z-50"
+      className="absolute bg-white rounded-xl shadow-xl border border-zinc-200/80 p-3 flex flex-col gap-3 w-72 animate-in fade-in zoom-in-95 duration-100 z-50 focus-within:ring-4 focus-within:ring-primary/5 transition-all"
       style={{
         left: screenX,
         top: screenY,
@@ -57,20 +76,19 @@ export function CommentCompose({ screenX, screenY, onSubmit, onCancel }: Comment
         </button>
       </div>
       
-      <textarea
-        ref={textareaRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Type a comment..."
-        className="w-full text-[13px] p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none text-zinc-800 placeholder-zinc-400 transition-all font-medium"
-        rows={3}
-      />
+      <div className="relative group">
+        {!editor?.getText() && (
+          <div className="absolute top-2.5 left-2.5 text-[13px] text-zinc-400 pointer-events-none font-medium">
+            Type a comment...
+          </div>
+        )}
+        <EditorContent editor={editor} />
+      </div>
       
       <div className="flex justify-end">
         <button
           onClick={handleSubmit}
-          disabled={!text.trim()}
+          disabled={!editor || editor.isEmpty}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[13px] font-semibold rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Send className="w-3.5 h-3.5" />
@@ -80,3 +98,4 @@ export function CommentCompose({ screenX, screenY, onSubmit, onCancel }: Comment
     </div>
   );
 }
+

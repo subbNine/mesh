@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Param, Req, Res, UseGuards, HttpException, HttpStatus, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Param, Req, Res, UseGuards, HttpException, HttpStatus, UseInterceptors, UploadedFile, Body } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
 import { CanvasService } from './canvas.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { IUser } from '@mesh/shared';
 
 @Controller('canvas')
 @UseGuards(JwtAuthGuard)
@@ -39,5 +41,15 @@ export class CanvasController {
     }
     const url = await this.canvasService.generateAndSaveSnapshot(taskId, file.buffer);
     return { success: true, url };
+  }
+
+  @Post(':taskId/mentions')
+  async handleMentions(
+    @Param('taskId') taskId: string,
+    @CurrentUser() user: IUser,
+    @Body() dto: { elementId: string, text: string },
+  ) {
+    await this.canvasService.handleMentions(taskId, user.id, dto.elementId, dto.text);
+    return { success: true };
   }
 }

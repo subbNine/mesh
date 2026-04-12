@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
-import { useNotificationStore } from '../store/notifications.store';
+// Import type only for the store to avoid circularity at the top level
+import type { useNotificationStore as NotificationStoreHook } from '../store/notifications.store';
 
 let socket: Socket | null = null;
 
@@ -17,8 +18,9 @@ export function connectNotifications(token: string) {
     console.log('[Notifications] Connected to socket');
   });
 
-  socket.on('notification', (notification) => {
+  socket.on('notification', async (notification) => {
     console.log('[Notifications] New notification:', notification);
+    const { useNotificationStore } = await import('../store/notifications.store');
     useNotificationStore.getState().addNotification(notification);
   });
 

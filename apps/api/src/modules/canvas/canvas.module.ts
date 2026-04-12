@@ -6,12 +6,14 @@ import { CanvasController } from './canvas.controller';
 import { CanvasDocument } from './entities/canvas_documents.entity';
 import { TasksModule } from '../tasks/tasks.module';
 import { FilesModule } from '../files/files.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([CanvasDocument]),
     forwardRef(() => TasksModule),
     FilesModule,
+    NotificationsModule,
   ],
   controllers: [CanvasController],
   providers: [CanvasService],

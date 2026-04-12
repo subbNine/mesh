@@ -1,7 +1,17 @@
-import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import * as Y from 'yjs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Mention from '@tiptap/extension-mention';
+import TextAlign from '@tiptap/extension-text-align';
+import Underline from '@tiptap/extension-underline';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontSize } from './extensions/FontSize';
+import { useProjectStore } from '../../store/project.store';
+import { getMentionSuggestions } from '../mentions/mention-suggestions';
+import { api } from '../../lib/api';
 
 interface RichTextOverlayProps {
   el: {
@@ -40,179 +50,100 @@ export function RichTextOverlay({
   isSelected,
   variant = 'text',
 }: RichTextOverlayProps) {
-  const contentEditableRef = useRef<HTMLDivElement>(null);
+  const members = useProjectStore((state) => state.members);
   const [localText, setLocalText] = useState(el.content ?? '');
-  const lastHtml = useRef(el.content ?? '');
   const justCommitted = useRef(false);
   const isCallout = variant === 'callout';
   const placeholderHtml = isCallout
-    ? '<span style="color: #92400e; font-style: italic;">Add callout</span>'
-    : '<span style="color: #adb5bd; font-style: italic;">Text block</span>';
+    ? 'Add callout...'
+    : 'Text block...';
   
-  const [formatState, setFormatState] = useState({
-    bold: false,
-    italic: false,
-    underline: false,
-    align: 'left',
+  const mentionSuggestions = useMemo(() => getMentionSuggestions(members), [members]);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      TextStyle,
+      FontSize,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention text-primary font-bold bg-primary/5 px-1 rounded',
+        },
+        suggestion: mentionSuggestions,
+      }),
+    ],
+    content: el.content || '',
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const scrollHeight = editor.view.dom.scrollHeight;
+      const padding = isCallout ? 28 : 16;
+      const contentHeight = Math.max(el.height, scrollHeight + padding);
+      
+      if (contentHeight > el.height + 2) { // Add 2px threshold to prevent loops
+        ydoc.transact(() => {
+          const arr = ydoc.getArray<Y.Map<any>>('elements');
+          const map = arr.toArray().find(m => m.get('id') === el.id);
+          if (map) map.set('height', contentHeight);
+        });
+      }
+    },
   });
 
-  useEffect(() => {
-    if (!isEditing) {
-      if (justCommitted.current) {
-        // Skip updating from props if we just committed locally
-        return;
-      }
-      setLocalText(el.content ?? '');
-      lastHtml.current = el.content ?? '';
-    }
-  }, [el.content, isEditing]);
-
-  useEffect(() => {
-    if (isEditing && contentEditableRef.current) {
-      const div = contentEditableRef.current;
-      
-      div.innerHTML = el.content ?? placeholderHtml;
-      
-      div.focus();
-      
-      const isEmptyOrPlaceholder = !el.content || el.content === 'Double click to edit' || el.content === 'Text block';
-      
-      const selection = window.getSelection();
-      const docRange = document.createRange();
-      docRange.selectNodeContents(div);
-
-      if (isEmptyOrPlaceholder) {
-        // Select all text natively for easy replacement
-        selection?.removeAllRanges();
-        selection?.addRange(docRange);
-      } else {
-        // Collapse to end
-        docRange.collapse(false);
-        selection?.removeAllRanges();
-        selection?.addRange(docRange);
-      }
-    }
-  }, [isEditing, el.content]);
-
-  // Track if we've committed during this edit session to avoid double-saves
   const hasCommittedThisSession = useRef(false);
 
   useEffect(() => {
-    if (isEditing) {
-      hasCommittedThisSession.current = false;
-    }
-    
-    return () => {
-      // Save on unmount ONLY if we were editing and haven't committed yet
-      if (isEditing && contentEditableRef.current && !hasCommittedThisSession.current) {
-        const html = contentEditableRef.current.innerHTML;
-        saveContent(ydoc, el.id, html);
+    if (!isEditing) {
+      if (justCommitted.current) return;
+      setLocalText(el.content ?? '');
+      if (editor) {
+        editor.commands.setContent(el.content ?? '', false);
       }
-    };
-  }, [isEditing, ydoc, el.id]);
+    }
+  }, [el.content, isEditing, editor]);
 
-  const commit = useCallback(() => {
-    if (contentEditableRef.current && !hasCommittedThisSession.current) {
-      const html = contentEditableRef.current.innerHTML;
+  const commit = useCallback(async () => {
+    if (editor && !hasCommittedThisSession.current) {
+      const html = editor.getHTML();
       hasCommittedThisSession.current = true;
       
-      // Update localText immediately so the preview renders correctly 
-      // before the Yjs observer has a chance to propagate back
       setLocalText(html);
       justCommitted.current = true;
       saveContent(ydoc, el.id, html);
       
-      // Reset justCommitted after a short delay to allow Yjs to catch up
+      // Trigger backend mention processing
+      const taskId = window.location.pathname.split('/').pop() || '';
+      if (taskId && html.includes('data-mention-id')) {
+        api.post(`/canvas/${taskId}/mentions`, { elementId: el.id, text: html }).catch(console.error);
+      }
+      
       setTimeout(() => { justCommitted.current = false; }, 500);
     }
     onEndEdit();
-  }, [ydoc, el.id, onEndEdit]);
+  }, [editor, ydoc, el.id, onEndEdit]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const isMeta = e.metaKey || e.ctrlKey;
-    
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      commit();
-    } else if (isMeta && e.key === 'b') {
-      e.preventDefault();
-      handleExec('bold');
-    } else if (isMeta && e.key === 'i') {
-      e.preventDefault();
-      handleExec('italic');
-    } else if (isMeta && e.key === 'u') {
-      e.preventDefault();
-      handleExec('underline');
-    }
-    
-    e.stopPropagation(); 
-  };
-
-  const handleBlur = () => {
-    commit();
-  };
-  
-  const updateFormatState = () => {
-    setFormatState({
-      bold: document.queryCommandState('bold'),
-      italic: document.queryCommandState('italic'),
-      underline: document.queryCommandState('underline'),
-      align: document.queryCommandState('justifyCenter') ? 'center' 
-             : document.queryCommandState('justifyRight') ? 'right' : 'left',
-    });
-  };
-  
-  const handleExec = (cmd: string, val?: string) => {
-    if (cmd.startsWith('justify')) {
-      document.execCommand(cmd, false, val);
-      updateFormatState();
-      return;
-    }
-    document.execCommand(cmd, false, val);
-    updateFormatState();
-  };
-
-  const handleFontSizeChange = (delta: number) => {
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) return;
-    
-    let currentSize = 20; 
-    const parent = selection.anchorNode?.parentElement;
-    if (parent) {
-      const sizeStr = window.getComputedStyle(parent).fontSize;
-      currentSize = parseInt(sizeStr) || 20;
-    }
-    
-    const newSize = Math.max(8, Math.min(96, currentSize + delta));
-
-    document.execCommand('styleWithCSS', false, 'false');
-    
-    // Chrome sometimes ignores execCommand if it thinks the font is ALREADY that size class.
-    // By dynamically checking the reported size and picking an inverse dummy target, we guarantee Native DOM wrappers.
-    let dummySize = '7';
-    if (document.queryCommandValue('fontSize') === '7') {
-      dummySize = '1';
-    }
-    
-    document.execCommand('fontSize', false, dummySize);
-    
-    const container = contentEditableRef.current;
-    if (!container) return;
-
-    // Standardize spans output by chrome sizes and naked font tags
-    const spans = container.querySelectorAll<HTMLElement>('span, font, i, em');
-    spans.forEach(span => {
-      const isDummy7 = dummySize === '7' && (span.getAttribute('size') === '7' || span.style.fontSize === '-webkit-xxx-large' || span.style.fontSize === 'xx-large');
-      const isDummy1 = dummySize === '1' && (span.getAttribute('size') === '1' || span.style.fontSize === '-webkit-x-small' || span.style.fontSize === 'x-small');
-      
-      if (isDummy7 || isDummy1) {
-        span.removeAttribute('size');
-        span.style.fontSize = `${newSize}px`;
+  useEffect(() => {
+    if (isEditing) {
+      hasCommittedThisSession.current = false;
+      if (editor) {
+        editor.commands.focus();
       }
-    });
+    }
+    
+    return () => {
+      if (isEditing && editor && !hasCommittedThisSession.current) {
+        const html = editor.getHTML();
+        saveContent(ydoc, el.id, html);
+      }
+    };
+  }, [isEditing, ydoc, el.id, editor]);
 
-    updateFormatState();
-  };
+  const handleBlur = useCallback(() => {
+    commit();
+  }, [commit]);
 
   const handleBackgroundColorChange = (color: string) => {
     ydoc.transact(() => {
@@ -224,16 +155,11 @@ export function RichTextOverlay({
     });
   };
 
-  const screenX = el.x * stageProps.scale + stageProps.x;
-  const screenY = el.y * stageProps.scale + stageProps.y;
-
-  const rotation = el.rotation || 0;
-
   const baseContentStyle: React.CSSProperties = {
     fontSize: isCallout ? '18px' : '20px',
-    lineHeight: 1.45,
+    lineHeight: isCallout ? '26px' : '29px',
     fontFamily: 'inherit',
-    transform: `scale(${stageProps.scale}) rotate(${rotation}deg)`,
+    transform: `scale(${stageProps.scale}) rotate(${el.rotation || 0}deg)`,
     transformOrigin: 'top left',
     width: el.width,
     height: el.height,
@@ -245,56 +171,21 @@ export function RichTextOverlay({
     overflow: 'hidden',
   };
 
-  const editorShellStyle: React.CSSProperties = {
-    ...baseContentStyle,
-    position: 'relative',
-    border: '2px solid #0ca3ba',
-    borderRadius: isCallout ? '18px' : '4px',
-    background: el.backgroundColor || (isCallout ? '#fff2b3' : 'rgba(255,255,255,0.97)'),
-    boxShadow: '0 0 0 4px rgba(12,163,186,0.12)',
-  };
-
-  const editorContentStyle: React.CSSProperties = {
-    position: 'absolute',
-    inset: isCallout ? '2px' : '0',
-    padding: isCallout ? '12px 14px' : '8px',
-    margin: 0,
-    outline: 'none',
-    border: 'none',
-    borderRadius: isCallout ? '16px' : '2px',
-    boxSizing: 'border-box',
-    background: 'transparent',
-    color: '#1a1a1a',
-    caretColor: '#0ca3ba',
-    display: 'block',
-    width: isCallout ? 'calc(100% - 4px)' : '100%',
-    height: isCallout ? 'calc(100% - 4px)' : '100%',
-    overflowY: 'auto',
-    overflowX: 'hidden',
-    wordBreak: 'break-word',
-    whiteSpace: 'pre-wrap',
-  };
-
   if (!isEditing) {
     return (
       <div 
         className="absolute canvas-rich-text"
         style={{
-          left: screenX,
-          top: screenY,
+          left: el.x * stageProps.scale + stageProps.x,
+          top: el.y * stageProps.scale + stageProps.y,
           pointerEvents: 'none',
           zIndex: isSelected ? 10 : 1,
         }}
       >
-        <style>{`
-          .canvas-rich-text i, .canvas-rich-text em { font-style: italic !important; }
-          .canvas-rich-text u { text-decoration: underline !important; }
-          .canvas-rich-text b, .canvas-rich-text strong { font-weight: bold !important; }
-        `}</style>
         <div
           style={{
-           ...baseContentStyle,
-           position: 'relative' // Anchor absolute children natively inside the scaled frame
+            ...baseContentStyle,
+            position: 'relative'
           }}
         >
           {(isSelected || !localText) && (
@@ -307,14 +198,22 @@ export function RichTextOverlay({
             />
           )}
 
+          <style>{`
+            .canvas-rich-text-content span[style*="font-size"] {
+              vertical-align: baseline;
+            }
+            .canvas-rich-text-content p {
+              margin: 0;
+            }
+          `}</style>
           <div
-            className="absolute inset-0 overflow-hidden break-words"
+            className="absolute inset-0 overflow-hidden break-words canvas-rich-text-content"
             style={{
               color: '#1a1a1a',
               padding: isCallout ? '12px 14px' : '8px',
               boxSizing: 'border-box',
             }}
-            dangerouslySetInnerHTML={{ __html: localText || placeholderHtml }}
+            dangerouslySetInnerHTML={{ __html: localText || `<span style="color: #adb5bd; font-style: italic;">${placeholderHtml}</span>` }}
           />
         </div>
       </div>
@@ -325,130 +224,160 @@ export function RichTextOverlay({
     <div
       className="absolute canvas-rich-text"
       style={{
-        left: screenX,
-        top: screenY,
+        left: el.x * stageProps.scale + stageProps.x,
+        top: el.y * stageProps.scale + stageProps.y,
         zIndex: 100,
       }}
     >
-      <style>{`
-        .canvas-rich-text i, .canvas-rich-text em { font-style: italic !important; }
-        .canvas-rich-text u { text-decoration: underline !important; }
-        .canvas-rich-text b, .canvas-rich-text strong { font-weight: bold !important; }
-      `}</style>
+
       <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 5 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 5 }}
-          className="absolute bottom-[calc(100%+6px)] left-0 bg-white/90 backdrop-blur-xl border border-zinc-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.12)] px-1.5 py-1 flex items-center gap-0.5 select-none z-[101]"
-          style={{ pointerEvents: 'auto', whiteSpace: 'nowrap' }}
-          onMouseDown={(e) => e.preventDefault()} 
-        >
-        <button
-          onMouseDown={(e) => { e.preventDefault(); handleExec('bold'); }}
-          className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors text-[13px] font-bold ${formatState.bold ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-          title="Bold (Ctrl+B)"
-        >
-          <Bold className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onMouseDown={(e) => { e.preventDefault(); handleExec('italic'); }}
-          className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${formatState.italic ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-          title="Italic (Ctrl+I)"
-        >
-          <Italic className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onMouseDown={(e) => { e.preventDefault(); handleExec('underline'); }}
-          className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${formatState.underline ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-          title="Underline (Ctrl+U)"
-        >
-          <Underline className="w-3.5 h-3.5" />
-        </button>
-
-        <div className="w-px h-4 bg-zinc-200 mx-1" />
-
-        <button
-          onMouseDown={(e) => { e.preventDefault(); handleFontSizeChange(-4); }}
-          className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 text-[11px] font-bold transition-colors"
-          title="Decrease Font Size"
-        >
-          A-
-        </button>
-        <button
-          onMouseDown={(e) => { e.preventDefault(); handleFontSizeChange(4); }}
-          className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 text-xs font-bold transition-colors"
-          title="Increase Font Size"
-        >
-          A+
-        </button>
-
-        <div className="w-px h-4 bg-zinc-200 mx-1" />
-
-        {(['left', 'center', 'right'] as const).map((align) => {
-          const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight;
-          return (
+        {editor && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 5 }}
+            className="absolute bottom-[calc(100%+6px)] left-0 bg-white/90 backdrop-blur-xl border border-zinc-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.12)] px-1.5 py-1 flex items-center gap-0.5 select-none z-[101]"
+            style={{ pointerEvents: 'auto', whiteSpace: 'nowrap' }}
+            onMouseDown={(e) => e.preventDefault()} 
+          >
             <button
-              key={align}
-              onMouseDown={(e) => { e.preventDefault(); handleExec(`justify${align.charAt(0).toUpperCase() + align.slice(1)}`); }}
-              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${formatState.align === align ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-              title={`Align ${align}`}
+              onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
+              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors text-[13px] font-bold ${editor.isActive('bold') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
+              title="Bold"
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Bold className="w-3.5 h-3.5" />
             </button>
-          );
-        })}
 
-        <div className="w-px h-4 bg-zinc-200 mx-1" />
-
-        {/* Background Color Palette */}
-        {(['#ffffff', '#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca', '#e9d5ff']).map((color) => {
-          const isActive = (el.backgroundColor || '#ffffff') === color;
-          return (
             <button
-              key={color}
-              onMouseDown={(e) => { e.preventDefault(); handleBackgroundColorChange(color); }}
-              className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
-                isActive ? 'border-zinc-800 scale-110 shadow-sm' : 'border-zinc-200 hover:scale-110'
-              }`}
-              style={{ backgroundColor: color }}
-              title={`Background Color ${color}`}
-            />
-          );
-        })}
-        </motion.div>
+              onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
+              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${editor.isActive('italic') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
+              title="Italic"
+            >
+              <Italic className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
+              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${editor.isActive('underline') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
+              title="Underline (Ctrl+U)"
+            >
+              <UnderlineIcon className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-zinc-200 mx-1" />
+
+            <button
+              onMouseDown={(e) => { 
+                e.preventDefault(); 
+                const attrs = editor.getAttributes('textStyle');
+                let currentSize = 20;
+                if (attrs?.fontSize) currentSize = parseInt(attrs.fontSize.replace('px', ''));
+                editor.chain().focus().setFontSize(Math.max(8, currentSize - 4)).run();
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 text-[11px] font-bold transition-colors"
+              title="Decrease Font Size"
+            >
+              A-
+            </button>
+            <button
+              onMouseDown={(e) => { 
+                e.preventDefault(); 
+                const attrs = editor.getAttributes('textStyle');
+                let currentSize = 20;
+                if (attrs?.fontSize) currentSize = parseInt(attrs.fontSize.replace('px', ''));
+                editor.chain().focus().setFontSize(Math.min(96, currentSize + 4)).run();
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 text-xs font-bold transition-colors"
+              title="Increase Font Size"
+            >
+              A+
+            </button>
+
+            <div className="w-px h-4 bg-zinc-200 mx-1" />
+
+            {(['left', 'center', 'right'] as const).map((align) => {
+              const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight;
+              return (
+                <button
+                  key={align}
+                  onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().setTextAlign(align).run(); }}
+                  className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${editor.isActive({ textAlign: align }) ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
+                  title={`Align ${align}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </button>
+              );
+            })}
+
+            <div className="w-px h-4 bg-zinc-200 mx-1" />
+
+            {(['#ffffff', '#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca', '#e9d5ff']).map((color) => {
+              const isActive = (el.backgroundColor || '#ffffff') === color;
+              return (
+                <button
+                  key={color}
+                  onMouseDown={(e) => { e.preventDefault(); handleBackgroundColorChange(color); }}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                    isActive ? 'border-zinc-800 scale-110 shadow-sm' : 'border-zinc-200 hover:scale-110'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  title={`Background Color ${color}`}
+                />
+              );
+            })}
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      <div style={editorShellStyle}>
-        <div
-          ref={contentEditableRef}
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onKeyUp={updateFormatState}
-          onMouseUp={updateFormatState}
-          onInput={() => {
-            if (contentEditableRef.current) {
-              const scrollHeight = contentEditableRef.current.scrollHeight;
-              const padding = isCallout ? 28 : 16;
-              const contentHeight = scrollHeight + padding;
-              
-              if (contentHeight > el.height) {
-                ydoc.transact(() => {
-                  const arr = ydoc.getArray<Y.Map<any>>('elements');
-                  const map = arr.toArray().find(m => m.get('id') === el.id);
-                  if (map) {
-                    map.set('height', contentHeight);
-                  }
-                });
-              }
-            }
+      <div 
+        style={{
+          ...baseContentStyle,
+          position: 'relative',
+          border: '2px solid #0ca3ba',
+          borderRadius: isCallout ? '18px' : '4px',
+          background: el.backgroundColor || (isCallout ? '#fff2b3' : 'rgba(255,255,255,0.97)'),
+          boxShadow: '0 0 0 4px rgba(12,163,186,0.12)',
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            commit();
+          }
+          e.stopPropagation();
+        }}
+      >
+        <style>{`
+          .tiptap-editor-container .ProseMirror span[style*="font-size"] {
+            vertical-align: baseline;
+          }
+          .tiptap-editor-container .ProseMirror p {
+            margin: 0;
+          }
+        `}</style>
+        <EditorContent 
+          editor={editor}
+          className="tiptap-editor-container"
+          style={{
+            position: 'absolute',
+            inset: isCallout ? '2px' : '0',
+            padding: isCallout ? '12px 14px' : '8px',
+            margin: 0,
+            outline: 'none',
+            border: 'none',
+            borderRadius: isCallout ? '16px' : '2px',
+            boxSizing: 'border-box',
+            background: 'transparent',
+            color: '#1a1a1a',
+            caretColor: '#0ca3ba',
+            display: 'block',
+            width: isCallout ? 'calc(100% - 4px)' : '100%',
+            height: isCallout ? 'calc(100% - 4px)' : '100%',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
           }}
-          spellCheck
-          style={editorContentStyle}
+          onBlur={handleBlur}
         />
       </div>
     </div>
