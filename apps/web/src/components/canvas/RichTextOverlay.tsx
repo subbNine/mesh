@@ -7,8 +7,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
-import { TextStyle } from '@tiptap/extension-text-style';
-import { FontSize } from './extensions/FontSize';
+import { TextStyle, FontSize } from '@tiptap/extension-text-style';
 import { useProjectStore } from '../../store/project.store';
 import { getMentionSuggestions } from '../mentions/mention-suggestions';
 import { api } from '../../lib/api';
@@ -100,7 +99,7 @@ export function RichTextOverlay({
       if (justCommitted.current) return;
       setLocalText(el.content ?? '');
       if (editor) {
-        editor.commands.setContent(el.content ?? '', false);
+        editor.commands.setContent(el.content ?? '', { emitUpdate: false });
       }
     }
   }, [el.content, isEditing, editor]);
@@ -272,7 +271,7 @@ export function RichTextOverlay({
                 const attrs = editor.getAttributes('textStyle');
                 let currentSize = 20;
                 if (attrs?.fontSize) currentSize = parseInt(attrs.fontSize.replace('px', ''));
-                editor.chain().focus().setFontSize(Math.max(8, currentSize - 4)).run();
+                editor.chain().focus().setFontSize(`${Math.max(8, currentSize - 4)}px`).run();
               }}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 text-[11px] font-bold transition-colors"
               title="Decrease Font Size"
@@ -285,7 +284,7 @@ export function RichTextOverlay({
                 const attrs = editor.getAttributes('textStyle');
                 let currentSize = 20;
                 if (attrs?.fontSize) currentSize = parseInt(attrs.fontSize.replace('px', ''));
-                editor.chain().focus().setFontSize(Math.min(96, currentSize + 4)).run();
+                editor.chain().focus().setFontSize(`${Math.min(96, currentSize + 4)}px`).run();
               }}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 text-xs font-bold transition-colors"
               title="Increase Font Size"
