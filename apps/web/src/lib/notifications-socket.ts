@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-// Import type only for the store to avoid circularity at the top level
-import type { useNotificationStore as NotificationStoreHook } from '../store/notifications.store';
+
 
 let socket: Socket | null = null;
 

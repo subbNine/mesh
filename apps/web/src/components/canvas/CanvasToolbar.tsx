@@ -52,6 +52,7 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { success, error } = useToast();
   const inkColor = useCanvasStore((state) => state.inkColor);
+  const setInkColor = useCanvasStore((state) => state.setInkColor);
   const snapToGrid = useCanvasStore((state) => state.snapToGrid);
   const toggleSnapToGrid = useCanvasStore((state) => state.toggleSnapToGrid);
 

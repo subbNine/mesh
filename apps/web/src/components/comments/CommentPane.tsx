@@ -47,7 +47,7 @@ const highlightMentions = (text: string) => {
   const legacyRegex = /(@\w+)/g;
 
   if (text.includes('data-mention-id')) {
-    const parts: (string | JSX.Element)[] = [];
+    const parts: (string | React.JSX.Element)[] = [];
     let lastIndex = 0;
     let match;
 

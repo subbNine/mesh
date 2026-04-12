@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import type { IUser } from '@mesh/shared';
 import { getUserColor } from '../../lib/user-color';
 

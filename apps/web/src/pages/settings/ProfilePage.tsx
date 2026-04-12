@@ -6,7 +6,7 @@ import { useToast } from '../../store/toast.store';
 import { api } from '../../lib/api';
 import { 
   User, Camera, Mail, Lock, Check, Loader2, 
-  Layers, LogOut, Shield, ArrowLeft, Image as ImageIcon
+  Layers, LogOut, Shield, Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 

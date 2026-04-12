@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Send, X } from 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -35,7 +35,7 @@ export function CommentCompose({ screenX, screenY, onSubmit, onCancel }: Comment
       attributes: {
         class: 'w-full text-[13px] p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 min-h-[80px] text-zinc-800 placeholder:text-zinc-400 font-medium',
       },
-      handleKeyDown: (view, event) => {
+      handleKeyDown: (_view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault();
           handleSubmit();

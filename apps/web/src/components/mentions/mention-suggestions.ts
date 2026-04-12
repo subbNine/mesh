@@ -2,7 +2,7 @@ import { ReactRenderer } from '@tiptap/react';
 import tippy, { type Instance as TippyInstance } from 'tippy.js';
 import { MentionList } from './MentionList';
 import type { IProjectMember } from '../../store/project.store';
-import type { IUser } from '@mesh/shared';
+
 
 export const getMentionSuggestions = (members: IProjectMember[]) => {
   return {
@@ -11,8 +11,7 @@ export const getMentionSuggestions = (members: IProjectMember[]) => {
         .map(m => m.user)
         .filter(user => 
           user.firstName.toLowerCase().startsWith(query.toLowerCase()) ||
-          user.lastName.toLowerCase().startsWith(query.toLowerCase()) ||
-          user.userName.toLowerCase().startsWith(query.toLowerCase())
+          user.lastName.toLowerCase().startsWith(query.toLowerCase())
         )
         .slice(0, 5);
     },

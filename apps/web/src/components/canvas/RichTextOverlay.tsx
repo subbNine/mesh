@@ -77,7 +77,6 @@ export function RichTextOverlay({
     ],
     content: el.content || '',
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
       const scrollHeight = editor.view.dom.scrollHeight;
       const padding = isCallout ? 28 : 16;
       const contentHeight = Math.max(el.height, scrollHeight + padding);
