@@ -234,3 +234,14 @@ export interface IFile {
   sizeBytes: number;
   createdAt: string | Date;
 }
+export interface ISearchResult {
+  id: string;
+  type: 'task' | 'subtask';
+  title: string;
+  highlight: string;
+  projectId: string;
+  projectName: string;
+  status?: TaskStatus;
+  parentTaskId?: string;
+  parentTaskTitle?: string;
+}

@@ -56,6 +56,9 @@ export class Task {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ type: 'tsvector', select: false, insert: false, update: false, nullable: true })
+  search_vector?: any;
+
   blockedBy?: ITaskDependency[];
   blocks?: ITaskDependency[];
   isBlocked?: boolean;

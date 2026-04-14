@@ -6,13 +6,15 @@ import { useAuthStore } from '../../store/auth.store';
 import { useThemeStore } from '../../store/theme.store';
 import {
   LogOut, ChevronRight, LayoutGrid,
-  List, User, Moon, Sun, Monitor, Menu, X, Activity, Layers
+  List, User, Moon, Sun, Monitor, Menu, X, Activity, Layers, Search
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
 import { useCanvasStore } from '../../store/canvas.store';
 import { useScratchpadStore } from '../../store/scratchpad.store';
+import { useSearchStore } from '../../store/search.store';
 import { TaskThumbnailSidebar } from '../tasks/TaskThumbnailSidebar';
+import { SearchPalette } from '../search/SearchPalette';
 
 // ─── Pinned Tasks helpers ──────────────────────
 const PINNED_KEY = 'mesh_pinned_tasks';
@@ -34,6 +36,8 @@ export function AppShell() {
 
   const fetchProjects = useProjectStore(state => state.fetchProjects);
   const projects = useProjectStore(state => state.projects);
+
+  const setIsSearchOpen = useSearchStore(state => state.setIsOpen);
 
   const sidebarMode = useCanvasStore(state => state.sidebarMode);
   const setSidebarMode = useCanvasStore(state => state.setSidebarMode);
@@ -146,6 +150,15 @@ export function AppShell() {
             </motion.span>
           )}
         </Link>
+        {(!isCollapsed || isMobileMenuOpen) && (
+          <button 
+            onClick={() => setIsSearchOpen(true)}
+            className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all group/search"
+            title="Search (Cmd+K)"
+          >
+            <Search size={16} className="group-hover/search:scale-110 transition-transform" />
+          </button>
+        )}
       </div>
 
       {/* Mode Switcher */}
@@ -318,6 +331,9 @@ export function AppShell() {
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden p-4 gap-4">
 
+      {/* Search Command Palette */}
+      <SearchPalette />
+
       {/* Background Grid */}
       <div className="fixed inset-0 bg-dot-grid opacity-[0.08] pointer-events-none z-0" />
 
@@ -338,9 +354,14 @@ export function AppShell() {
           </div>
           <span className="font-display font-black text-lg tracking-tighter">Mesh</span>
         </Link>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-foreground">
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setIsSearchOpen(true)} className="p-2 text-foreground">
+            <Search size={20} />
+          </button>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-foreground">
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Overlay Menu */}

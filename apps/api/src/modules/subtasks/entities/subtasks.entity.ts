@@ -36,4 +36,6 @@ export class Subtask {
 
   @Column({ type: 'timestamp', nullable: true })
   completedAt: Date | null;
+  @Column({ type: 'tsvector', select: false, insert: false, update: false, nullable: true })
+  search_vector?: any;
 }

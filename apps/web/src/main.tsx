@@ -11,6 +11,7 @@ import ProjectsPage from './pages/projects/ProjectsPage';
 import ProjectDetailPage from './pages/projects/ProjectDetailPage';
 import DocumentEditorPage from './pages/projects/DocumentEditorPage';
 import MyWorkPage from './pages/my-work/MyWorkPage';
+import SearchPage from './pages/search/SearchPage';
 import ActivityFeedPage from './pages/activity/ActivityFeedPage';
 import TaskCanvasPage from './pages/tasks/TaskCanvasPage';
 import ProfilePage from './pages/settings/ProfilePage';
@@ -89,6 +90,7 @@ function AppRoot() {
             
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="my-work" element={<MyWorkPage />} />
+            <Route path="search" element={<SearchPage />} />
             <Route path="activity" element={<ActivityFeedPage />} />
             <Route path="settings" element={<WorkspaceSettingsPage />} />
             

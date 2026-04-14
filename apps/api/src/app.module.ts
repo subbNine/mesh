@@ -14,6 +14,7 @@ import { CanvasModule } from './modules/canvas/canvas.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { FilesModule } from './modules/files/files.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SearchModule } from './modules/search/search.module';
 import { PresenceModule } from './modules/presence/presence.module';
 import { UsersModule } from './modules/users/users.module';
 import { ActivityModule } from './modules/activity/activity.module';
@@ -65,6 +66,7 @@ import { SubtasksModule } from './modules/subtasks/subtasks.module';
     PresenceModule,
     UsersModule,
     ActivityModule,
+    SearchModule,
     DocsModule,
     ProjectFilesModule,
     DependenciesModule,
