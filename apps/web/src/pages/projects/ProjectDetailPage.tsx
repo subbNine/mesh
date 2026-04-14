@@ -52,6 +52,9 @@ export default function ProjectDetailPage() {
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'all');
   const filterMenuRef = useRef<HTMLDivElement | null>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   const tabs = [
     { id: 'all', label: 'All Tasks', status: '' },
@@ -102,6 +105,30 @@ export default function ProjectDetailPage() {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isFilterMenuOpen]);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return undefined;
+
+    const handleScroll = () => {
+      const currentScrollY = main.scrollTop;
+      const scrollDifference = currentScrollY - lastScrollY.current;
+
+      // Thresholds to prevent jitter: 
+      // - Collapse if scrolling down and past 80px
+      // - Expand immediately if scrolling up
+      if (scrollDifference > 10 && currentScrollY > 80) {
+        setIsHeaderVisible(false);
+      } else if (scrollDifference < -10 || currentScrollY < 20) {
+        setIsHeaderVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    main.addEventListener('scroll', handleScroll, { passive: true });
+    return () => main.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const isProjAdmin = useMemo(() => {
     if (!user || !currentProject) return false;
@@ -199,8 +226,18 @@ export default function ProjectDetailPage() {
       {/* Background Decor */}
       <div className="absolute inset-0 bg-dot-grid opacity-[0.08] pointer-events-none" />
 
-      {/* Compact Top Header */}
-      <header className="px-3 py-2 sm:px-6 sm:py-3 border-b border-border/40 relative z-20 bg-background/60 backdrop-blur-3xl">
+      {/* Collapsible Top Header */}
+      <motion.header
+        initial={false}
+        animate={{
+          height: isHeaderVisible ? 'auto' : 0,
+          opacity: isHeaderVisible ? 1 : 0,
+          borderBottomWidth: isHeaderVisible ? '1px' : 0,
+        }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="px-3 sm:px-6 border-b border-border/40 relative z-20 bg-background/60 backdrop-blur-3xl overflow-hidden"
+      >
+        <div className="py-2 sm:py-3">
         <div className="max-w-screen-2xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
           <div className="flex flex-col gap-1.5 flex-1 min-w-0">
@@ -330,7 +367,8 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
-      </header>
+        </div>
+      </motion.header>
 
       {/* Filter Bar */}
       <div className="px-3 py-1.5 sm:px-6 sm:py-2.5 border-b border-border/40 bg-card/10 backdrop-blur-md relative z-10 sticky top-0 overflow-visible">
@@ -505,7 +543,10 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Main Project Board */}
-      <main className="flex-1 overflow-y-auto p-3 sm:p-5 relative z-0 no-scrollbar">
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-y-auto p-3 sm:p-5 relative z-0 no-scrollbar"
+      >
         <div className="max-w-[1600px] mx-auto h-full min-h-[400px]">
           {activeTab === 'library' ? (
             <ProjectLibraryPage />
