@@ -50,12 +50,8 @@ export class NotificationsProcessor extends WorkerHost {
     });
 
     try {
-      // Execute all channel sends concurrently
-      await Promise.allSettled(promises);
-      // Wait, Promise.allSettled doesn't throw. We should use Promise.all to trigger BullMQ retries 
-      // if we want a failure in one channel to retry the whole job, 
-      // or we can split channels into sub-jobs if we want independent retry logic.
-      // Given the requirement, Promise.all is better for triggering BullMQ's built-in retry.
+      // Execute all channel sends concurrently. We use Promise.all to ensure that if 
+      // any channel fails, it throws an error to naturally trigger BullMQ's built-in retry.
       await Promise.all(promises);
     } catch (err) {
       this.logger.error(`Error sending notification job ${job.id}`, err);
