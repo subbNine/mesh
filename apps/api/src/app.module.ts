@@ -40,7 +40,9 @@ import { SubtasksModule } from './modules/subtasks/subtasks.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const redisUrl = configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+        const rawRedisUrl = configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+        // Sanitize URL: remove trailing '}' or '}}' and trim whitespace
+        const redisUrl = rawRedisUrl.replace(/[}]+$/, '').trim();
         const url = new URL(redisUrl);
         return {
           connection: {

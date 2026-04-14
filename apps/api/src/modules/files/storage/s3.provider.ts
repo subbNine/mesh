@@ -10,7 +10,9 @@ export class S3StorageProvider implements IStorageProvider {
   private readonly endpoint: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.endpoint = this.configService.get('MINIO_ENDPOINT') || '';
+    const rawEndpoint = this.configService.get('MINIO_ENDPOINT') || '';
+    // Sanitize endpoint: remove trailing '}' or '}}' and trim whitespace
+    this.endpoint = rawEndpoint.replace(/[}]+$/, '').trim();
     this.bucketName = this.configService.get('MINIO_BUCKET') || '';
 
     this.s3Client = new S3Client({
