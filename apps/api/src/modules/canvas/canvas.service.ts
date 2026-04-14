@@ -9,7 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class CanvasService {
-  private lastNotified = new Map<string, number>();
+  private readonly lastNotified = new Map<string, number>();
 
   constructor(
     @InjectRepository(CanvasDocument)

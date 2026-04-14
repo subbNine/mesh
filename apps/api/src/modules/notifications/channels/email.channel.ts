@@ -41,18 +41,24 @@ export class EmailChannel implements INotificationChannel {
   }
 
   async send(payload: NotificationPayload): Promise<void> {
-    const user = await this.usersService.findById(payload.recipientId);
-    if (!user?.email) {
+    let email = payload.recipientEmail;
+    let userName = email || 'User';
+
+    if (payload.recipientId) {
+      const user = await this.usersService.findById(payload.recipientId);
+      if (user?.email) {
+        email = user.email;
+        userName = user.firstName ? `${user.firstName} ${user.lastName}` : user.userName;
+      }
+    }
+
+    if (!email) {
       this.logger.warn(`User ${payload.recipientId} not found or missing email`);
       return;
     }
 
-    let templateName: string | null = null;
-    if (payload.type === 'assigned') {
-      templateName = 'assigned';
-    } else if (payload.type === 'mentioned') {
-      templateName = 'mentioned';
-    }
+    const templateName = payload.templateName;
+    const subject = payload.subject || 'Mesh Notification';
 
     if (!templateName) {
       this.logger.warn(`No email template configured for notification type ${payload.type}`);
@@ -61,22 +67,22 @@ export class EmailChannel implements INotificationChannel {
 
     const template = await this.getTemplate(templateName);
     const html = template({
-      userName: user.firstName ? `${user.firstName} ${user.lastName}` : user.userName,
+      userName,
       taskUrl: `${process.env.WEB_URL || 'http://localhost:5173'}/projects/${payload.resourceId}`, // fallback generic, adjust if needed
       ...payload.data
     });
 
     if (!process.env.SMTP_USER) {
-      this.logger.log(`Mock Email to: ${user.email} | Type: ${payload.type} | Content: ${html.substring(0, 100)}...`);
+      this.logger.log(`Mock Email to: ${email} | Type: ${payload.type} | Content: ${html.substring(0, 100)}...`);
       return;
     }
 
     await this.transporter.sendMail({
       from: process.env.EMAIL_FROM || '"Mesh Notifications" <no-reply@usemesh.work>',
-      to: user.email,
-      subject: payload.type === 'assigned' ? 'New Task Assignment' : 'You were mentioned',
+      to: email,
+      subject: subject || 'Mesh Notification',
       html,
     });
-    this.logger.log(`Email sent to ${user.email}`);
+    this.logger.log(`Email sent to ${email}`);
   }
 }

@@ -23,6 +23,8 @@ export class NotificationsService {
     resourceId?: string;
     resourceType?: string;
     data?: any;
+    templateName?: string;
+    subject?: string;
   }): Promise<void> {
     // Skip if recipientId === actor (no self-notifications)
     if (dto.actorId && dto.recipientId === dto.actorId) {
@@ -37,6 +39,26 @@ export class NotificationsService {
       resourceId: dto.resourceId,
       resourceType: dto.resourceType,
       channels: ['in-app', 'email'], // Defaults to both
+      data: dto.data,
+      templateName: dto.templateName,
+      subject: dto.subject,
+    });
+  }
+
+  async sendEmail(dto: {
+    recipientEmail: string;
+    type: string;
+    subject?: string;
+    templateName: string;
+    data?: Record<string, any>;
+  }): Promise<void> {
+    await this.dispatchNotification({
+      recipientId: '', // Recipient ID is empty for pre-registration emails
+      recipientEmail: dto.recipientEmail,
+      type: dto.type,
+      subject: dto.subject,
+      templateName: dto.templateName,
+      channels: ['email'],
       data: dto.data,
     });
   }
@@ -94,6 +116,8 @@ export class NotificationsService {
       type: NotificationType.Assigned,
       resourceId: taskId,
       resourceType: 'task',
+      templateName: 'assigned',
+      subject: 'New Task Assignment',
     });
   }
 
@@ -104,6 +128,8 @@ export class NotificationsService {
       type: NotificationType.Mentioned,
       resourceId: taskId,
       resourceType: 'task',
+      templateName: 'mentioned',
+      subject: 'You were mentioned',
     });
   }
 

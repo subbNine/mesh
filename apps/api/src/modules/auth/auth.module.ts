@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
@@ -13,10 +13,12 @@ import { WorkspaceMember } from '../workspaces/entities/workspace_members.entity
 import { Project } from '../projects/entities/projects.entity';
 import { ProjectMember } from '../projects/entities/project_members.entity';
 import { Invitation } from './entities/invitation.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Workspace, WorkspaceMember, Project, ProjectMember, Invitation]),
+    forwardRef(() => NotificationsModule),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -8,10 +8,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import * as nodemailer from 'nodemailer';
-import { Repository } from 'typeorm';
+import { ProjectMemberRole, WorkspaceMemberRole, NotificationType } from '@mesh/shared';
 
-import { ProjectMemberRole, WorkspaceMemberRole } from '@mesh/shared';
+import { NotificationsService } from '../notifications/notifications.service';
 
 import { Invitation } from './entities/invitation.entity';
 import { Project } from '../projects/entities/projects.entity';
@@ -19,6 +18,7 @@ import { ProjectMember } from '../projects/entities/project_members.entity';
 import { User } from '../users/entities/users.entity';
 import { Workspace } from '../workspaces/entities/workspaces.entity';
 import { WorkspaceMember } from '../workspaces/entities/workspace_members.entity';
+import { Repository } from 'typeorm';
 
 type InviteScope = 'workspace' | 'project';
 type WorkspaceInviteRole = keyof typeof WorkspaceMemberRole | WorkspaceMemberRole;
@@ -53,8 +53,6 @@ type ResolvedInvite = {
 @Injectable()
 export class InvitationsService {
   private readonly logger = new Logger(InvitationsService.name);
-  private readonly transporter: nodemailer.Transporter;
-
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -69,17 +67,8 @@ export class InvitationsService {
     @InjectRepository(Invitation)
     private readonly invitationRepo: Repository<Invitation>,
     private readonly jwtService: JwtService,
-  ) {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-      port: Number.parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async createWorkspaceInvite(
     workspaceId: string,
@@ -119,17 +108,21 @@ export class InvitationsService {
 
     const workspaceRoleSuffix = normalizedRole ? ` as ${normalizedRole}` : '';
 
-    await this.sendInvitationEmail({
-      to: normalizedEmail,
+    await this.notificationsService.sendEmail({
+      recipientEmail: normalizedEmail,
+      type: NotificationType.InvitedToWorkspace,
       subject: `You're invited to join ${workspace.name} on Mesh`,
-      preheader: `${inviter?.firstName || 'A teammate'} invited you to collaborate in ${workspace.name}.`,
-      headline: `Join ${workspace.name}`,
-      body: `${inviter?.firstName || 'A teammate'} invited you to collaborate in Mesh. Review the invite, sign in or create your account, and join the workspace${workspaceRoleSuffix}.`,
-      inviteUrl: this.buildInviteUrl(invitation.id),
-      ctaLabel: 'Review workspace invite',
-      metaLabel: 'Workspace access',
-      metaValue: workspace.name,
-      expiresAt: invitation.expiresAt,
+      templateName: 'invitation',
+      data: {
+        preheader: `${inviter?.firstName || 'A teammate'} invited you to collaborate in ${workspace.name}.`,
+        headline: `Join ${workspace.name}`,
+        body: `${inviter?.firstName || 'A teammate'} invited you to collaborate in Mesh. Review the invite, sign in or create your account, and join the workspace${workspaceRoleSuffix}.`,
+        inviteUrl: this.buildInviteUrl(invitation.id),
+        ctaLabel: 'Review workspace invite',
+        metaLabel: 'Workspace access',
+        metaValue: workspace.name,
+        expiresLabel: invitation.expiresAt.toLocaleString(),
+      }
     });
 
     return {
@@ -185,17 +178,21 @@ export class InvitationsService {
       inviterId,
     });
 
-    await this.sendInvitationEmail({
-      to: normalizedEmail,
+    await this.notificationsService.sendEmail({
+      recipientEmail: normalizedEmail,
+      type: NotificationType.InvitedToProject,
       subject: `You're invited to ${project.name} on Mesh`,
-      preheader: `${inviter?.firstName || 'A teammate'} invited you into the ${project.name} project.`,
-      headline: `Join the ${project.name} project`,
-      body: `${inviter?.firstName || 'A teammate'} invited you to collaborate on ${project.name} in the ${workspace.name} workspace. Review the invite to sign in or create your account, then confirm you want to join.`,
-      inviteUrl: this.buildInviteUrl(invitation.id),
-      ctaLabel: 'Review project invite',
-      metaLabel: 'Project access',
-      metaValue: `${workspace.name} · ${project.name}`,
-      expiresAt: invitation.expiresAt,
+      templateName: 'invitation',
+      data: {
+        preheader: `${inviter?.firstName || 'A teammate'} invited you into the ${project.name} project.`,
+        headline: `Join the ${project.name} project`,
+        body: `${inviter?.firstName || 'A teammate'} invited you to collaborate on ${project.name} in the ${workspace.name} workspace. Review the invite to sign in or create your account, then confirm you want to join.`,
+        inviteUrl: this.buildInviteUrl(invitation.id),
+        ctaLabel: 'Review project invite',
+        metaLabel: 'Project access',
+        metaValue: `${workspace.name} · ${project.name}`,
+        expiresLabel: invitation.expiresAt.toLocaleString(),
+      }
     });
 
     return {
@@ -464,65 +461,4 @@ export class InvitationsService {
     return `${baseUrl}/invite/${encodeURIComponent(inviteId)}`;
   }
 
-  private async sendInvitationEmail({
-    to,
-    subject,
-    preheader,
-    headline,
-    body,
-    inviteUrl,
-    ctaLabel,
-    metaLabel,
-    metaValue,
-    expiresAt,
-  }: {
-    to: string;
-    subject: string;
-    preheader: string;
-    headline: string;
-    body: string;
-    inviteUrl: string;
-    ctaLabel: string;
-    metaLabel: string;
-    metaValue: string;
-    expiresAt: Date;
-  }) {
-    const expiresLabel = expiresAt.toLocaleString();
-    const html = `
-      <div style="margin:0;padding:32px;background:#f6f8fb;font-family:Inter,Arial,sans-serif;color:#132238;">
-        <div style="max-width:640px;margin:0 auto;background:white;border-radius:24px;overflow:hidden;border:1px solid #d9e3ec;box-shadow:0 24px 64px rgba(21,33,50,0.08);">
-          <div style="padding:24px 24px 12px;background:radial-gradient(circle at top left, rgba(39,159,189,0.18), transparent 45%), #08111f;color:white;">
-            <div style="display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.08);font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;">Mesh invite</div>
-            <h1 style="margin:16px 0 8px;font-size:28px;line-height:1.1;">${headline}</h1>
-            <p style="margin:0;color:rgba(237,244,255,0.8);font-size:14px;line-height:1.6;">${preheader}</p>
-          </div>
-          <div style="padding:24px;">
-            <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#43546a;">${body}</p>
-            <div style="margin:0 0 20px;padding:14px 16px;border-radius:16px;background:#f8fbfd;border:1px solid #d9e3ec;">
-              <div style="font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#617086;margin-bottom:6px;">${metaLabel}</div>
-              <div style="font-size:15px;font-weight:700;color:#152132;">${metaValue}</div>
-            </div>
-            <div style="margin:0 0 20px;padding:12px 14px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:12px;line-height:1.6;">
-              This invite expires in 24 hours and is reserved for <strong>${to}</strong>.<br />
-              Expiry time: ${expiresLabel}
-            </div>
-            <a href="${inviteUrl}" style="display:inline-block;padding:12px 18px;border-radius:14px;background:#279fbd;color:white;text-decoration:none;font-weight:800;letter-spacing:0.04em;">${ctaLabel}</a>
-            <p style="margin:18px 0 0;font-size:12px;line-height:1.6;color:#617086;">If the button does not work, copy this link into your browser:<br /><span style="word-break:break-all;color:#279fbd;">${inviteUrl}</span></p>
-          </div>
-        </div>
-      </div>
-    `;
-
-    if (!process.env.SMTP_USER) {
-      this.logger.log(`Mock invitation email to ${to} | ${subject} | ${inviteUrl}`);
-      return;
-    }
-
-    await this.transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"Mesh Invitations" <no-reply@mesh.app>',
-      to,
-      subject,
-      html,
-    });
-  }
 }

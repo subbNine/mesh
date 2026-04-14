@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationsController } from './notifications.controller';
@@ -21,7 +21,7 @@ import { NotificationsGateway } from './notifications.gateway';
       name: 'notifications',
     }),
     UsersModule,
-    AuthModule,
+    forwardRef(() => AuthModule),
   ],
   controllers: [NotificationsController],
   providers: [
