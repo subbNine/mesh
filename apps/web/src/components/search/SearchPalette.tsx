@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Clock, Command, CornerDownLeft } from 'lucide-react';
+import { Search, X, Command, CornerDownLeft } from 'lucide-react';
 import { useSearchStore } from '../../store/search.store';
 import { SearchResultRow } from './SearchResultRow';
 import type { ISearchResult } from '@mesh/shared';

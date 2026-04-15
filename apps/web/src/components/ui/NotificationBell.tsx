@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { AtSign, Bell, Check, CheckCircle2, ClipboardList, Link2, MessageSquare, UserPlus } from 'lucide-react';
 import { useNotificationStore } from '../../store/notifications.store';
 import { api } from '../../lib/api';
@@ -21,6 +22,8 @@ export function NotificationBell() {
   const [isLoading, setIsLoading] = useState(false);
   const { notifications, unreadCount, fetchNotifications, fetchUnreadCount, markRead, markAllRead } = useNotificationStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
   const navigate = useNavigate();
   const { workspaceId = '' } = useParams<{ workspaceId: string }>();
 
@@ -35,13 +38,26 @@ export function NotificationBell() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
 
   const handleNotificationClick = async (n: INotification) => {
     if (!n.readAt) {
@@ -119,12 +135,13 @@ export function NotificationBell() {
   };
 
   const dropdownClasses = useMemo(() => {
-    return 'absolute right-0 mt-2 w-80 dropdown-surface backdrop-blur-xl z-[100] rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right';
+    return 'fixed w-80 dropdown-surface backdrop-blur-xl z-[9999] rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 origin-top-right shadow-2xl';
   }, []);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative">
       <button 
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className={`p-2 rounded-full transition-all relative ${isOpen ? 'bg-zinc-100 text-zinc-900 shadow-inner' : 'hover:bg-muted text-muted-foreground'}`}
         title="Notifications"
@@ -137,8 +154,15 @@ export function NotificationBell() {
         )}
       </button>
 
-      {isOpen && (
-        <div className={dropdownClasses}>
+      {isOpen && coords && createPortal(
+        <div 
+          ref={dropdownRef}
+          className={dropdownClasses}
+          style={{
+            top: coords.top + 8,
+            right: coords.right,
+          }}
+        >
           <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Notifications</h3>
             {unreadCount > 0 && (
@@ -211,7 +235,8 @@ export function NotificationBell() {
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

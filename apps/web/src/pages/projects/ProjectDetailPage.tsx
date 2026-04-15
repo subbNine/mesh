@@ -235,7 +235,7 @@ export default function ProjectDetailPage() {
           borderBottomWidth: isHeaderVisible ? '1px' : 0,
         }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="px-3 sm:px-6 border-b border-border/40 relative z-20 bg-background/60 backdrop-blur-3xl overflow-hidden"
+        className="px-3 sm:px-6 border-b border-border/40 relative z-20 bg-background/60 backdrop-blur-3xl"
       >
         <div className="py-2 sm:py-3">
         <div className="max-w-screen-2xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4">

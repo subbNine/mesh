@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Search, Filter, LayoutGrid, CheckSquare, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { Search, ArrowUpDown } from 'lucide-react';
 import { useSearchStore } from '../../store/search.store';
 import { SearchResultRow } from '../../components/search/SearchResultRow';
 import type { ISearchResult } from '@mesh/shared';
