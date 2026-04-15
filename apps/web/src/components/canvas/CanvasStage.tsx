@@ -72,349 +72,569 @@ interface CanvasStageProps {
 
 const imagePreviewCache = new Map<string, HTMLImageElement>();
 
-function htmlToPlainText(content?: string) {
-  if (!content) return '';
-
-  if (globalThis.document) {
-    const div = globalThis.document.createElement('div');
-    div.innerHTML = content;
-    return (div.innerText || div.textContent || '').trim();
-  }
-
-  return content.replaceAll(/<[^>]+>/g, ' ').replaceAll(/\s+/g, ' ').trim();
+// ─── ProseMirror JSON types ──────────────────────────────────────────────────
+interface PMTextMark {
+  type: string;
+  attrs?: Record<string, unknown>;
 }
 
-function getTextFormatting(content = '') {
-  const source = content;
-  const bold = /<(strong|b)(\s|>)/i.test(source);
-  const italic = /<(em|i)(\s|>)/i.test(source);
-  const underline = /<u(\s|>)/i.test(source);
-  const alignMatch = /text-align\s*:\s*(left|center|right)/i.exec(source);
-
-  return {
-    fontStyle: [bold && 'bold', italic && 'italic'].filter(Boolean).join(' ') || 'normal',
-    textDecoration: underline ? 'underline' : undefined,
-    align: (alignMatch?.[1]?.toLowerCase() as 'left' | 'center' | 'right' | undefined) || 'left',
-  };
+interface PMDocNode {
+  type: string;
+  text?: string;
+  attrs?: Record<string, unknown>;
+  marks?: PMTextMark[];
+  content?: PMDocNode[];
 }
 
+// ─── Rendering model ─────────────────────────────────────────────────────────
 type TextAlignMode = 'left' | 'center' | 'right';
 
-interface RichTextToken {
+interface RichTextRun {
   text: string;
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  code: boolean;
   fontSize: number;
   fontFamily: string;
   color: string;
-  align: TextAlignMode;
 }
 
+/** A paragraph with a single alignment directive and a list of styled runs. */
+interface RichTextParagraph {
+  align: TextAlignMode;
+  /** Extra vertical gap (px) to insert *before* this paragraph when it's not the first. */
+  spaceBefore: number;
+  runs: RichTextRun[];
+}
+
+/** A positioned line ready for Konva rendering. */
 interface RichTextLine {
   y: number;
   height: number;
   maxFontSize: number;
-  tokens: Array<RichTextToken & { x: number }>;
+  /** Pre-positioned tokens with x offsets already accounting for alignment. */
+  tokens: Array<RichTextRun & { x: number }>;
 }
 
+// ─── Font constants ───────────────────────────────────────────────────────────
 const DEFAULT_TEXT_FONT_FAMILY = "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+const MONO_FONT_FAMILY = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
+
+// ─── Canvas measure context ───────────────────────────────────────────────────
 let textMeasureContext: CanvasRenderingContext2D | null = null;
 
-function getCanvasFontStyle({ bold, italic }: Pick<RichTextToken, 'bold' | 'italic'>) {
+function getTextMeasureContext(): CanvasRenderingContext2D | null {
+  if (textMeasureContext || !globalThis.document) return textMeasureContext;
+  textMeasureContext = globalThis.document.createElement('canvas').getContext('2d');
+  return textMeasureContext;
+}
+
+function measureRun(text: string, run: Pick<RichTextRun, 'bold' | 'italic' | 'fontSize' | 'fontFamily'>): number {
+  const ctx = getTextMeasureContext();
+  if (!ctx) return text.length * run.fontSize * 0.6;
+  ctx.font = `${run.italic ? 'italic ' : ''}${run.bold ? '700 ' : '400 '}${run.fontSize}px ${run.fontFamily}`;
+  return ctx.measureText(text).width;
+}
+
+function getCanvasFontStyle({ bold, italic }: Pick<RichTextRun, 'bold' | 'italic'>): string {
   if (bold && italic) return 'bold italic';
   if (bold) return 'bold';
   if (italic) return 'italic';
   return 'normal';
 }
 
-function getTextMeasureContext() {
-  if (textMeasureContext || !globalThis.document) {
-    return textMeasureContext;
+// ─── Plain-text extraction ────────────────────────────────────────────────────
+function extractPMDocText(node: PMDocNode): string {
+  if (node.type === 'text') return node.text ?? '';
+  if (node.type === 'hardBreak') return '\n';
+  if (node.type === 'mention') {
+    return `@${(node.attrs?.label as string) ?? (node.attrs?.id as string) ?? ''}`;
   }
-
-  textMeasureContext = globalThis.document.createElement('canvas').getContext('2d');
-  return textMeasureContext;
+  return (node.content ?? []).map(extractPMDocText).join('');
 }
 
-function measureRichTextToken(text: string, token: RichTextToken) {
-  const context = getTextMeasureContext();
-
-  if (!context) {
-    return text.length * token.fontSize * 0.6;
+function extractPlainText(content?: string): string {
+  if (!content) return '';
+  if (content.trimStart().startsWith('{')) {
+    try {
+      return extractPMDocText(JSON.parse(content) as PMDocNode).trim();
+    } catch {}
   }
-
-  context.font = `${token.italic ? 'italic ' : ''}${token.bold ? '700 ' : '400 '}${token.fontSize}px ${token.fontFamily}`;
-  return context.measureText(text).width;
+  if (globalThis.document) {
+    const div = globalThis.document.createElement('div');
+    div.innerHTML = content;
+    return (div.innerText || div.textContent || '').trim();
+  }
+  return content.replaceAll(/<[^>]+>/g, ' ').replaceAll(/\s+/g, ' ').trim();
 }
 
-function parseTextAlign(value?: string | null): TextAlignMode | undefined {
-  const normalized = value?.toLowerCase();
-  if (normalized === 'center' || normalized === 'right' || normalized === 'left') {
-    return normalized;
-  }
-
-  return undefined;
+// ─── ProseMirror JSON → paragraph model ──────────────────────────────────────
+function tryParsePMDoc(content: string): PMDocNode | null {
+  if (!content.trimStart().startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === 'object' && parsed.type === 'doc') return parsed as PMDocNode;
+  } catch {}
+  return null;
 }
 
-function parseRichTextTokens(content: string, defaultFontSize: number, defaultColor: string) {
-  if (!globalThis.document) {
-    return [] as RichTextToken[];
+function makeBaseRun(fontSize: number): Omit<RichTextRun, 'text'> {
+  return {
+    bold: false,
+    italic: false,
+    underline: false,
+    code: false,
+    fontSize,
+    fontFamily: DEFAULT_TEXT_FONT_FAMILY,
+    color: '#1a1a1a',
+  };
+}
+
+function applyMarks(base: Omit<RichTextRun, 'text'>, marks: PMTextMark[]): Omit<RichTextRun, 'text'> {
+  const next = { ...base };
+  for (const mark of marks) {
+    switch (mark.type) {
+      case 'bold': next.bold = true; break;
+      case 'italic': next.italic = true; break;
+      case 'underline': next.underline = true; break;
+      case 'code':
+        next.code = true;
+        next.fontFamily = MONO_FONT_FAMILY;
+        next.fontSize = Math.max(12, next.fontSize - 2);
+        break;
+      case 'textStyle': {
+        const fs = mark.attrs?.fontSize as string | undefined;
+        if (fs) {
+          const n = Number.parseFloat(fs);
+          if (Number.isFinite(n) && n > 0) next.fontSize = n;
+        }
+        const col = mark.attrs?.color as string | undefined;
+        if (col) next.color = col;
+        break;
+      }
+      case 'mention':
+        next.bold = true;
+        next.color = '#0ca3ba';
+        break;
+    }
   }
+  return next;
+}
+
+function extractNodeRuns(node: PMDocNode, inherited: Omit<RichTextRun, 'text'>): RichTextRun[] {
+  if (node.type === 'text') {
+    const style = applyMarks(inherited, node.marks ?? []);
+    return [{ ...style, text: node.text ?? '' }];
+  }
+  if (node.type === 'hardBreak') return [{ ...inherited, text: '\n' }];
+  if (node.type === 'mention') {
+    const style = applyMarks(inherited, [{ type: 'mention' }]);
+    const label = (node.attrs?.label as string) ?? (node.attrs?.id as string) ?? '';
+    return [{ ...style, text: `@${label}` }];
+  }
+  return (node.content ?? []).flatMap((child) => extractNodeRuns(child, inherited));
+}
+
+function getNodeAlign(node: PMDocNode): TextAlignMode {
+  const a = node.attrs?.textAlign as string | undefined;
+  return a === 'center' || a === 'right' ? a : 'left';
+}
+
+function parsePMDocToParagraphs(doc: PMDocNode, defaultFontSize: number): RichTextParagraph[] {
+  const paragraphs: RichTextParagraph[] = [];
+
+  function spaceBefore(heading = false): number {
+    if (paragraphs.length === 0) return 0;
+    return heading ? 10 : 4;
+  }
+
+  function processNode(node: PMDocNode): void {
+    switch (node.type) {
+      case 'doc':
+        (node.content ?? []).forEach(processNode);
+        break;
+
+      case 'paragraph': {
+        const base = makeBaseRun(defaultFontSize);
+        const runs = (node.content ?? []).flatMap((c) => extractNodeRuns(c, base));
+        paragraphs.push({ align: getNodeAlign(node), spaceBefore: spaceBefore(), runs });
+        break;
+      }
+
+      case 'heading': {
+        const level = (node.attrs?.level as number) ?? 1;
+        const headingSize = level === 1
+          ? Math.max(defaultFontSize + 10, 30)
+          : Math.max(defaultFontSize + 6, 24);
+        const base: Omit<RichTextRun, 'text'> = {
+          bold: true,
+          italic: false,
+          underline: false,
+          code: false,
+          fontSize: headingSize,
+          fontFamily: DEFAULT_TEXT_FONT_FAMILY,
+          color: '#0f0f0f',
+        };
+        const runs = (node.content ?? []).flatMap((c) => extractNodeRuns(c, base));
+        paragraphs.push({ align: getNodeAlign(node), spaceBefore: spaceBefore(true), runs });
+        break;
+      }
+
+      case 'bulletList':
+        (node.content ?? []).forEach((item, i) => processListItem(item, 'bullet', i + 1));
+        break;
+
+      case 'orderedList': {
+        const start = (node.attrs?.start as number) ?? 1;
+        (node.content ?? []).forEach((item, i) => processListItem(item, 'ordered', start + i));
+        break;
+      }
+
+      case 'codeBlock': {
+        const base: Omit<RichTextRun, 'text'> = {
+          bold: false,
+          italic: false,
+          underline: false,
+          code: true,
+          fontSize: Math.max(defaultFontSize - 2, 12),
+          fontFamily: MONO_FONT_FAMILY,
+          color: '#1e293b',
+        };
+        const runs = (node.content ?? []).flatMap((c) => extractNodeRuns(c, base));
+        paragraphs.push({ align: 'left', spaceBefore: spaceBefore(), runs });
+        break;
+      }
+
+      case 'blockquote': {
+        const before = paragraphs.length;
+        (node.content ?? []).forEach(processNode);
+        for (let i = before; i < paragraphs.length; i++) {
+          paragraphs[i].runs = paragraphs[i].runs.map((r) => ({
+            ...r,
+            italic: true,
+            color: '#6b7280',
+          }));
+        }
+        break;
+      }
+
+      default:
+        (node.content ?? []).forEach(processNode);
+        break;
+    }
+  }
+
+  function processListItem(item: PMDocNode, listType: 'bullet' | 'ordered', index: number): void {
+    const prefix = listType === 'bullet' ? '• ' : `${index}. `;
+    const base = makeBaseRun(defaultFontSize);
+    for (const child of item.content ?? []) {
+      if (child.type === 'paragraph') {
+        const runs = (child.content ?? []).flatMap((c) => extractNodeRuns(c, base));
+        paragraphs.push({
+          align: getNodeAlign(child),
+          spaceBefore: paragraphs.length > 0 ? 2 : 0,
+          runs: [{ ...base, text: prefix }, ...runs],
+        });
+      } else {
+        processNode(child);
+      }
+    }
+  }
+
+  processNode(doc);
+  return paragraphs;
+}
+
+// ─── HTML (legacy) → paragraph model ─────────────────────────────────────────
+function parseHtmlLegacyToParagraphs(content: string, defaultFontSize: number): RichTextParagraph[] {
+  if (!globalThis.document) return [];
 
   const root = globalThis.document.createElement('div');
   root.innerHTML = content;
 
-  const baseStyle: Omit<RichTextToken, 'text'> = {
-    bold: false,
-    italic: false,
-    underline: false,
-    fontSize: defaultFontSize,
-    fontFamily: DEFAULT_TEXT_FONT_FAMILY,
-    color: defaultColor,
-    align: 'left',
-  };
+  const paragraphs: RichTextParagraph[] = [];
+  let currentRuns: RichTextRun[] = [];
+  let currentAlign: TextAlignMode = 'left';
 
-  const tokens: RichTextToken[] = [];
+  function commitParagraph(spaceBefore: number) {
+    if (currentRuns.length === 0) return;
+    paragraphs.push({
+      align: currentAlign,
+      spaceBefore: paragraphs.length > 0 ? spaceBefore : 0,
+      runs: currentRuns,
+    });
+    currentRuns = [];
+    currentAlign = 'left';
+  }
 
-  const pushToken = (text: string, style: Omit<RichTextToken, 'text'>) => {
+  function pushRun(text: string, style: Omit<RichTextRun, 'text'>) {
     if (!text) return;
-
-    const lastToken = tokens[tokens.length - 1];
-    const nextToken: RichTextToken = { text, ...style };
-
+    const last = currentRuns.at(-1);
     if (
-      lastToken &&
-      lastToken.bold === nextToken.bold &&
-      lastToken.italic === nextToken.italic &&
-      lastToken.underline === nextToken.underline &&
-      lastToken.fontSize === nextToken.fontSize &&
-      lastToken.fontFamily === nextToken.fontFamily &&
-      lastToken.color === nextToken.color &&
-      lastToken.align === nextToken.align
+      last?.bold === style.bold &&
+      last?.italic === style.italic &&
+      last?.underline === style.underline &&
+      last?.code === style.code &&
+      last?.fontSize === style.fontSize &&
+      last?.fontFamily === style.fontFamily &&
+      last?.color === style.color
     ) {
-      lastToken.text += text;
+      last.text += text;
       return;
     }
+    currentRuns.push({ ...style, text });
+  }
 
-    tokens.push(nextToken);
-  };
+  const BLOCK_TAGS = new Set(['p', 'div', 'li', 'blockquote', 'pre', 'h1', 'h2', 'ul', 'ol']);
 
-  const pushBreak = (style: Omit<RichTextToken, 'text'>) => {
-    const lastToken = tokens[tokens.length - 1];
-    if (!lastToken || lastToken.text.endsWith('\n')) {
-      return;
-    }
-    pushToken('\n', style);
-  };
-
-  const visitNode = (node: Node, inheritedStyle: Omit<RichTextToken, 'text'>) => {
+  function visit(node: Node, inherited: Omit<RichTextRun, 'text'>): void {
     if (node.nodeType === Node.TEXT_NODE) {
-      pushToken(node.textContent ?? '', inheritedStyle);
+      pushRun(node.textContent ?? '', inherited);
       return;
     }
-
-    if (!(node instanceof HTMLElement)) {
-      return;
-    }
+    if (!(node instanceof HTMLElement)) return;
 
     const tag = node.tagName.toLowerCase();
     if (tag === 'br') {
-      pushBreak(inheritedStyle);
+      pushRun('\n', inherited);
       return;
     }
 
-    const nextStyle = { ...inheritedStyle };
+    const next = { ...inherited };
 
-    // Handle mentions (TipTap format)
-    if (tag === 'span' && (node.classList.contains('mention') || node.hasAttribute('data-mention-id'))) {
-      nextStyle.bold = true;
-      nextStyle.color = '#0ca3ba'; // Primary theme color
+    if (tag === 'span' && (node.classList.contains('mention') || node.dataset['mentionId'] !== undefined)) {
+      next.bold = true;
+      next.color = '#0ca3ba';
     }
-
-    if (tag === 'strong' || tag === 'b') nextStyle.bold = true;
-    if (tag === 'em' || tag === 'i') nextStyle.italic = true;
-    if (tag === 'u') nextStyle.underline = true;
+    if (tag === 'strong' || tag === 'b') next.bold = true;
+    if (tag === 'em' || tag === 'i') next.italic = true;
+    if (tag === 'u') next.underline = true;
     if (tag === 'code' || tag === 'pre') {
-      nextStyle.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
-      nextStyle.fontSize = Math.max(14, inheritedStyle.fontSize - 1);
+      next.code = true;
+      next.fontFamily = MONO_FONT_FAMILY;
+      next.fontSize = Math.max(12, inherited.fontSize - 1);
     }
     if (tag === 'h1') {
-      nextStyle.bold = true;
-      nextStyle.fontSize = Math.max(inheritedStyle.fontSize + 10, 30);
+      next.bold = true;
+      next.fontSize = Math.max(inherited.fontSize + 10, 30);
+      next.color = '#0f0f0f';
     }
     if (tag === 'h2') {
-      nextStyle.bold = true;
-      nextStyle.fontSize = Math.max(inheritedStyle.fontSize + 6, 24);
+      next.bold = true;
+      next.fontSize = Math.max(inherited.fontSize + 6, 24);
+      next.color = '#0f0f0f';
     }
 
-    const inlineFontSize = Number.parseFloat(node.style.fontSize || '');
-    if (Number.isFinite(inlineFontSize)) {
-      nextStyle.fontSize = inlineFontSize;
-    }
+    const inlineFs = Number.parseFloat(node.style.fontSize || '');
+    if (Number.isFinite(inlineFs) && inlineFs > 0) next.fontSize = inlineFs;
+    const fw = node.style.fontWeight;
+    if (fw) next.bold = next.bold || Number.parseInt(fw, 10) >= 600 || fw === 'bold';
+    if (node.style.fontStyle === 'italic') next.italic = true;
+    if (node.style.textDecoration.includes('underline')) next.underline = true;
+    if (node.style.color) next.color = node.style.color;
 
-    if (node.style.fontWeight) {
-      nextStyle.bold = nextStyle.bold || Number.parseInt(node.style.fontWeight, 10) >= 600 || node.style.fontWeight === 'bold';
-    }
-
-    if (node.style.fontStyle === 'italic') {
-      nextStyle.italic = true;
-    }
-
-    if (node.style.textDecoration.includes('underline')) {
-      nextStyle.underline = true;
-    }
-
-    if (node.style.color) {
-      nextStyle.color = node.style.color;
-    }
-
-    const inlineAlign = parseTextAlign(node.style.textAlign);
-    if (inlineAlign) {
-      nextStyle.align = inlineAlign;
-    }
-
-    const isBlock = ['p', 'div', 'li', 'blockquote', 'pre', 'h1', 'h2', 'ul', 'ol'].includes(tag);
-    if (isBlock && tokens.length > 0) {
-      pushBreak(nextStyle);
-    }
-
-    if (tag === 'li') {
-      pushToken('• ', nextStyle);
-    }
-
-    Array.from(node.childNodes).forEach((child) => visitNode(child, nextStyle));
+    const isBlock = BLOCK_TAGS.has(tag);
 
     if (isBlock) {
-      pushBreak(nextStyle);
+      const rawAlign = node.style.textAlign?.toLowerCase();
+      if (rawAlign === 'center' || rawAlign === 'right') currentAlign = rawAlign;
+
+      if (tag === 'h1' || tag === 'h2') {
+        commitParagraph(4);
+        Array.from(node.childNodes).forEach((c) => visit(c, next));
+        commitParagraph(tag === 'h1' ? 10 : 8);
+        return;
+      }
+
+      if ((tag === 'p' || tag === 'div' || tag === 'li') && currentRuns.length > 0) {
+        commitParagraph(4);
+      }
+
+      if (tag === 'li') pushRun('• ', next);
     }
+
+    Array.from(node.childNodes).forEach((c) => visit(c, next));
+
+    if (isBlock && currentRuns.length > 0) {
+      commitParagraph(tag === 'li' ? 2 : 4);
+    }
+  }
+
+  const base: Omit<RichTextRun, 'text'> = {
+    ...makeBaseRun(defaultFontSize),
   };
 
-  Array.from(root.childNodes).forEach((child) => visitNode(child, baseStyle));
+  Array.from(root.childNodes).forEach((c) => visit(c, base));
 
-  return tokens;
+  if (currentRuns.length > 0) commitParagraph(0);
+
+  return paragraphs;
 }
 
-function buildRichTextLines(tokens: RichTextToken[], maxWidth: number, maxHeight: number) {
-  const lines: RichTextLine[] = [];
+// ─── Auto-dispatch: JSON or HTML → paragraphs ─────────────────────────────────
+function parseContentToParagraphs(content: string, defaultFontSize: number): RichTextParagraph[] {
+  const pmDoc = tryParsePMDoc(content);
+  if (pmDoc) return parsePMDocToParagraphs(pmDoc, defaultFontSize);
+  return parseHtmlLegacyToParagraphs(content, defaultFontSize);
+}
+
+// ─── Word-wrap paragraphs → positioned lines ──────────────────────────────────
+function wordWrapRuns(
+  runs: RichTextRun[],
+  maxWidth: number,
+  align: TextAlignMode,
+): Array<{ tokens: Array<RichTextRun & { x: number }>; lineWidth: number; lineHeight: number; maxFontSize: number }> {
   const safeWidth = Math.max(maxWidth, 24);
-  const safeHeight = Math.max(maxHeight, 20);
+  type WrapLine = { tokens: Array<RichTextRun & { x: number }>; lineWidth: number; lineHeight: number; maxFontSize: number };
+  const result: WrapLine[] = [];
 
-  let currentTokens: RichTextToken[] = [];
-  let currentWidth = 0;
-  let currentHeight = 0;
-  let currentMaxFontSize = 0;
-  let currentY = 0;
-  let shouldStop = false;
+  let lineRuns: RichTextRun[] = [];
+  let lineWidth = 0;
+  let lineHeight = 0;
+  let maxFontSize = 0;
 
-  const pushLineToken = (text: string, token: RichTextToken, width: number) => {
-    const lastToken = currentTokens[currentTokens.length - 1];
+  function pushToLine(text: string, run: RichTextRun, w: number) {
+    const last = lineRuns.at(-1);
     if (
-      lastToken &&
-      lastToken.bold === token.bold &&
-      lastToken.italic === token.italic &&
-      lastToken.underline === token.underline &&
-      lastToken.fontSize === token.fontSize &&
-      lastToken.fontFamily === token.fontFamily &&
-      lastToken.color === token.color &&
-      lastToken.align === token.align
+      last?.bold === run.bold &&
+      last?.italic === run.italic &&
+      last?.underline === run.underline &&
+      last?.code === run.code &&
+      last?.fontSize === run.fontSize &&
+      last?.fontFamily === run.fontFamily &&
+      last?.color === run.color
     ) {
-      lastToken.text += text;
+      last.text += text;
     } else {
-      currentTokens.push({ ...token, text });
+      lineRuns.push({ ...run, text });
     }
+    lineWidth += w;
+    lineHeight = Math.max(lineHeight, run.fontSize * 1.4);
+    maxFontSize = Math.max(maxFontSize, run.fontSize);
+  }
 
-    currentWidth += width;
-    currentHeight = Math.max(currentHeight, token.fontSize * 1.35);
-    currentMaxFontSize = Math.max(currentMaxFontSize, token.fontSize);
-  };
-
-  const commitLine = () => {
-    const lineHeight = Math.max(currentHeight || 24, 20);
-    if (currentY + lineHeight > safeHeight) {
-      shouldStop = true;
+  function commitLine(omitIfEmpty = false) {
+    const hasVisible = lineRuns.some((r) => r.text.trim());
+    if (omitIfEmpty && !hasVisible) {
+      lineRuns = []; lineWidth = 0; lineHeight = 0; maxFontSize = 0;
       return;
     }
+    // Trim trailing whitespace from last run and recompute actual width
+    const trimmed = lineRuns.map((r, i) =>
+      i === lineRuns.length - 1 ? { ...r, text: r.text.trimEnd() } : r,
+    );
+    let actualWidth = 0;
+    for (const r of trimmed) actualWidth += measureRun(r.text, r);
 
-    const align = currentTokens[0]?.align ?? 'left';
-    const offsetX = align === 'center'
-      ? Math.max((safeWidth - currentWidth) / 2, 0)
-      : align === 'right'
-        ? Math.max(safeWidth - currentWidth, 0)
-        : 0;
+    let offsetX = 0;
+    if (align === 'center') {
+      offsetX = Math.max((safeWidth - actualWidth) / 2, 0);
+    } else if (align === 'right') {
+      offsetX = Math.max(safeWidth - actualWidth, 0);
+    }
 
     let cursorX = offsetX;
-    const positionedTokens = currentTokens.map((token) => {
-      const tokenWidth = measureRichTextToken(token.text, token);
-      const positioned = { ...token, x: cursorX };
-      cursorX += tokenWidth;
-      return positioned;
+    const tokens = trimmed
+      .filter((r) => r.text.length > 0)
+      .map((r) => {
+        const w = measureRun(r.text, r);
+        const tok = { ...r, x: cursorX };
+        cursorX += w;
+        return tok;
+      });
+
+    result.push({
+      tokens,
+      lineWidth: actualWidth,
+      lineHeight: Math.max(lineHeight, 20),
+      maxFontSize: Math.max(maxFontSize, 12),
     });
+    lineRuns = []; lineWidth = 0; lineHeight = 0; maxFontSize = 0;
+  }
 
-    lines.push({ y: currentY, height: lineHeight, maxFontSize: currentMaxFontSize, tokens: positionedTokens });
-    currentY += lineHeight;
-    currentTokens = [];
-    currentWidth = 0;
-    currentHeight = 0;
-    currentMaxFontSize = 0;
-  };
+  for (const run of runs) {
+    const segments = run.text.split('\n');
+    let segIndex = 0;
+    for (const seg of segments) {
+      if (segIndex > 0) commitLine();
+      segIndex++;
 
-  for (const token of tokens) {
-    const parts = token.text.split(/(\n|\s+)/).filter(Boolean);
+      if (!seg) continue;
 
-    for (let part of parts) {
-      if (part === '\n') {
-        commitLine();
-        if (shouldStop) return lines;
-        continue;
-      }
+      const wordTokens = seg.split(/(\s+)/);
+      for (const rawWord of wordTokens) {
+        let word = rawWord;
 
-      if (!currentTokens.length) {
-        part = part.replace(/^\s+/, '');
-      }
+        // Skip leading whitespace at the start of a new line
+        if (!lineRuns.length && /^\s+$/.test(word)) continue;
+        if (!word) continue;
 
-      if (!part) continue;
+        let wordW = measureRun(word, run);
 
-      let partWidth = measureRichTextToken(part, token);
-      if (currentTokens.length > 0 && currentWidth + partWidth > safeWidth && !/^\s+$/.test(part)) {
-        commitLine();
-        if (shouldStop) return lines;
-        part = part.replace(/^\s+/, '');
-        if (!part) continue;
-        partWidth = measureRichTextToken(part, token);
-      }
+        // Word overflows → wrap before it
+        if (lineRuns.length > 0 && lineWidth + wordW > safeWidth && !/^\s+$/.test(word)) {
+          commitLine();
+          word = word.trimStart();
+          if (!word) continue;
+          wordW = measureRun(word, run);
+        }
 
-      if (partWidth <= safeWidth) {
-        pushLineToken(part, token, partWidth);
-        continue;
-      }
-
-      let chunk = '';
-      for (const char of Array.from(part)) {
-        const nextChunk = `${chunk}${char}`;
-        const nextWidth = measureRichTextToken(nextChunk, token);
-
-        if (!chunk || nextWidth <= safeWidth) {
-          chunk = nextChunk;
+        // Single word wider than container → split at character boundary
+        if (wordW > safeWidth && !/^\s+$/.test(word)) {
+          let chunk = '';
+          for (const char of Array.from(word)) {
+            const next = chunk + char;
+            const nextW = measureRun(next, run);
+            if (chunk && nextW > safeWidth) {
+              const cw = measureRun(chunk, run);
+              pushToLine(chunk, run, cw);
+              commitLine();
+              chunk = char;
+            } else {
+              chunk = next;
+            }
+          }
+          if (chunk) pushToLine(chunk, run, measureRun(chunk, run));
           continue;
         }
 
-        const chunkWidth = measureRichTextToken(chunk, token);
-        pushLineToken(chunk, token, chunkWidth);
-        commitLine();
-        if (shouldStop) return lines;
-        chunk = char;
-      }
-
-      if (chunk) {
-        const chunkWidth = measureRichTextToken(chunk, token);
-        pushLineToken(chunk, token, chunkWidth);
+        pushToLine(word, run, wordW);
       }
     }
   }
 
-  if (currentTokens.length && !shouldStop) {
-    commitLine();
+  commitLine(true);
+  return result;
+}
+
+function buildRichTextLines(
+  paragraphs: RichTextParagraph[],
+  maxWidth: number,
+  maxHeight: number,
+): RichTextLine[] {
+  const lines: RichTextLine[] = [];
+  const safeHeight = Math.max(maxHeight, 20);
+  let currentY = 0;
+
+  for (const para of paragraphs) {
+    if (para.spaceBefore > 0 && lines.length > 0) {
+      currentY += para.spaceBefore;
+      if (currentY >= safeHeight) break;
+    }
+
+    const wrapLines = wordWrapRuns(para.runs, maxWidth, para.align);
+
+    if (wrapLines.length === 0) {
+      currentY += 20; // blank paragraph spacer
+      continue;
+    }
+
+    for (const wl of wrapLines) {
+      if (currentY + wl.lineHeight > safeHeight) return lines;
+      lines.push({ y: currentY, height: wl.lineHeight, maxFontSize: wl.maxFontSize, tokens: wl.tokens });
+      currentY += wl.lineHeight;
+    }
   }
 
   return lines;
@@ -497,22 +717,26 @@ const CanvasElementView = React.memo(({
   const paddingY = isCallout ? 10 : 8;
   const contentWidth = Math.max(width - (isCallout ? 24 : 16), 24);
   const contentHeight = Math.max(height - (isCallout ? 20 : 16), 20);
-  const textValue = htmlToPlainText(el.content);
+  const textValue = extractPlainText(el.content);
   const hasContent = textValue.length > 0;
-  const { fontStyle, textDecoration, align } = getTextFormatting(el.content);
+  const defaultFontSize = isCallout ? 18 : 20;
   const richTextLines = isTextElement && hasContent
     ? buildRichTextLines(
-        parseRichTextTokens(el.content || '', isCallout ? 18 : 20, '#1a1a1a'),
+        parseContentToParagraphs(el.content || '', defaultFontSize),
         contentWidth,
         contentHeight,
       )
     : [];
 
   if (isTextElement) {
-    const fillColor = el.backgroundColor || (isCallout ? '#fff2b3' : '#ffffff');
-    const strokeColor = isSelected ? '#0ea5e9' : isCallout ? '#d4a017' : 'transparent';
-    const strokeWidth = isCallout ? (isSelected ? 2 : 1.25) : (isSelected ? 1.5 : 1);
-    const shadowBlur = isCallout ? (isSelected ? 12 : 6) : 0;
+    const fillColor = el.backgroundColor ?? (isCallout ? '#fff2b3' : '#ffffff');
+    let strokeColor = 'transparent';
+    if (isSelected) strokeColor = '#0ea5e9';
+    else if (isCallout) strokeColor = '#d4a017';
+    let strokeWidth = isSelected ? 1.5 : 1;
+    if (isCallout) strokeWidth = isSelected ? 2 : 1.25;
+    let shadowBlur = 0;
+    if (isCallout) shadowBlur = isSelected ? 12 : 6;
     const placeholderText = isCallout ? 'Add callout' : 'Text block';
     const placeholderColor = isCallout ? '#92400e' : '#adb5bd';
     const localAnchorX = typeof el.anchorX === 'number' ? el.anchorX - el.x : width * 0.5;
@@ -601,9 +825,8 @@ const CanvasElementView = React.memo(({
               fill={hasContent ? '#1a1a1a' : placeholderColor}
               fontSize={isCallout ? 18 : 20}
               lineHeight={1.45}
-              fontStyle={hasContent ? fontStyle : 'italic'}
-              textDecoration={hasContent ? textDecoration : undefined}
-              align={align}
+              fontStyle="italic"
+              align="left"
               verticalAlign="top"
               wrap="word"
               listening={false}

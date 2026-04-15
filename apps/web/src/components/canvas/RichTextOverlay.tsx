@@ -40,6 +40,18 @@ function saveContent(ydoc: Y.Doc, id: string, content: string) {
   });
 }
 
+/** Parse element content into a form Tiptap's setContent accepts: JSON object or HTML string. */
+function parseElContent(content?: string): Record<string, unknown> | string | undefined {
+  if (!content) return undefined;
+  if (content.trimStart().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === 'object' && parsed.type === 'doc') return parsed as Record<string, unknown>;
+    } catch {}
+  }
+  return content;
+}
+
 export function RichTextOverlay({
   el,
   stageProps,
@@ -75,7 +87,7 @@ export function RichTextOverlay({
         suggestion: mentionSuggestions,
       }),
     ],
-    content: el.content || '',
+    content: parseElContent(el.content) ?? '',
     onUpdate: ({ editor }) => {
       const scrollHeight = editor.view.dom.scrollHeight;
       const padding = isCallout ? 28 : 16;
@@ -98,26 +110,28 @@ export function RichTextOverlay({
       if (justCommitted.current) return;
       setLocalText(el.content ?? '');
       if (editor) {
-        editor.commands.setContent(el.content ?? '', { emitUpdate: false });
+        editor.commands.setContent(parseElContent(el.content) ?? '', { emitUpdate: false });
       }
     }
   }, [el.content, isEditing, editor]);
 
   const commit = useCallback(async () => {
     if (editor && !hasCommittedThisSession.current) {
-      const html = editor.getHTML();
+      const docJson = editor.getJSON();
+      const jsonContent = JSON.stringify(docJson);
+      const htmlContent = editor.getHTML(); // for overlay display only
       hasCommittedThisSession.current = true;
-      
-      setLocalText(html);
+
+      setLocalText(htmlContent);
       justCommitted.current = true;
-      saveContent(ydoc, el.id, html);
-      
+      saveContent(ydoc, el.id, jsonContent);
+
       // Trigger backend mention processing
       const taskId = window.location.pathname.split('/').pop() || '';
-      if (taskId && html.includes('data-mention-id')) {
-        api.post(`/canvas/${taskId}/mentions`, { elementId: el.id, text: html }).catch(console.error);
+      if (taskId && jsonContent.includes('"type":"mention"')) {
+        api.post(`/canvas/${taskId}/mentions`, { elementId: el.id, text: htmlContent }).catch(console.error);
       }
-      
+
       setTimeout(() => { justCommitted.current = false; }, 500);
     }
     onEndEdit();
@@ -133,8 +147,7 @@ export function RichTextOverlay({
     
     return () => {
       if (isEditing && editor && !hasCommittedThisSession.current) {
-        const html = editor.getHTML();
-        saveContent(ydoc, el.id, html);
+        saveContent(ydoc, el.id, JSON.stringify(editor.getJSON()));
       }
     };
   }, [isEditing, ydoc, el.id, editor]);
