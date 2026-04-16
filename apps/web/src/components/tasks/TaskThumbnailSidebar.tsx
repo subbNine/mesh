@@ -1,6 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { api } from '../../lib/api';
-import type { ITask } from '@mesh/shared';
 import { useParams } from 'react-router-dom';
 import { TaskThumbnailCard } from './TaskThumbnailCard';
 import { useProjectStore } from '../../store/project.store';
