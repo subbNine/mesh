@@ -301,9 +301,11 @@ export function TaskGrid({ projectId, activeTab, filters }: Readonly<TaskGridPro
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
       >
         <AnimatePresence mode="popLayout">
-          {tasks.map(task => (
-             <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} />
-          ))}
+          {tasks
+            .filter((t) => activeTab === 'all' || t.status === activeTab)
+            .map((task) => (
+              <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} />
+            ))}
         </AnimatePresence>
       </motion.div>
       {renderPagination()}

@@ -31,6 +31,13 @@ export interface IWorkspaceMember {
   userId: string;
   role: WorkspaceMemberRole;
   user: IUser;
+  activeTaskCount?: number;
+  projects?: { id: string; name: string }[];
+  joinedAt?: ISODateValue;
+}
+
+export interface IWorkspaceMemberProfile extends IWorkspaceMember {
+  recentActivity: IActivityEvent[];
 }
 
 export interface IProjectStats {
