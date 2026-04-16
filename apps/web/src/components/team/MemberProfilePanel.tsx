@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { IWorkspaceMemberProfile, IActivityEvent } from '@mesh/shared';
-import { X, Mail, Calendar, Briefcase, Activity, ExternalLink, ChevronRight } from 'lucide-react';
+import { X, Mail, Calendar, Briefcase, Activity, ExternalLink } from 'lucide-react';
 import { api } from '../../lib/api';
 import { format } from 'date-fns';
 
@@ -29,21 +29,12 @@ export function MemberProfilePanel({ workspaceId, userId, onClose }: MemberProfi
 
   if (!userId) return null;
 
-  const renderActivityIcon = (type: string) => {
-    switch (type) {
-      case 'comment_created': return <Activity size={12} className="text-sky-500" />;
-      case 'task_created': return <Briefcase size={12} className="text-primary" />;
-      case 'task_status_changed': return <ChevronRight size={12} className="text-emerald-500" />;
-      default: return <Activity size={12} className="text-muted-foreground" />;
-    }
-  };
-
   const getEventDescription = (event: IActivityEvent) => {
      const payload = event.payload as any;
      switch (event.eventType) {
-       case 'comment_created': return <span>Commented on <span className="text-foreground font-bold">{payload.taskTitle || 'a task'}</span></span>;
-       case 'task_created': return <span>Created task <span className="text-foreground font-bold">{payload.taskTitle || 'a task'}</span></span>;
-       case 'task_status_changed': return <span>Moved <span className="text-foreground font-bold">{payload.taskTitle}</span> to <span className="text-primary font-bold uppercase text-[10px]">{payload.newStatus}</span></span>;
+       case 'comment.created': return <span>Commented on <span className="text-foreground font-bold">{payload.taskTitle || 'a task'}</span></span>;
+       case 'task.created': return <span>Created task <span className="text-foreground font-bold">{payload.taskTitle || 'a task'}</span></span>;
+       case 'task.status_changed': return <span>Moved <span className="text-foreground font-bold">{payload.taskTitle}</span> to <span className="text-primary font-bold uppercase text-[10px]">{payload.newStatus}</span></span>;
        default: return <span>Activity in {payload.projectName || 'workspace'}</span>;
      }
   };
@@ -164,7 +155,7 @@ export function MemberProfilePanel({ workspaceId, userId, onClose }: MemberProfi
                    </h3>
                    <div className="space-y-6 pl-2 relative">
                       <div className="absolute left-3.5 top-0 bottom-0 w-px bg-border/40" />
-                      {profile.recentActivity.map((event, idx) => (
+                      {profile.recentActivity.map((event) => (
                         <div key={event.id} className="relative flex gap-4 pr-2">
                            <div className="absolute left-[3px] top-1 z-10 w-2 h-2 rounded-full bg-primary ring-4 ring-card" />
                            <div className="flex-1 min-w-0 pt-0.5">

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { IWorkspaceMember } from '@mesh/shared';
 import { Briefcase, CheckCircle2, MoreHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';

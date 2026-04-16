@@ -302,7 +302,7 @@ export function TaskGrid({ projectId, activeTab, filters }: Readonly<TaskGridPro
       >
         <AnimatePresence mode="popLayout">
           {tasks
-            .filter((t) => activeTab === 'all' || t.status === activeTab)
+            .filter((t) => (activeTab as string) === 'all' || t.status === activeTab)
             .map((task) => (
               <TaskCard key={task.id} task={task} onClick={() => handleTaskClick(task.id)} />
             ))}
