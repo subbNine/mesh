@@ -63,5 +63,14 @@ export class WorkspacesController {
   ) {
     return this.workspacesService.removeMember(workspaceId, user.id, targetUserId);
   }
+
+  @Get(':workspaceId/members/:userId')
+  getMemberProfile(
+    @Param('workspaceId') workspaceId: string,
+    @Param('userId') targetUserId: string,
+    @CurrentUser() user: IUser,
+  ) {
+    return this.workspacesService.getMemberProfile(workspaceId, user.id, targetUserId);
+  }
 }
 

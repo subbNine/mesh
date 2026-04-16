@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { useThemeStore } from '../../store/theme.store';
 import {
   LogOut, ChevronRight, LayoutGrid,
-  List, User, Moon, Sun, Monitor, Menu, X, Activity, Layers, Search
+  List, User, Moon, Sun, Monitor, Menu, X, Activity, Layers, Search, Users
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { ITask } from '@mesh/shared';
@@ -219,6 +219,16 @@ export function AppShell() {
               >
                 <Activity size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
                 {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">Activity</span>}
+              </Link>
+              <Link
+                to={`/w/${workspaceId}/team`}
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-all group text-sm ${location.pathname === `/w/${workspaceId}/team`
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1'
+                  } ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-0' : ''}`}
+              >
+                <Users size={16} className={isCollapsed && !isMobileMenuOpen ? '' : 'flex-shrink-0'} />
+                {(!isCollapsed || isMobileMenuOpen) && <span className="text-xs truncate">Team</span>}
               </Link>
             </div>
 

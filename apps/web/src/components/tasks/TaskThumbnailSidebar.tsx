@@ -4,13 +4,13 @@ import type { ITask } from '@mesh/shared';
 import { useParams } from 'react-router-dom';
 import { TaskThumbnailCard } from './TaskThumbnailCard';
 import { useProjectStore } from '../../store/project.store';
+import { useTaskStore } from '../../store/task.store';
 import { Filter, User, CheckCircle2, ChevronDown, Plus } from 'lucide-react';
 import { NewTaskModal } from './NewTaskModal';
 
 export function TaskThumbnailSidebar() {
   const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>();
-  const [tasks, setTasks] = useState<ITask[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { tasks, isLoading, fetchTasks } = useTaskStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Filters
@@ -20,25 +20,12 @@ export function TaskThumbnailSidebar() {
   const members = useProjectStore(state => state.members);
   const fetchMembers = useProjectStore(state => state.fetchMembers);
 
-  const fetchTasks = () => {
-    if (projectId) {
-      setIsLoading(true);
-      api.get(`/projects/${projectId}/tasks`)
-        .then(res => {
-          // API returns { result: ITask[], metadata: {...} }
-          setTasks(res.data.result || []);
-        })
-        .catch(err => console.error('Failed to fetch tasks for sidebar', err))
-        .finally(() => setIsLoading(false));
-    }
-  };
-
   useEffect(() => {
     if (projectId) {
       fetchMembers(projectId);
-      fetchTasks();
+      fetchTasks(projectId);
     }
-  }, [projectId, fetchMembers]);
+  }, [projectId, fetchMembers, fetchTasks]);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
@@ -155,7 +142,6 @@ export function TaskThumbnailSidebar() {
           onClose={() => setIsModalOpen(false)}
           onCreated={(task) => {
             console.log('Task created from rail:', task);
-            fetchTasks(); // Refresh list
           }}
         />
       )}

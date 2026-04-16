@@ -13,6 +13,7 @@ import DocumentEditorPage from './pages/projects/DocumentEditorPage';
 import MyWorkPage from './pages/my-work/MyWorkPage';
 import SearchPage from './pages/search/SearchPage';
 import ActivityFeedPage from './pages/activity/ActivityFeedPage';
+import TeamPage from './pages/team/TeamPage';
 import TaskCanvasPage from './pages/tasks/TaskCanvasPage';
 import ProfilePage from './pages/settings/ProfilePage';
 import WorkspaceSettingsPage from './pages/settings/WorkspaceSettingsPage';
@@ -92,6 +93,7 @@ function AppRoot() {
             <Route path="my-work" element={<MyWorkPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="activity" element={<ActivityFeedPage />} />
+            <Route path="team" element={<TeamPage />} />
             <Route path="settings" element={<WorkspaceSettingsPage />} />
             
             {/* Project Bounds */}
