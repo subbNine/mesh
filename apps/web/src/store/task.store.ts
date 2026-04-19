@@ -232,9 +232,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   createTask: async (projectId, dto) => {
     const { data } = await api.post(`/projects/${projectId}/tasks`, dto);
-    set((state) => ({ tasks: [data, ...state.tasks] }));
+    
+    set((state) => ({ 
+      tasks: [data, ...state.tasks]
+    }));
+
+    // Update project stats locally for immediate feedback
     applyProjectStatsMutation(projectId, { totalDelta: 1, nextStatus: data.status });
+    
+    // Refresh project stats from server in background
     void useProjectStore.getState().fetchProjectStats(projectId).catch(() => undefined);
+    
     return data;
   },
 
