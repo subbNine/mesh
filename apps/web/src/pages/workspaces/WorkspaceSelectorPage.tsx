@@ -379,8 +379,9 @@ export default function WorkspaceSelectorPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        <nav className="mb-6 flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-4">
+      <div className="sticky top-0 z-50">
+      <div className="mx-auto max-w-7xl px-4 pt-5 pb-4 sm:px-6 lg:px-8">
+        <nav className="mb-0 flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
               <Layers size={18} />
@@ -400,7 +401,10 @@ export default function WorkspaceSelectorPage() {
             </Button>
           </div>
         </nav>
+      </div>
+      </div>
 
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         <header className="mb-6 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
