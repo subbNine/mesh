@@ -5,7 +5,7 @@ import { useProjectStore } from '../../store/project.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useThemeStore } from '../../store/theme.store';
 import {
-  LogOut, ChevronRight, LayoutGrid,
+  LogOut, ChevronRight, ChevronLeft, LayoutGrid,
   List, User, Moon, Sun, Monitor, Menu, X, Activity, Layers, Search, Users
 } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -123,42 +123,73 @@ export function AppShell() {
     }
   };
 
-  const [isCollapsed, setIsCollapsed] = useState(globalThis.innerWidth < 1200);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('mesh_sidebar_collapsed');
+    if (saved !== null) return saved === 'true';
+    return globalThis.innerWidth < 1200;
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setIsCollapsed(globalThis.innerWidth < 1200);
+    const handleResize = () => {
+      if (globalThis.innerWidth < 768) return; // Don't auto-toggle for mobile
+      if (localStorage.getItem('mesh_sidebar_collapsed') !== null) return;
+      setIsCollapsed(globalThis.innerWidth < 1200);
+    };
     globalThis.addEventListener('resize', handleResize);
     return () => globalThis.removeEventListener('resize', handleResize);
   }, []);
+
+  const toggleSidebar = () => {
+    const next = !isCollapsed;
+    setIsCollapsed(next);
+    localStorage.setItem('mesh_sidebar_collapsed', String(next));
+  };
 
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Branding */}
       <div className={`p-4 flex items-center gap-2 ${isCollapsed && !isMobileMenuOpen ? 'justify-center px-3' : ''}`}>
-        <Link to="/workspaces" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-110 transition-transform">
+        <Link to="/workspaces" className="flex items-center gap-2 group flex-1 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20 ring-1 ring-primary/20 group-hover:scale-110 transition-transform flex-shrink-0">
             <Layers size={16} />
           </div>
           {(!isCollapsed || isMobileMenuOpen) && (
             <motion.span
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="font-display font-black text-base tracking-tight"
+              className="font-display font-black text-base tracking-tight truncate"
             >
               Mesh
             </motion.span>
           )}
         </Link>
-        {(!isCollapsed || isMobileMenuOpen) && (
-          <button 
-            onClick={() => setIsSearchOpen(true)}
-            className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all group/search"
-            title="Search (Cmd+K)"
-          >
-            <Search size={16} className="group-hover/search:scale-110 transition-transform" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {(!isCollapsed || isMobileMenuOpen) && (
+            <button 
+              onClick={() => setIsSearchOpen(true)}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all group/search"
+              title="Search (Cmd+K)"
+            >
+              <Search size={16} className="group-hover/search:scale-110 transition-transform" />
+            </button>
+          )}
+          {/* Desktop Collapse Toggle */}
+          {!isMobileMenuOpen && (
+            <button
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all group/collapse hidden md:flex"
+              title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              <motion.div
+                animate={{ rotate: isCollapsed ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ChevronLeft size={16} className="group-hover/collapse:scale-110 transition-transform" />
+              </motion.div>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Mode Switcher */}
