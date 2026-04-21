@@ -56,6 +56,8 @@ export interface IProject {
   description: string | null;
   createdBy: string;
   createdAt: string | Date;
+  publicSlug?: string | null;
+  isPublic?: boolean;
   taskCount?: number;
   memberCount?: number;
   stats?: IProjectStats;

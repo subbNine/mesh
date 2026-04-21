@@ -106,5 +106,21 @@ export class ProjectsController {
   ) {
     return this.projectsService.removeExclusion(projectId, user.id, targetUserId);
   }
+
+  @Post('projects/:projectId/public-link')
+  generatePublicLink(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: IUser,
+  ) {
+    return this.projectsService.generatePublicLink(projectId, user.id);
+  }
+
+  @Delete('projects/:projectId/public-link')
+  revokePublicLink(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: IUser,
+  ) {
+    return this.projectsService.revokePublicLink(projectId, user.id);
+  }
 }
 

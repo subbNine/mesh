@@ -276,6 +276,50 @@ export class TasksService {
     await this.taskRepo.remove(task);
   }
 
+  /**
+   * Fetch all tasks for a project without auth checks.
+   * Intended for public read-only access through the PublicProjectController.
+   */
+  async findAllPublic(
+    projectId: string,
+    filters?: { page?: number; perPage?: number },
+  ): Promise<PaginatedResultType<Task>> {
+    const pagination = new Pagination(filters?.page, filters?.perPage);
+    const query = this.baseTaskQuery()
+      .where('task.projectId = :projectId', { projectId })
+      .distinct(true)
+      .orderBy('task.createdAt', 'DESC')
+      .skip(pagination.skip)
+      .take(pagination.perPage);
+
+    const [tasks, total] = await query.getManyAndCount();
+    const hydratedTasks = this.hydrateAssigneesForTasks(tasks);
+    const tasksWithSubtasks = await this.attachSubtaskStats(hydratedTasks);
+
+    return PaginatedResult.create(tasksWithSubtasks, total, pagination);
+  }
+
+  /**
+   * Fetch a single task without auth checks.
+   * Validates the task belongs to the given project for security.
+   */
+  async findOnePublic(taskId: string, projectId: string): Promise<Task> {
+    const task = await this.baseTaskQuery()
+      .where('task.id = :taskId', { taskId })
+      .andWhere('task.projectId = :projectId', { projectId })
+      .getOne();
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const [taskWithSubtasks] = await this.attachSubtaskStats([
+      this.hydrateAssignees(task),
+    ]);
+
+    return taskWithSubtasks;
+  }
+
   private baseTaskQuery() {
     return this.taskRepo.createQueryBuilder('task')
       .leftJoinAndSelect('task.assignee', 'assignee')

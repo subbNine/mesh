@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -11,7 +11,7 @@ import { TaskDependency } from './entities/task-dependencies.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([TaskDependency, Task]),
-    ProjectsModule,
+    forwardRef(() => ProjectsModule),
     NotificationsModule,
   ],
   controllers: [DependenciesController],

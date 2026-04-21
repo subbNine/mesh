@@ -14,7 +14,7 @@ import { Subtask } from '../subtasks/entities/subtasks.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Task, TaskAssignee, Subtask]),
-    ProjectsModule,
+    forwardRef(() => ProjectsModule),
     forwardRef(() => CanvasModule),
     NotificationsModule,
     ActivityModule,
