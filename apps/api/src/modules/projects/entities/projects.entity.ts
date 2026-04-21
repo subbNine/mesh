@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Workspace } from '../../workspaces/entities/workspaces.entity';
 import { User } from '../../users/entities/users.entity';
 
@@ -26,6 +26,13 @@ export class Project {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'createdBy' })
   creator: User;
+
+  @Index({ unique: true, where: '"publicSlug" IS NOT NULL' })
+  @Column({ type: 'varchar', length: 24, nullable: true, unique: true })
+  publicSlug: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  isPublic: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -21,6 +23,7 @@ export class DependenciesService {
     private readonly dependencyRepo: Repository<TaskDependency>,
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
+    @Inject(forwardRef(() => ProjectsService))
     private readonly projectsService: ProjectsService,
     private readonly notificationsService: NotificationsService,
   ) {}

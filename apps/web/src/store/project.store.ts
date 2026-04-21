@@ -17,6 +17,8 @@ export interface IProject {
   description?: string;
   createdBy: string;
   createdAt: string;
+  publicSlug?: string | null;
+  isPublic?: boolean;
   taskCount?: number;
   memberCount?: number;
   stats?: IProjectStats;
@@ -57,6 +59,8 @@ interface ProjectState {
   removeMember: (projectId: string, userId: string) => Promise<void>;
   excludeWorkspaceMember: (projectId: string, userId: string) => Promise<void>;
   removeExclusion: (projectId: string, userId: string) => Promise<void>;
+  generatePublicLink: (projectId: string) => Promise<string>;
+  revokePublicLink: (projectId: string) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectState>((set) => ({
@@ -155,5 +159,26 @@ export const useProjectStore = create<ProjectState>((set) => ({
     set((state) => ({
       exclusions: state.exclusions.filter(e => e.userId !== userId)
     }));
-  }
+  },
+
+  generatePublicLink: async (projectId: string) => {
+    const { data } = await api.post(`/projects/${projectId}/public-link`);
+    set((state) => ({
+      projects: state.projects.map(p => p.id === projectId ? { ...p, publicSlug: data.publicSlug, isPublic: true } : p),
+      currentProject: state.currentProject?.id === projectId
+        ? { ...state.currentProject, publicSlug: data.publicSlug, isPublic: true }
+        : state.currentProject,
+    }));
+    return data.publicSlug;
+  },
+
+  revokePublicLink: async (projectId: string) => {
+    await api.delete(`/projects/${projectId}/public-link`);
+    set((state) => ({
+      projects: state.projects.map(p => p.id === projectId ? { ...p, publicSlug: null, isPublic: false } : p),
+      currentProject: state.currentProject?.id === projectId
+        ? { ...state.currentProject, publicSlug: null, isPublic: false }
+        : state.currentProject,
+    }));
+  },
 }));

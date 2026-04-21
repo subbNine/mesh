@@ -21,6 +21,7 @@ import ProjectSettingsPage from './pages/settings/ProjectSettingsPage';
 import ForbiddenPage from './pages/errors/ForbiddenPage';
 import NotFoundPage from './pages/errors/NotFoundPage';
 import LandingPage from './pages/LandingPage';
+import PublicProjectPage from './pages/projects/PublicProjectPage';
 
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { WorkspaceRoute } from './components/layout/WorkspaceRoute';
@@ -69,6 +70,9 @@ function AppRoot() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/invite/:inviteId" element={<InvitePage />} />
+
+          {/* Public project share route — no auth required */}
+          <Route path="/share/:slug" element={<PublicProjectPage />} />
 
           {/* Protected Routes */}
           <Route path="/workspaces" element={<ProtectedRoute><WorkspaceSelectorPage /></ProtectedRoute>} />

@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProjectsController } from './projects.controller';
+import { PublicProjectController } from './public-project.controller';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/projects.entity';
 import { ProjectMember } from './entities/project_members.entity';
@@ -9,6 +10,8 @@ import { WorkspaceMember } from '../workspaces/entities/workspace_members.entity
 import { Task } from '../tasks/entities/tasks.entity';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
+import { TasksModule } from '../tasks/tasks.module';
+import { CanvasModule } from '../canvas/canvas.module';
 
 @Module({
   imports: [
@@ -21,8 +24,10 @@ import { AuthModule } from '../auth/auth.module';
     ]),
     ActivityModule,
     AuthModule,
+    forwardRef(() => TasksModule),
+    forwardRef(() => CanvasModule),
   ],
-  controllers: [ProjectsController],
+  controllers: [ProjectsController, PublicProjectController],
   providers: [ProjectsService],
   exports: [ProjectsService],
 })

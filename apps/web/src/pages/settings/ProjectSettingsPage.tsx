@@ -23,7 +23,11 @@ import {
   ShieldAlert,
   AlertTriangle,
   History,
-  Fingerprint
+  Fingerprint,
+  Globe,
+  Link as LinkIcon,
+  Copy,
+  Check
 } from 'lucide-react';
 
 type SettingsTab = 'general' | 'members' | 'exclusions' | 'danger';
@@ -72,6 +76,12 @@ export default function ProjectSettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [error, setError] = useState('');
+
+  // Public link state
+  const generatePublicLink = useProjectStore(state => state.generatePublicLink);
+  const revokePublicLink = useProjectStore(state => state.revokePublicLink);
+  const [isTogglingPublicLink, setIsTogglingPublicLink] = useState(false);
+  const [hasCopiedLink, setHasCopiedLink] = useState(false);
 
   // Determine admin rights natively
   const isWpOwner = wpMembers.find(m => m.userId === user?.id)?.role === 'owner';
@@ -348,6 +358,105 @@ export default function ProjectSettingsPage() {
                     <code className="text-[11px] font-mono text-primary bg-primary/5 px-4 py-2 rounded-xl border border-primary/20 shadow-sm">{currentProject.id}</code>
                   </div>
                 </section>
+
+                {/* Public Sharing Section */}
+                {isProjAdmin && (
+                  <section className="space-y-6">
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-3">
+                        <Globe size={22} className="text-primary" /> Public Sharing
+                      </h2>
+                      <p className="text-muted-foreground text-sm font-serif italic mt-2 opacity-60">
+                        Generate a read-only link anyone can use to view this project's progress.
+                      </p>
+                    </div>
+
+                    <Card className="glass border-border/40 rounded-[48px] overflow-hidden shadow-2xl relative">
+                      <div className="absolute inset-0 bg-dot-grid opacity-[0.02] pointer-events-none" />
+                      <CardContent className="p-12 space-y-8">
+
+                        <div className="flex items-start justify-between gap-6">
+                          <div className="space-y-2 flex-1">
+                            <h3 className="font-black text-lg text-foreground tracking-tight">Public project link</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed max-w-md font-serif italic">
+                              {currentProject.isPublic
+                                ? 'Anyone with this link can view your project summary, task cards, canvas snapshots, and team members. They cannot edit anything.'
+                                : 'Enable to generate a shareable link for read-only access to this project.'}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={isTogglingPublicLink}
+                            onClick={async () => {
+                              try {
+                                setIsTogglingPublicLink(true);
+                                if (currentProject.isPublic) {
+                                  if (window.confirm('Revoke the public link? Anyone with the link will lose access.')) {
+                                    await revokePublicLink(projectId!);
+                                  }
+                                } else {
+                                  await generatePublicLink(projectId!);
+                                }
+                              } catch (err: any) {
+                                setError(err.response?.data?.message || 'Failed to update public link');
+                              } finally {
+                                setIsTogglingPublicLink(false);
+                              }
+                            }}
+                            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-all duration-300 flex-shrink-0 ${
+                              currentProject.isPublic
+                                ? 'bg-primary shadow-lg shadow-primary/20'
+                                : 'bg-muted'
+                            } ${isTogglingPublicLink ? 'opacity-50' : ''}`}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
+                                currentProject.isPublic ? 'translate-x-8' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {currentProject.isPublic && currentProject.publicSlug && (
+                          <div className="space-y-3">
+                            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground/50">Shareable link</div>
+                            <div className="flex items-stretch gap-2">
+                              <div className="flex-1 flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 overflow-hidden">
+                                <LinkIcon size={14} className="text-primary flex-shrink-0" />
+                                <code className="text-sm text-foreground truncate font-mono">
+                                  {`${window.location.origin}/share/${currentProject.publicSlug}`}
+                                </code>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`${window.location.origin}/share/${currentProject.publicSlug}`);
+                                  setHasCopiedLink(true);
+                                  setTimeout(() => setHasCopiedLink(false), 2000);
+                                }}
+                                className="flex items-center gap-2 rounded-2xl bg-primary/10 border border-primary/20 px-5 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/20 transition-all"
+                              >
+                                {hasCopiedLink ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="p-5 rounded-[24px] bg-primary/5 border border-primary/20 flex items-start gap-4">
+                          <Globe className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                          <div>
+                            <h4 className="text-[11px] font-black text-foreground uppercase tracking-widest mb-1">What visitors can see</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed font-serif italic">
+                              Project progress overview, all task cards with status and assignees, canvas snapshots (read-only),
+                              and team members. Documents, files, and comments are not visible. No one can edit anything from the public page.
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </section>
+                )}
               </div>
             )}
 

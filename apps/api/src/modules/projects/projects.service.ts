@@ -13,6 +13,7 @@ import { ExcludeWorkspaceMemberDto } from './dto/exclude-workspace-member.dto';
 import { ActivityService } from '../activity/activity.service';
 import { ProjectMemberRole, TaskStatus } from '@mesh/shared';
 import { InvitationsService } from '../auth/invitations.service';
+import { nanoid } from 'nanoid';
 
 
 type ProjectStats = {
@@ -123,6 +124,8 @@ export class ProjectsService {
 
         return {
           ...project,
+          publicSlug: project.publicSlug,
+          isPublic: project.isPublic,
           taskCount: stats.total,
           memberCount,
           previewMembers,
@@ -346,6 +349,93 @@ export class ProjectsService {
       active: explicit,
       excluded: excluded,
     };
+  }
+
+  /**
+   * Generate a nanoid-based public slug for the project and set isPublic = true.
+   * Only project admins may invoke this.
+   */
+  async generatePublicLink(projectId: string, userId: string): Promise<{ publicSlug: string }> {
+    const { project, role } = await this.checkAccess(projectId, userId);
+    if (role !== ProjectMemberRole.Admin) {
+      throw new ForbiddenException('Only project admins can generate public links');
+    }
+
+    // If the project already has a slug, return it without regenerating
+    if (project.publicSlug && project.isPublic) {
+      return { publicSlug: project.publicSlug };
+    }
+
+    const slug = project.publicSlug ?? nanoid(12);
+    project.publicSlug = slug;
+    project.isPublic = true;
+    await this.projectRepo.save(project);
+
+    return { publicSlug: slug };
+  }
+
+  /**
+   * Revoke public access — clears the slug and sets isPublic = false.
+   * Only project admins may invoke this.
+   */
+  async revokePublicLink(projectId: string, userId: string): Promise<void> {
+    const { project, role } = await this.checkAccess(projectId, userId);
+    if (role !== ProjectMemberRole.Admin) {
+      throw new ForbiddenException('Only project admins can revoke public links');
+    }
+
+    project.publicSlug = null;
+    project.isPublic = false;
+    await this.projectRepo.save(project);
+  }
+
+  /**
+   * Find a project by its public slug. Throws 404 if not found or not public.
+   * Returns the decorated project with stats and member list.
+   */
+  async findByPublicSlug(slug: string): Promise<any> {
+    const project = await this.projectRepo.findOne({ where: { publicSlug: slug, isPublic: true } });
+    if (!project) {
+      throw new NotFoundException('Project not found or is not publicly shared');
+    }
+
+    const [decoratedProject] = await this.decorateProjects([project]);
+
+    // Fetch full member list with user details for the public summary
+    const members = await this.projectMemberRepo.find({
+      where: { projectId: project.id },
+      relations: ['user'],
+    });
+
+    return {
+      ...decoratedProject,
+      members: members.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        role: m.role,
+        user: m.user
+          ? {
+              id: m.user.id,
+              firstName: (m.user as any).firstName,
+              lastName: (m.user as any).lastName,
+              avatarUrl: (m.user as any).avatarUrl ?? null,
+            }
+          : null,
+      })),
+    };
+  }
+
+  /**
+   * Validates that a project identified by its public slug is accessible.
+   * Returns the project entity. Used by other controllers (e.g., tasks, canvas)
+   * to gate public read access.
+   */
+  async resolvePublicProject(slug: string): Promise<Project> {
+    const project = await this.projectRepo.findOne({ where: { publicSlug: slug, isPublic: true } });
+    if (!project) {
+      throw new NotFoundException('Project not found or is not publicly shared');
+    }
+    return project;
   }
 }
 
