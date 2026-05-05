@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f5; padding: 20px; color: #18181b; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .otp { display: inline-block; margin: 20px 0; padding: 14px 18px; border-radius: 10px; background: #f4f4f5; font-size: 28px; font-weight: 700; letter-spacing: 0.4em; color: #0f172a; }
+    .meta { color: #52525b; font-size: 14px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Hi {{userName}},</h2>
+    <p>Use this one-time code to verify your email and activate your Mesh account.</p>
+    <div class="otp">{{verificationCode}}</div>
+    <p class="meta">This code expires in {{expiresInMinutes}} minutes.</p>
+    <p class="meta">If you did not create a Mesh account, you can ignore this email.</p>
+  </div>
+</body>
+</html>

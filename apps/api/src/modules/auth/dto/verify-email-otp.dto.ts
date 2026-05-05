@@ -1,0 +1,14 @@
+import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
+
+export class VerifyEmailOtpDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @Length(6, 6)
+  code: string;
+
+  @IsOptional()
+  @IsString()
+  inviteToken?: string;
+}

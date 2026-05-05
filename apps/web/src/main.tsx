@@ -5,6 +5,7 @@ import './index.css';
 
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import InvitePage from './pages/auth/InvitePage';
 import WorkspaceSelectorPage from './pages/workspaces/WorkspaceSelectorPage';
 import ProjectsPage from './pages/projects/ProjectsPage';
@@ -69,6 +70,7 @@ function AppRoot() {
 
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/invite/:inviteId" element={<InvitePage />} />
 
           {/* Public project share route — no auth required */}

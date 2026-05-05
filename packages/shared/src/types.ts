@@ -15,6 +15,8 @@ export interface IUser {
   lastName: string;
   userName: string;
   avatarUrl: string | null;
+  isEmailVerified: boolean;
+  emailVerifiedAt?: string | Date | null;
   createdAt: string | Date;
 }
 

@@ -28,6 +28,21 @@ export class User {
   @Column({ nullable: true })
   avatarUrl: string;
 
+  @Column({ default: false })
+  isEmailVerified: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  emailVerifiedAt: Date | null;
+
+  @Column({ nullable: true, type: 'varchar' })
+  emailVerificationCodeHash: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  emailVerificationExpiresAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  emailVerificationSentAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }
