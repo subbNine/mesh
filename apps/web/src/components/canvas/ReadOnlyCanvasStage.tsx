@@ -355,6 +355,15 @@ export default function ReadOnlyCanvasStage({ canvasDoc }: ReadOnlyCanvasProps) 
     const stage = stageRef.current;
     if (!stage) return;
 
+    if (!e.evt.ctrlKey) {
+      setStageProps((prev) => ({
+        ...prev,
+        x: prev.x - e.evt.deltaX,
+        y: prev.y - e.evt.deltaY,
+      }));
+      return;
+    }
+
     const oldScale = stageProps.scale;
     const pointer = stage.getPointerPosition();
     if (!pointer) return;

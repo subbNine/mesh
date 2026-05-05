@@ -1724,8 +1724,20 @@ export const CanvasStage = forwardRef<HTMLDivElement, CanvasStageProps>(({
         onWheel={(e) => {
           e.evt.preventDefault();
           const stage = stageRef.current;
+          if (!stage) return;
+
+          if (!e.evt.ctrlKey) {
+            setStageProps((prev) => ({
+              ...prev,
+              x: prev.x - e.evt.deltaX,
+              y: prev.y - e.evt.deltaY,
+            }));
+            return;
+          }
+
           const oldScale = stage.scaleX();
           const pointer = stage.getPointerPosition();
+          if (!pointer) return;
           const mousePointTo = { x: (pointer.x - stage.x()) / oldScale, y: (pointer.y - stage.y()) / oldScale };
           const newScale = e.evt.deltaY < 0 ? oldScale * 1.05 : oldScale / 1.05;
           const s = Math.min(Math.max(newScale, 0.1), 3);
