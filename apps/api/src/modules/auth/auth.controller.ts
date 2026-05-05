@@ -7,6 +7,8 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { IUser } from '@mesh/shared';
 import { InvitationsService } from './invitations.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto';
+import { ResendEmailVerificationDto } from './dto/resend-email-verification.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -23,6 +25,16 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('verify-email')
+  verifyEmail(@Body() dto: VerifyEmailOtpDto) {
+    return this.authService.verifyEmailOtp(dto);
+  }
+
+  @Post('resend-email-verification')
+  resendEmailVerification(@Body() dto: ResendEmailVerificationDto) {
+    return this.authService.resendEmailVerification(dto);
   }
 
   @Get('invitations/preview')

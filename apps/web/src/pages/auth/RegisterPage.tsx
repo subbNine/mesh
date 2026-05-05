@@ -69,6 +69,17 @@ export default function RegisterPage() {
         password,
       });
 
+      if ('requiresEmailVerification' in result) {
+        const params = new URLSearchParams({
+          email: result.email,
+          sent: '1',
+          from: 'register',
+        });
+        if (inviteId) params.set('invite', inviteId);
+        navigate(`/verify-email?${params.toString()}`, { replace: true });
+        return;
+      }
+
       if (inviteId) {
         navigate(`/invite/${encodeURIComponent(inviteId)}`, { replace: true });
         return;

@@ -57,6 +57,17 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
 
+      if ('requiresEmailVerification' in result) {
+        const params = new URLSearchParams({
+          email: result.email,
+          sent: '1',
+          from: 'login',
+        });
+        if (inviteId) params.set('invite', inviteId);
+        navigate(`/verify-email?${params.toString()}`, { replace: true });
+        return;
+      }
+
       if (inviteId) {
         navigate(`/invite/${encodeURIComponent(inviteId)}`, { replace: true });
         return;
